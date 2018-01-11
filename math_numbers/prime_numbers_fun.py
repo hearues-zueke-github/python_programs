@@ -41,7 +41,7 @@ def get_prime_amount_timetable(n, ps):
 
     return timetable
 
-n = 200
+n = 100
 print("n: {}".format(n))
 
 ps = get_primes(n)
