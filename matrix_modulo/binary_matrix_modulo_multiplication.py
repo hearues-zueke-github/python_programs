@@ -4,14 +4,14 @@ import sys
 
 import numpy as np
 
-def get_matrix_sequence(A, B, modulo, n):
+def get_next_matrix_sequence(A, B, modulo, n):
     B = B.copy()
     sequence = [B]
 
     m = A.shape[0]
     sequence_table = np.zeros((n, m*m)).astype(np.int)
     for i in xrange(0, n):
-        B = np.dot(A, B).T % modulo
+        B = np.dot(A, B) % modulo
         sequence.append(B)
         sequence_table[n-1-i] = B.reshape((-1, ))
 
@@ -32,23 +32,63 @@ def find_sequence_length(sequence_table):
 
     return 0
 
-modulo = 5
-m = 4
-A = np.random.randint(0, modulo, (m, m))
-B = np.random.randint(0, modulo, (m, m))
-
-n = 100
-C, sequence_table = get_matrix_sequence(A, B, modulo, n)
-length = find_sequence_length(sequence_table)
-
-while length == 0:
-    C, sequence_table_next = get_matrix_sequence(A, C, modulo, n)
-    sequence_table = np.vstack((sequence_table_next, sequence_table))
+def get_sequence_length(A, B, modulo):
+    n = 100
+    C, sequence_table = get_next_matrix_sequence(A, B, modulo, n)
     length = find_sequence_length(sequence_table)
-    # print("length: {}".format(length))
 
-print("sequence_table:\n{}".format(sequence_table))
-print("length: {}".format(length))
+    while length == 0:
+        C, sequence_table_next = get_next_matrix_sequence(A, C, modulo, n)
+        sequence_table = np.vstack((sequence_table_next, sequence_table))
+        length = find_sequence_length(sequence_table)
 
-# for i, (C, sum_0, sum_1) in enumerate(sequence):
-#     print("i: {}, C:\n{}\nsum_0: {}, sum_1: {}".format(i, C, sum_0, sum_1))
+    return length
+
+def get_max_length(m, modulo):
+    get_matrix = lambda: np.random.randint(0, modulo, (m, m))
+
+    A_max = 0
+    B_max = 0
+    length_max = 0
+    same_length = 0
+    for i in xrange(0, 10000):
+        A = get_matrix()
+        B = get_matrix()
+        length = get_sequence_length(A, B, modulo)
+
+        if length_max <= length:
+            A_max = A
+            B_max = B
+            if length_max == length:
+                same_length += 1
+            else:
+                same_length = 0
+
+            if same_length > 30:
+                break
+            length_max = length
+
+    return length_max
+
+m = 2
+print("m: {}".format(m))
+
+modulos = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] #, 31, 37, 41, 43, 47]
+print("modulos: {}".format(modulos))
+
+lengths = []
+for modulo in modulos:
+    length = get_max_length(m, modulo)
+    print("modulo: {}, length: {}".format(modulo, length))
+    lengths.append(length)
+
+lengths = np.array(lengths)
+print("lengths: {}".format(lengths))
+
+diff = lengths[1:]-lengths[:-1]
+print("diff: {}".format(diff))
+
+# diff = the sequence A069482 from oeis.org
+# https://oeis.org/search?q=5%2C16%2C24%2C72&sort=&language=english&go=Search
+
+
