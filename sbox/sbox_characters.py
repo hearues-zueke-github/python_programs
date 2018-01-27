@@ -9,33 +9,26 @@ def get_mix_idx(n):
     idxs = np.random.permutation(idxs)
     idx_i_j = idxs[:8]
 
-    for _ in xrange(0, n*2):
+    for _ in xrange(0, n//3):
         idxs = np.random.permutation(idxs)
         idx_i_j = np.hstack((idx_i_j, idxs[:8]))
 
     return idx_i_j.reshape((-1, 2))
 
-constraint_1 = lambda i1, j1, i2, j2, i3, j3: \
-           i1 != j2 and j1 != i2
-constraint_2 = lambda i1, j1, i2, j2, i3, j3: \
-           i1 != j2 and j1 != i2 and \
-           i2 != j3 and j2 != i3
-constraint_3 = lambda i1, j1, i2, j2, i3, j3: \
-           i1 != j2 and j1 != i2 and \
-           i1 != j3 and j1 != i3
-constraint_4 = lambda i1, j1, i2, j2, i3, j3: \
-           i1 != j2 and j1 != i2 and \
-           i2 != j3 and j2 != i3 and \
-           i1 != j3 and j1 != i3
-get_idx = lambda sbox, i1, j1: (lambda i2, j2: (i2, j2, sbox[i2], sbox[j2]))(sbox[i1], sbox[j1])
-
-def mix_sbox(sbox, idx_i_j, constraint):
+def mix_sbox(sbox, idx_i_j, max_chain):
     sbox = sbox.copy()
 
     for i1, j1 in idx_i_j:
-        i2, j2, i3, j3 = get_idx(sbox, i1, j1)
+        i2, j2 = i1, j1
 
-        if constraint(i1, j1, i2, j2, i3, j3):
+        is_ok = True
+        for k in xrange(0, max_chain):
+            i2, j2 = sbox[i2], sbox[j2]
+            if i1 == j2 or j1 == i2:
+                is_ok = False
+                break
+
+        if is_ok:
             t = sbox[i1]
             sbox[i1] = sbox[j1]
             sbox[j1] = t
@@ -56,17 +49,14 @@ if __name__ == "__main__":
     sbox_null[-1] = 0
 
     idx_i_j = get_mix_idx(n)
-    print("idx_i_j.T:\n{}".format(idx_i_j.T))
 
     print("sbox_null:\n{}".format(sbox_null))
-    sbox = mix_sbox(sbox_null, idx_i_j, constraint_1)
-    print("sbox:\n{}".format(sbox))
 
-    is_sbox_ok = check_sbox_same_idx(n, sbox)
-    print("is_sbox_ok: {}".format(is_sbox_ok))
+    sboxs = [(i, mix_sbox(sbox_null, idx_i_j, i)) for i in xrange(1, 8)]
 
-    constraints = [constraint_1, constraint_2, constraint_3, constraint_4]
-    sboxs = [mix_sbox(sbox_null, idx_i_j, constraint) for constraint in constraints]
-
-    for i, sbox in enumerate(sboxs):
+    for i, sbox in sboxs:
         print("i: {}, sbox:\n{}".format(i, sbox))
+
+    for k, (i_1, sbox_1) in enumerate(sboxs[:-1]):
+        for i_2, sbox_2 in sboxs [k+1:]:
+            print("i_1: {}, i_2: {},  {}".format(i_1, i_2, (sbox_1==sbox_2)+0))
