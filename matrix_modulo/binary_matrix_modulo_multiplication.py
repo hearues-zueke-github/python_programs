@@ -11,7 +11,9 @@ def get_next_matrix_sequence(A, B, modulo, n):
     m = A.shape[0]
     sequence_table = np.zeros((n, m*m)).astype(np.int)
     for i in xrange(0, n):
-        B = np.dot(A, B) % modulo
+        # B = np.dot(A, B) % modulo
+        # B = np.dot(B, A) % modulo
+        B = np.dot(np.dot(A, B) % modulo, A) % modulo
         sequence.append(B)
         sequence_table[n-1-i] = B.reshape((-1, ))
 
@@ -52,6 +54,10 @@ def get_max_length(m, modulo):
     length_max = 0
     same_length = 0
     for i in xrange(0, 10000):
+        # if i % 50 == 0:
+        #     print("i: {}".format(i))
+        # print("i: {}".format(i))
+
         A = get_matrix()
         B = get_matrix()
         length = get_sequence_length(A, B, modulo)
@@ -68,27 +74,57 @@ def get_max_length(m, modulo):
                 break
             length_max = length
 
-    return length_max
+    return A, B, length_max
 
-m = 2
-print("m: {}".format(m))
+def try_similar_matrices(m, modulo):
+    A, B, length_max = get_max_length(m, modulo)
 
-modulos = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] #, 31, 37, 41, 43, 47]
-print("modulos: {}".format(modulos))
+    print("A:\n{}".format(A))
+    print("B:\n{}".format(B))
+    print("length_max: {}".format(length_max))
 
-lengths = []
-for modulo in modulos:
-    length = get_max_length(m, modulo)
-    print("modulo: {}, length: {}".format(modulo, length))
-    lengths.append(length)
+    matrices_A_lengths = []
+    for i in xrange(1, modulo):
+        A_lengths = A.copy()
+        for y in xrange(0, m):
+            for x in xrange(0, m):
+                A[y, x] = (A[y, x]+i) % modulo
+                # print("i: {}, y: {}, x: {}".format(i, y, x))
+                # print("A:\n{}".format(A))
+                A_lengths[y, x] = get_sequence_length(A, B, modulo)
+                A[y, x] = (A[y, x]-i) % modulo
+        matrices_A_lengths.append((i, A_lengths))
 
-lengths = np.array(lengths)
-print("lengths: {}".format(lengths))
+    for i, A_lengths in matrices_A_lengths:
+        print("i: {}, A_lengths:\n{}".format(i, A_lengths))
 
-diff = lengths[1:]-lengths[:-1]
-print("diff: {}".format(diff))
+if __name__ == "__main__":
+    m = 2
+    print("m: {}".format(m))
 
-# diff = the sequence A069482 from oeis.org
-# https://oeis.org/search?q=5%2C16%2C24%2C72&sort=&language=english&go=Search
+    # try_similar_matrices(m, 7)
 
+    # sys.exit(0)
 
+    modulos = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29] #, 31, 37, 41, 43, 47]
+    print("modulos: {}".format(modulos))
+
+    lengths = []
+    for modulo in modulos:
+        _, _, length = get_max_length(m, modulo)
+        print("modulo: {}, length: {}".format(modulo, length))
+        lengths.append(length)
+
+    lengths = np.array(lengths)
+    print("lengths: {}".format(lengths))
+
+    diff = lengths[1:]-lengths[:-1]
+    print("diff: {}".format(diff))
+
+    # diff = the sequence A069482 from oeis.org
+    # https://oeis.org/search?q=5%2C16%2C24%2C72&sort=&language=english&go=Search
+    # for: B = np.dot(A, B) % modulo
+
+    # lengths = the sequence A084921 from oeis.org
+    # https://oeis.org/search?q=3%2C4%2C12%2C24%2C60%2C84&language=english&go=Search
+    # for: B = np.dot(np.dot(A, B) % modulo, A) % modulo
