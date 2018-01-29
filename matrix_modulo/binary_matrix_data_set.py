@@ -64,5 +64,24 @@ Y_round[Y>=0.] = 1
 
 print("Y_round:\n{}".format(Y_round))
 
-# with open()
-# np.savez("")
+def save_file_data(file_name, X, T):
+    length = X.shape[0]
+    idx_1 = int(length*0.6)
+    idx_2 = int(length*0.8)
+    X_train = X[:idx_1]
+    T_train = T[:idx_1]
+    X_valid = X[idx_1:idx_2]
+    T_valid = T[idx_1:idx_2]
+    X_test = X[idx_2:]
+    T_test = T[idx_2:]
+
+    with open(file_name, "wb") as f:
+        np.savez(f, X_train=X_train, T_train=T_train,
+                    X_valid=X_valid, T_valid=T_valid,
+                    X_test=X_test, T_test=T_test)
+
+file_name = "matrix_mutliply_data.npz"
+save_file_data(file_name, X, Y)
+
+file_name = "matrix_mutliply_data_rounded.npz"
+save_file_data(file_name, X, Y_round)
