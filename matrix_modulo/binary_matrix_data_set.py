@@ -46,23 +46,23 @@ def find_universal_matrix_A(n):
 
     return A
 
-A = find_universal_matrix_A(n)
-print("A:\n{}".format(A))
+# A = find_universal_matrix_A(n)
+# print("A:\n{}".format(A))
 
 A = np.random.random((n, n))*2-1
-X = np.random.random((30, n))*2-1
+X = np.random.random((1000, n))*2-1
 
-print("A:\n{}".format(A))
-print("X:\n{}".format(X))
+# print("A:\n{}".format(A))
+# print("X:\n{}".format(X))
 
 Y = np.dot(X, A)
-print("Y:\n{}".format(Y))
+# print("Y:\n{}".format(Y))
 
 Y_round = Y.copy().astype(np.int)
 Y_round[Y<0.] = 0
 Y_round[Y>=0.] = 1
 
-print("Y_round:\n{}".format(Y_round))
+# print("Y_round:\n{}".format(Y_round))
 
 def save_file_data(file_name, X, T):
     length = X.shape[0]
@@ -80,8 +80,8 @@ def save_file_data(file_name, X, T):
                     X_valid=X_valid, T_valid=T_valid,
                     X_test=X_test, T_test=T_test)
 
-file_name = "matrix_mutliply_data.npz"
+file_name = "matrix_multiply_data_n_{}.npz".format(n)
 save_file_data(file_name, X, Y)
 
-file_name = "matrix_mutliply_data_rounded.npz"
+file_name = "matrix_multiply_data_n_{}_rounded.npz".format(n)
 save_file_data(file_name, X, Y_round)
