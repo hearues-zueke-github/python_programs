@@ -4,21 +4,6 @@ import sys
 
 import numpy as np
 
-n = 5
-A = np.random.randint(0, 2, (n, n))
-B = np.random.randint(0, 2, (n, n))
-b = np.random.randint(0, 2, (n, ))
-
-print("A:\n{}".format(A))
-print("B:\n{}".format(B))
-print("b:\n{}".format(b))
-
-C = np.dot(A, B) % 2
-print("C:\n{}".format(C))
-
-c = np.dot(A, b) % 2
-print("c:\n{}".format(c))
-
 def get_binary_X(bits):
     X = np.zeros((2**bits, bits)).astype(np.int)
     X[1, 0] = 1
@@ -30,7 +15,6 @@ def get_binary_X(bits):
 
 def find_universal_matrix_A(n):
     X = get_binary_X(n)
-    # print("X:\n{}".format(X))
 
     while True:
         A = np.random.randint(0, 2, (n, n))
@@ -46,23 +30,18 @@ def find_universal_matrix_A(n):
 
     return A
 
-# A = find_universal_matrix_A(n)
-# print("A:\n{}".format(A))
+def get_new_X_T(n, m):
+    A = np.random.random((n, m))*2.-1.
+    X = np.random.random((12000, n))
 
-A = np.random.random((n, n))*2-1
-X = np.random.random((1000, n))*2-1
+    T = np.dot(X*2.-1., A)
+    T_sig = 1 / (1+np.exp(-T))
 
-# print("A:\n{}".format(A))
-# print("X:\n{}".format(X))
+    T_round = T.copy().astype(np.int)
+    T_round[T<0.] = 0
+    T_round[T>=0.] = 1
 
-Y = np.dot(X, A)
-# print("Y:\n{}".format(Y))
-
-Y_round = Y.copy().astype(np.int)
-Y_round[Y<0.] = 0
-Y_round[Y>=0.] = 1
-
-# print("Y_round:\n{}".format(Y_round))
+    return X, T_sig, T_round
 
 def save_file_data(file_name, X, T):
     length = X.shape[0]
@@ -80,8 +59,35 @@ def save_file_data(file_name, X, T):
                     X_valid=X_valid, T_valid=T_valid,
                     X_test=X_test, T_test=T_test)
 
-file_name = "matrix_multiply_data_n_{}.npz".format(n)
-save_file_data(file_name, X, Y)
+def load_file_data(file_name):
+    data = np.load(file_name)
+    X_train = data["X_train"]
+    T_train = data["T_train"]
+    X_valid = data["X_valid"]
+    T_valid = data["T_valid"]
+    X_test = data["X_test"]
+    T_test = data["T_test"]
 
-file_name = "matrix_multiply_data_n_{}_rounded.npz".format(n)
-save_file_data(file_name, X, Y_round)
+    print("X_train[:10]:\n{}".format(X_train[:10]))
+    print("T_train[:10]:\n{}".format(T_train[:10]))
+
+    print("X.shape: {}".format(X.shape))
+    print("T.shape: {}".format(T.shape))
+
+if __name__ == "__main__":
+    get_file_name = lambda n, m: "matrix_multiply_data_n_{}_m_{}.npz".format(n, m)
+    get_file_name_rounded = lambda n, m: "matrix_multiply_data_n_{}_m_{}_rounded.npz".format(n, m)
+    m = 7
+    for n in xrange(3, 7):
+        print("data_size: n: {}".format(n))
+        # X, T, _ = get_new_X_T(n, m)
+        X, T, T_round = get_new_X_T(n, m)
+
+        file_name = get_file_name(n, m)
+        save_file_data(file_name, X, T_round)
+
+        # file_name = get_file_name_rounded(n, m)
+        # save_file_data(file_name, X, T_round)
+
+    file_name = get_file_name(3, m)
+    load_file_data(file_name)
