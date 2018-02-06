@@ -1,5 +1,6 @@
 #! /usr/bin/python2.7
 
+import os
 import sys
 
 import numpy as np
@@ -32,7 +33,7 @@ def find_universal_matrix_A(n):
 
 def get_new_X_T(n, m):
     A = np.random.random((n, m))*2.-1.
-    X = np.random.random((12000, n))
+    X = np.random.random((20000, n))
 
     T = np.dot(X*2.-1., A)
     T_sig = 1 / (1+np.exp(-T))
@@ -74,20 +75,27 @@ def load_file_data(file_name):
     print("X.shape: {}".format(X.shape))
     print("T.shape: {}".format(T.shape))
 
+home = os.path.expanduser("~")
+matrix_multiply_data = home+"/Documents/matrix_multiply_data"
+
+if not os.path.exists(matrix_multiply_data):
+    os.makedirs(matrix_multiply_data)
+os.chdir(matrix_multiply_data)
+
 if __name__ == "__main__":
     get_file_name = lambda n, m: "matrix_multiply_data_n_{}_m_{}.npz".format(n, m)
     get_file_name_rounded = lambda n, m: "matrix_multiply_data_n_{}_m_{}_rounded.npz".format(n, m)
-    m = 7
+    m = 4
     for n in xrange(3, 7):
         print("data_size: n: {}".format(n))
         # X, T, _ = get_new_X_T(n, m)
         X, T, T_round = get_new_X_T(n, m)
 
         file_name = get_file_name(n, m)
-        save_file_data(file_name, X, T_round)
+        save_file_data(file_name, X, T)
 
-        # file_name = get_file_name_rounded(n, m)
-        # save_file_data(file_name, X, T_round)
+        file_name = get_file_name_rounded(n, m)
+        save_file_data(file_name, X, T_round)
 
     file_name = get_file_name(3, m)
     load_file_data(file_name)
