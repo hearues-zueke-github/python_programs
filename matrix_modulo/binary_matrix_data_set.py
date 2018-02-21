@@ -31,9 +31,9 @@ def find_universal_matrix_A(n):
 
     return A
 
-def get_new_X_T(n, m):
+def get_new_X_T(n, m, length):
     A = np.random.random((n, m))*2.-1.
-    X = np.random.random((20000, n))
+    X = np.random.random((length, n))
 
     T = np.dot(X*2.-1., A)
     T_sig = 1 / (1+np.exp(-T))
@@ -85,11 +85,11 @@ os.chdir(matrix_multiply_data)
 if __name__ == "__main__":
     get_file_name = lambda n, m: "matrix_multiply_data_n_{}_m_{}.npz".format(n, m)
     get_file_name_rounded = lambda n, m: "matrix_multiply_data_n_{}_m_{}_rounded.npz".format(n, m)
-    m = 4
-    for n in xrange(3, 7):
+    m = 3
+    for n in xrange(3, 9):
         print("data_size: n: {}".format(n))
-        # X, T, _ = get_new_X_T(n, m)
-        X, T, T_round = get_new_X_T(n, m)
+        # X, T, _ = get_new_X_T(n, m, 5000)
+        X, T, T_round = get_new_X_T(n, m, 5000)
 
         file_name = get_file_name(n, m)
         save_file_data(file_name, X, T)
