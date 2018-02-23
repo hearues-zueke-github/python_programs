@@ -255,120 +255,132 @@ def simple_gradient_descent_1_hidden_layer_eta_checker():
             bwsd[-i] = np.hstack((ones, Ys[-i-1])).T.dot(d)
 
         return bwsd
-
-    def calc_backprop_num(X, bws, T):
-        bwds = deepcopy(bws)
-        epsilon = 0.0001
-
-        for bw, bwd in zip(bws, bwds):
-            y, x = bwd.shape
-            for j in xrange(0, y):
-                for i in xrange(0, x):
-                    bw[j, i] += epsilon
-                    f1 = err_mse(X, bws, T)
-                    bw[j, i] -= epsilon*2
-                    f2 = err_mse(X, bws, T)
-                    bw[j, i] += epsilon
-
-                    bwd[j, i] = (f1-f2)/2/epsilon
-
-        return bwds
     
     def get_random_bws(nl):
-        return np.array([np.random.uniform(-1./np.sqrt(n)/100, 1./np.sqrt(n)/100, (m+1, n)) for m, n in zip(nl[:-1], nl[1:])])
+        l = [np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(nl[:-1], nl[1:])]
+        larray = np.empty(len(l), dtype=object)
+        larray[:] = l
+        return larray
 
     err_mse = lambda X, bws, T: np.sum((calc_forward(X, bws)-T)**2)/2#/X.shape[0]
 
     get_random_matrix = lambda shape: np.random.random(shape)*2-1
 
     m = 100
-    k = 9
+    k = 12
     n = 6
 
-    nl = [k, 10, 10, n]
+    nl = [k, 30, 20, 10, n]
 
     X = get_random_matrix((m, k))
-    bws1 = get_random_bws(nl)*100
+    bws1 = get_random_bws(nl)
     T = calc_forward(X, bws1)
     bws = get_random_bws(nl)
 
-    # bwsd_num = calc_backprop_num(X, bws, T)
-    # bwsd_real = calc_backprop(X, bws, T)
-
-    # print("bwsd_num:\n{}".format(bwsd_num))
-    # print("bwsd_real:\n{}".format(bwsd_real))
-
-    # bwsd_diff = bwsd_num-bwsd_real
-    # print("bwsd_diff: {}".format(bwsd_diff))
-    # sum_test = np.sum([np.sum(bwsd_diff_i >= 10**-4) for bwsd_diff_i in bwsd_diff])
-    # print("sum_test: {}".format(sum_test))
-
-    # if sum_test == 0:
-    #     print("Grad check is OK!")
-    # else:
-    #     print("Something wrong in grad check!!! NOT OK!")
-
-    # raw_input("ENTER!...")
-
     # check different etas!
-    best_errors = [] # [err_mse(X, bws, T)]
-    best_etas = [] # [1.]
-    eta_multipliers = 1.1**np.arange(-8, 9)
-    eta_multipliers += (np.random.random(eta_multipliers.shape)-0.5)*0.1
-    eta_now = 0.1
-    eta_changed_min = eta_now
-    eta_changed_max = eta_now
+    # eta_multipliers = 1.1**np.arange(-15, 4)
+    eta_mult1 = 0.7**np.arange(6, -1, -1)
+    eta_mult2 = 1.1**np.arange(1, 6)
+    eta_multipliers = np.array(eta_mult1.tolist()+eta_mult1.tolist())
+    eta_multipliers += (np.random.random(eta_multipliers.shape)-0.5)*0.02
 
     eta_max = 10.
     eta_min = 0.00001
 
-    error_prev = err_mse(X, bws, T)
-    # print("eta_multipliers: {}".format(eta_multipliers))
-    # raw_input()
-    for i in xrange(0, 5000):
-        bwsd = calc_backprop(X, bws, T)/m
-        # etas = np.arange(0.001, 4/np.sqrt(i+1), 0.2/np.sqrt(i+1)) # also works
+    bws_prev = bws
+    bwsd_prev = calc_backprop(X, bws, T)
+    bws = bws-0.1*bwsd_prev
 
-        etas = eta_now*eta_multipliers
-        # error_first = err_mse(X, bws, T)
-        errors = np.array([err_mse(X, bws-eta*bwsd, T) for eta in etas])
+    def get_trained_network(bws, bws_prev, iterations, alpha):
+        eta_now = 0.1
+        eta_changed_min = eta_now
+        eta_changed_max = eta_now
+        errors = []
+        etas = []
+        error_prev = err_mse(X, bws, T)
+        for i in xrange(0, iterations):
+            bws_1 = bws+alpha*(bws-bws_prev)
+            bwsd = calc_backprop(X, bws_1, T)
+            # etas = np.arange(0.001, 4/np.sqrt(i+1), 0.2/np.sqrt(i+1)) # also works
 
-        min_idx = np.argmin(errors)
-        # print("min_idx: {}".format(min_idx))
-        eta_now = etas[min_idx]
-        error = errors[min_idx]
+            etas_now = eta_now*eta_multipliers
+            # error_first = err_mse(X, bws, T)
+            errors_now = np.array([err_mse(X, bws-eta*bwsd, T) for eta in etas_now])
+
+            min_idx = np.argmin(errors_now)
+            # print("min_idx: {}".format(min_idx))
+            eta_now = etas_now[min_idx]
+            error = errors_now[min_idx]
+            
+
+            if eta_now < eta_min:
+                eta_now = eta_min
+            if eta_now > eta_max:
+                eta_now = eta_max
+
+            if eta_changed_min > eta_now:
+                eta_changed_min = eta_now
+            if eta_changed_max < eta_now:
+                eta_changed_max = eta_now
+
+            bws = bws-eta_now*bwsd
+            print("i: {}, eta_now: {:>10.7f}, , error: {:>10.7f}".format(i, eta_now, error))
+            etas.append(eta_now)
+            errors.append(error)
+            
+            # if error_prev > error and error_prev-error < 10**-6:
+            #     break
+            error_prev = error
+
+            bwsd_prev = bwsd
+            bws_prev = bws
+
+        print("eta_changed_min: {}".format(eta_changed_min))
+        print("eta_changed_max: {}".format(eta_changed_max))
+
+        return bws, bws_prev, errors, etas
+
+    # bws_1, bws_1_prev, errors, etas = get_trained_network(bws, bws_prev, 1000, 0.1)
+    
+    alphas = np.arange(0, 8)*0.25
+
+    def get_plots(training_data, title):
+        arr_bws_1, arr_bws_1_prev, arr_errors, arr_etas = list(zip(*training_data))
+
+        fig, arr = plt.subplots(2, len(alphas), figsize=(20, 9))
+        plt.suptitle(title, fontsize=16)
+        arr[0, 0].set_title("Best Errors")
+        arr[1, 0].set_title("Best Etas")
         
+        error_min = np.min(arr_errors)
+        error_max = np.max(arr_errors)
 
-        if eta_now < eta_min:
-            eta_now = eta_min
-        if eta_now > eta_max:
-            eta_now = eta_max
+        eta_min = np.min(arr_etas)
+        eta_max = np.max(arr_etas)
 
-        if eta_changed_min > eta_now:
-            eta_changed_min = eta_now
-        if eta_changed_max < eta_now:
-            eta_changed_max = eta_now
+        alphas_str = ["{:4.2f}".format(alpha) for alpha in alphas]
 
-        bws = bws-eta_now*bwsd
-        print("i: {}, eta_now: {:>10.7f}, , error: {:>10.7f}".format(i, eta_now, error))
-        best_etas.append(eta_now)
-        best_errors.append(error)
+        for i in xrange(0, len(alphas)):
+            arr[0, i].set_ylim(error_min, error_max)
+            arr[0, i].set_yscale("log", nonposy='clip')
+
+            p = arr[0, i].plot(arr_errors[i], "b-")[0]
+            p.set_label("alpha "+alphas_str[i])
+            arr[0, i].legend()
         
-        if error_prev > error and error_prev-error < 10**-6:
-            break
-        error_prev = error
+            arr[1, i].set_ylim(eta_min, eta_max)
+            arr[1, i].set_yscale("log", nonposy='clip')
 
-    print("eta_changed_min: {}".format(eta_changed_min))
-    print("eta_changed_max: {}".format(eta_changed_max))
+            p = arr[1, i].plot(arr_etas[i], "b.")[0]
+            p.set_label("alpha "+alphas_str[i])
+            arr[1, i].legend()
 
-    plt.figure()
-    plt.title("Best Errors")
-    plt.plot(best_errors, "b-")
-    # plt.show()
+        plt.subplots_adjust(left=0.02, bottom=0.05, right=0.98, top=0.92, wspace=0.1, hspace=0.15)
+    
+    iterations = 1500
+    training_data = [get_trained_network(bws, bws_prev, iterations, alpha) for alpha in alphas]
+    get_plots(training_data, "With Alpha")
 
-    plt.figure()
-    plt.title("Best Etas")
-    plt.plot(best_etas, "b.")
     plt.show()
 
 def advanced_gradient_descent_1_hidden_layer():
