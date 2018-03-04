@@ -33,14 +33,14 @@ def find_universal_matrix_A(n):
 
 def get_new_X_T(n, m, length):
     A = np.random.random((n, m))*2.-1.
-    X = np.random.random((length, n))
+    X = np.random.random((length, n))*2-1
 
-    T = np.dot(X*2.-1., A)
+    T = np.dot(X, A)
     T_sig = 1 / (1+np.exp(-T))
 
-    T_round = T.copy().astype(np.int)
-    T_round[T<0.] = 0
-    T_round[T>=0.] = 1
+    T_round = T.copy()
+    T_round[T<0.] = 0.
+    T_round[T>=0.] = 1.
 
     return X, T_sig, T_round
 
