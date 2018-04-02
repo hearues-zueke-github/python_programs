@@ -38,91 +38,7 @@ def pretty_block_printer(block, bits, length):
             line += " {{:0{}X}}".format(digits).format(block[i*16+j])
         print(line)
 
-def encrypt_methode_1_arr(arr, sbox):
-    length_orig = arr.shape[0]
-    block_amount = length_orig//16+((length_orig%16)!=0)
-    print("length_orig: {:X}".format(length_orig))
-    print("block_amount: {}".format(block_amount))
-
-    # add the length_orig at the beginning of the arr, and add random bytes too
-    # e.g. block size is 16
-
-    length_arr = np.array([length_orig], dtype=np.uint64).view(np.uint8)
-    rand_bytes = np.random.randint(0, 256, (8, )).astype(np.uint8)
-
-    first_block = np.hstack((length_arr, rand_bytes))
-    print("first_block:")
-    pretty_block_printer(first_block, 8, 16)
-
-    arr_new = np.zeros((16*(block_amount+1), ), dtype=np.uint8)
-
-    arr_new[:16] = encrypt_methode_1_arr_block(first_block, sbox)
-    for i in xrange(1, block_amount+1):
-        block_arr = arr[16*(i-1):16*i]
-        if i == block_amount and length_orig % 16 != 0:
-            block_arr = np.hstack((block_arr, np.random.randint(0, 256, (16-length_orig%16)).astype(np.uint8)))
-        print("i: {}, block_arr:".format(i))
-        pretty_block_printer(block_arr, 8, 16)
-        arr_new[16*i:16*(i+1)] = encrypt_methode_1_arr_block(block_arr, sbox)
-
-    return arr_new
-
-def decrypt_methode_1_arr(arr, sbox):
-    length = arr.shape[0]
-    assert len(arr)%16==0
-    block_amount = length//16-1
-    print("block_amount: {}".format(block_amount))
-    # add the length_orig at the beginning of the arr, and add random bytes too
-    # e.g. block size is 16
-
-    length_arr = decrypt_methode_1_arr_block(arr[:16], sbox)[:8]
-    print("length_arr:")
-    pretty_block_printer(length_arr, 8, 8)
-
-    length_orig = int(length_arr.view(np.uint64)[0])
-    arr_new = np.zeros((length_orig, ), dtype=np.uint8)
-
-    for i in xrange(1, block_amount+1):
-        block_arr = decrypt_methode_1_arr_block(arr[16*i:16*(i+1)], sbox)
-        if i == block_amount and length_orig%16!=0:
-            block_arr = block_arr[:length_orig%16]
-            arr_new[16*(i-1):] = block_arr
-        else:
-            arr_new[16*(i-1):16*i] = block_arr
-        print("i: {}, block_arr:".format(i))
-        pretty_block_printer(block_arr, 8, len(block_arr))
-
-    return arr_new
-
-def encrypt_methode_1_arr_block(arr, sbox):
-    arr = arr+0
-    length = len(arr)
-
-    arr[0] = sbox[arr[0]]
-    for i in xrange(1, length):
-        arr[i] = sbox[arr[i] ^ arr[i-1]]
-
-    arr[-1] = sbox[arr[-1]]
-    for i in xrange(length-2, -1, -1):
-        arr[i] = sbox[arr[i] ^ arr[i+1]]
-
-    return arr
-
-def decrypt_methode_1_arr_block(arr, sbox):
-    arr = arr+0
-    length = len(arr)
-
-    for i in xrange(0, length-1):
-        arr[i] = sbox[arr[i]] ^ arr[i+1]
-    arr[-1] = sbox[arr[-1]]
-
-    for i in xrange(length-1, 0, -1):
-        arr[i] = sbox[arr[i]] ^ arr[i-1]
-    arr[0] = sbox[arr[0]]
-
-    return arr
-
-def encrypt_methode_2_arr(arr, sbox):
+def encrypt_arr(arr, sbox):
     block_size = 16
     in_block_bytes = 8
     length_orig = arr.shape[0]
@@ -141,7 +57,7 @@ def encrypt_methode_2_arr(arr, sbox):
     pretty_block_printer(first_block, 8, block_size)
 
     arr_new = np.zeros((block_size*(block_amount+1), ), dtype=np.uint8)
-    arr_new[:block_size] = encrypt_methode_2_arr_block(first_block, sbox)
+    arr_new[:block_size] = encrypt_arr_block(first_block, sbox)
     for i in xrange(1, block_amount+1):
         if i == block_amount and length_orig % in_block_bytes != 0:
             block_arr = arr[in_block_bytes*(i-1):]
@@ -151,11 +67,11 @@ def encrypt_methode_2_arr(arr, sbox):
         block_arr = np.hstack((block_arr, np.random.randint(0, 256, (block_size-len(block_arr), )).astype(np.uint8)))
         print("i: {}, block_arr:".format(i))
         pretty_block_printer(block_arr, 8, block_size)
-        arr_new[block_size*i:block_size*(i+1)] = encrypt_methode_2_arr_block(block_arr, sbox)
+        arr_new[block_size*i:block_size*(i+1)] = encrypt_arr_block(block_arr, sbox)
 
     return arr_new
 
-def decrypt_methode_2_arr(arr, sbox):
+def decrypt_arr(arr, sbox):
     block_size = 16
     in_block_bytes = 8
     length = arr.shape[0]
@@ -165,7 +81,7 @@ def decrypt_methode_2_arr(arr, sbox):
     # get the length_orig at the beginning of the arr, and add random bytes too
     # e.g. block size is 16
 
-    length_arr = decrypt_methode_2_arr_block(arr[:16], sbox)[:8]
+    length_arr = decrypt_arr_block(arr[:16], sbox)[:8]
     print("length_arr:")
     pretty_block_printer(length_arr, 8, 8)
 
@@ -173,7 +89,7 @@ def decrypt_methode_2_arr(arr, sbox):
     arr_new = np.zeros((length_orig, ), dtype=np.uint8)
 
     for i in xrange(1, block_amount+1):
-        block_arr = decrypt_methode_2_arr_block(arr[block_size*i:block_size*(i+1)], sbox)
+        block_arr = decrypt_arr_block(arr[block_size*i:block_size*(i+1)], sbox)
         if i == block_amount and length_orig%in_block_bytes!=0:
             arr_new[in_block_bytes*(i-1):] = block_arr[:length_orig%in_block_bytes]
         else:
@@ -183,7 +99,7 @@ def decrypt_methode_2_arr(arr, sbox):
 
     return arr_new
 
-def encrypt_methode_2_arr_block(arr, sbox):
+def encrypt_arr_block(arr, sbox):
     arr = arr+0
     length = len(arr)
 
@@ -197,7 +113,7 @@ def encrypt_methode_2_arr_block(arr, sbox):
 
     return arr
 
-def decrypt_methode_2_arr_block(arr, sbox):
+def decrypt_arr_block(arr, sbox):
     arr = arr+0
     length = len(arr)
 
@@ -246,10 +162,10 @@ if __name__ == "__main__":
 
     if mode == "en":
         # encrypt
-        arr_out = encrypt_methode_2_arr(arr, sbox_8bit)
+        arr_out = encrypt_arr(arr, sbox_8bit)
     else:
         # decrypt
-        arr_out = decrypt_methode_2_arr(arr, sbox_inv_8bit)
+        arr_out = decrypt_arr(arr, sbox_inv_8bit)
 
     print("file out data:")
     pretty_block_printer(arr_out, 8, len(arr_out))
