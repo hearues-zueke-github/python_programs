@@ -5,38 +5,38 @@ import sys
 
 import numpy as np
 
+from Utils import pretty_block_printer
+
 np.set_printoptions(formatter={'int': lambda x: "{:02X}".format(x)})
 
-def pretty_block_printer(block, bits, length):
-    digits = int((bits+3)/4)
-    temp = length-1
-    digits_cols = 0
-    while temp > 0:
-        temp >>= 4
-        digits_cols += 1
+def encrypt_arr_block(arr, sbox):
+    arr = arr+0
+    length = len(arr)
 
-    line = ""
-    line += " {}\x1b[1;31;38m".format(" "*digits_cols)
-    for i in range(16):
-        line += " {{:0{}X}}".format(digits).format(i)
-    print(line)
+    arr[0] = sbox[arr[0]]
+    for i in xrange(1, length):
+        arr[i] = sbox[arr[i] ^ arr[i-1]]
 
-    rows = length // 16
-    for i in range(rows):
-        line = ""
-        line += "\x1b[1;35;38m{{:0{}X}}:\x1b[0m".format(digits_cols).format(i*16)
-        for j in range(16):
-            line += " {{:0{}X}}".format(digits).format(block[i*16+j])
-        print(line)
+    arr[-1] = sbox[arr[-1]]
+    for i in xrange(length-2, -1, -1):
+        arr[i] = sbox[arr[i] ^ arr[i+1]]
 
-    cols = length%16
-    if cols != 0:
-        i = rows
-        line = ""
-        line += "\x1b[1;35;38m{{:0{}X}}:\x1b[0m".format(digits_cols).format(i*16)
-        for j in range(cols):
-            line += " {{:0{}X}}".format(digits).format(block[i*16+j])
-        print(line)
+    return arr
+
+def decrypt_arr_block(arr, sbox):
+    arr = arr+0
+    length = len(arr)
+
+    for i in xrange(0, length-1):
+        arr[i] = sbox[arr[i]] ^ arr[i+1]
+    arr[-1] = sbox[arr[-1]]
+
+    for i in xrange(length-1, 0, -1):
+        arr[i] = sbox[arr[i]] ^ arr[i-1]
+    arr[0] = sbox[arr[0]]
+
+    return arr
+
 
 def encrypt_arr(arr, sbox):
     block_size = 16
@@ -99,41 +99,30 @@ def decrypt_arr(arr, sbox):
 
     return arr_new
 
-def encrypt_arr_block(arr, sbox):
-    arr = arr+0
-    length = len(arr)
-
-    arr[0] = sbox[arr[0]]
-    for i in xrange(1, length):
-        arr[i] = sbox[arr[i] ^ arr[i-1]]
-
-    arr[-1] = sbox[arr[-1]]
-    for i in xrange(length-2, -1, -1):
-        arr[i] = sbox[arr[i] ^ arr[i+1]]
-
-    return arr
-
-def decrypt_arr_block(arr, sbox):
-    arr = arr+0
-    length = len(arr)
-
-    for i in xrange(0, length-1):
-        arr[i] = sbox[arr[i]] ^ arr[i+1]
-    arr[-1] = sbox[arr[-1]]
-
-    for i in xrange(length-1, 0, -1):
-        arr[i] = sbox[arr[i]] ^ arr[i-1]
-    arr[0] = sbox[arr[0]]
-
-    return arr
-
 if __name__ == "__main__":
-    f = lambda x: (8*x**2+3*x) % 256
-    sbox_8bit = f(np.arange(0, 256))
+    f = lambda a, x: a[0]*x+a[1]*x**2
+    sbox_8bit = f([3, 6], np.arange(0, 256).astype(np.uint8))
 
     sbox_inv_8bit = sbox_8bit+0
-    sbox_inv_8bit[sbox_8bit] = np.arange(0, 256)
+    sbox_inv_8bit[sbox_8bit] = np.arange(0, 256).astype(np.uint8)
     
+    print("sbox_8bit:")
+    pretty_block_printer(sbox_8bit, 8, 256)
+
+    arr_sorted = np.sort(sbox_8bit)
+    # print("arr_sorted:")
+    # pretty_block_printer(arr_sorted, 8, 256)
+
+    diff = arr_sorted[1:]-arr_sorted[:-1]
+
+    is_good_sbox = np.sum(diff!=1)==0
+    print("is_good_sbox: {}".format(is_good_sbox))
+
+    # print("diff")
+    # pretty_block_printer(diff, 8, len(diff))
+
+    sys.exit(0)
+
     argv = sys.argv
 
     useage_text = "useage: ./crypt_file.py [en|de] <filename_in> <filename_out>"
