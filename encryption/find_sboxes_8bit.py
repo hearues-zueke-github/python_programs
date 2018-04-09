@@ -9,7 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Utils import pretty_block_printer, clrs
+from sboxes import get_basic_sboxes 
 
+from os.path import expanduser
 # np.set_printoptions(formatter={'int': lambda x: "0x{:02X}".format(x)})
 
 def f(a, x):
@@ -139,7 +141,8 @@ if __name__ == "__main__":
     # sys.exit(0)
 
     x_0 = np.arange(0, 256).astype(np.uint8)
-    a = [2, 10, 12, 13, 17, 33, 22]
+    a = [2, 10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8,
+         10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8, 7, 4, 11, 64, 7, 5, 3]
     # a = [(0, 5), (1, 7), (2, 10), (4, 14)]
 
     # az = [[(0, 5), (1, 5), (2, 4), (4, 14)],
@@ -168,58 +171,80 @@ if __name__ == "__main__":
     diff_2 = np.roll(sbox_int, 1)-sbox_int
     diff_2_abs = np.abs(diff_2)
 
-    # print("diff_1: {}".format(diff_1))
-    print("diff_1_abs: {}".format(diff_1_abs))
-    # print("diff_2: {}".format(diff_2))
-    print("diff_2_abs: {}".format(diff_2_abs))
+    different_sboxes = get_basic_sboxes(8)
+    sbox1, sbox2, sbox3, sbox4 = list(map(lambda x: x.astype(np.int), different_sboxes))
 
-    amount_diff_1_abs = np.zeros(256)
-    for i in diff_1_abs:
-        amount_diff_1_abs[i] += 1
+    diff_3 = sbox_8bit-sbox1
+    diff_3_abs = np.abs(diff_3)
+    diff_4 = sbox_8bit-sbox2
+    diff_4_abs = np.abs(diff_4)
+    diff_5 = sbox_8bit-sbox3
+    diff_5_abs = np.abs(diff_5)
+    diff_6 = sbox_8bit-sbox4
+    diff_6_abs = np.abs(diff_6)
 
-    x = np.arange(0, 256)
-    fig, ax = plt.subplots()
+    # print("diff_1_abs: {}".format(diff_1_abs))
+    # print("diff_2_abs: {}".format(diff_2_abs))
 
-    width = 1.
-    rects1 = ax.bar(x-width/2, amount_diff_1_abs, width, color="b")
+    def get_amount_diff_abs(diff):
+        amount_diff_abs = np.zeros(256)
+        for i in diff:
+            amount_diff_abs[i] += 1
 
-    plt.title("Diff 1 abs")
-    plt.show()
+        return amount_diff_abs
 
-    amount_diff_2_abs = np.zeros(256)
-    for i in diff_2_abs:
-        amount_diff_2_abs[i] += 1
+    def plot_amount_diff(amount_diffs, title):
+        x = np.arange(0, 256)
+        fig, axarr = plt.subplots(len(amount_diffs), sharex=True, figsize=(6, 18))
+        
+        rects = []
+        width = 1.
 
-    x = np.arange(0, 256)
-    fig, ax = plt.subplots()
+        for i in xrange(0, len(amount_diffs)):
+            rects.append(axarr[i].bar(x-width/2, amount_diffs[i], width, color="b"))
 
-    width = 1.
-    rects1 = ax.bar(x-width/2, amount_diff_2_abs, width, color="b")
+            axarr[i].set_title(title.format(i+1))
 
-    plt.title("Diff 2 abs")
-    plt.show()
+        plt.subplots_adjust(left=None, bottom=0.05,
+                            right=None, top=0.95,
+                            wspace=None, hspace=0.4)
 
-    # sbox_8bit_swapped_4bits = sbox_8bit>>4|sbox_8bit<<4
-    # print("sbox_8bit_swapped_4bits:")
-    # pretty_block_printer(sbox_8bit_swapped_4bits, 8, 256)
+    def plot_amount_sum(diff_sum, title):
+        x = np.arange(0, 256)
+        fig, ax = plt.subplots(figsize=(6, 3))
+        
+        width = 1.
+        rect = ax.bar(x-width/2, diff_sum, width, color="b")
 
-    # arr_sorted = np.sort(sbox_8bit)
-    # diff = arr_sorted[1:]-arr_sorted[:-1]
-    # is_good_sbox = np.sum(diff!=1)==0
-    # print("is_good_sbox: {}".format(is_good_sbox))
+        ax.set_title(title)
 
-    # if is_good_sbox:
+        plt.subplots_adjust(left=None, bottom=0.1,
+                            right=None, top=0.9,
+                            wspace=None, hspace=0.4)
 
-    # TODO: add a measurment for randomnet of a sbox!
+    diffs_abs = [diff_1_abs,
+                 diff_2_abs,
+                 diff_3_abs,
+                 diff_4_abs,
+                 diff_5_abs,
+                 diff_6_abs]
 
-    # cycles = get_sbox_cycles(sbox_8bit)
-    # # print("cycles:\n{}".format(cycles))
+    amount_diffs_abs = list(map(get_amount_diff_abs, diffs_abs))
 
-    # for i, cycle in enumerate(cycles):
-    #     print("i: {}, len(cycle): {}".format(i, len(cycle)))
-    #     # print("cycle:\n{}".format(cycle))
-    #     print("cycle:")
-    #     pretty_block_printer(cycle, 8, len(cycle))
+    home_path = expanduser("~")
+    full_folder_path = home_path+"/Pictures/encryption_sbox_testing"
+    if not os.path.exists(full_folder_path):
+        os.makedirs(full_folder_path)
+
+    plot_amount_diff(amount_diffs_abs, "Diff nr. {} abs")
+    print("Saving plot of diffs amount")
+    plt.savefig(full_folder_path+"/diff_amount_plot.png")
     
-    sbox_inv_8bit = sbox_8bit+0
-    sbox_inv_8bit[sbox_8bit] = np.arange(0, 256).astype(np.uint8)
+    diff_sum = np.sum(amount_diffs_abs, axis=0)
+    
+    plot_amount_sum(diff_sum, "Sum of diffs abs")
+    print("Saving plot of diffs sum")
+    plt.savefig(full_folder_path+"/diff_amount_sum_plot.png")
+    
+    # sbox_inv_8bit = sbox_8bit+0
+    # sbox_inv_8bit[sbox_8bit] = np.arange(0, 256).astype(np.uint8)
