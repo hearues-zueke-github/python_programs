@@ -75,11 +75,11 @@ if __name__ == "__main__":
     print("{}sp_table:{}".format(clrs.lgb, clrs.rst))
     pretty_block_printer(sp_table, 8, len(sp_table))
 
-    rx_table = roll_shift_func(bits)
-    print("{}rx_table:{}".format(clrs.lgb, clrs.rst))
-    pretty_block_printer(rx_table, 8, len(rx_table))
+    rs_table = roll_shift_func(bits)
+    print("{}rs_table:{}".format(clrs.lgb, clrs.rst))
+    pretty_block_printer(rs_table, 8, len(rs_table))
 
-    # rx_table_sort = np.sort(rx_table)
+    # rx_table_sort = np.sort(rs_table)
     # diff = rx_table_sort[1:]-rx_table_sort[:-1]
     # is_table_good = np.sum(diff!=1)==0
     # print("is_table_good: {}".format(is_table_good))

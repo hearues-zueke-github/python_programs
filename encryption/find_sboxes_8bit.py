@@ -1,5 +1,5 @@
 #! /usr/bin/python2.7
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -12,7 +12,7 @@ from Utils import pretty_block_printer, clrs
 from sboxes import get_basic_sboxes 
 
 from os.path import expanduser
-# np.set_printoptions(formatter={'int': lambda x: "0x{:02X}".format(x)})
+np.set_printoptions(formatter={'int': lambda x: "0x{:02X}".format(x)})
 
 def f(a, x):
     # print("a: {}".format(a))
@@ -54,7 +54,7 @@ def apply_f_n_times(a, n):
 
     return x_next
 
-def apply_f_n_times_roll(a):
+def apply_f_n_times_roll(a, sboxes):
     x_0 = np.arange(0, 256).astype(np.uint8)
 
     x_prev = x_0+0
@@ -63,20 +63,15 @@ def apply_f_n_times_roll(a):
     for i in a:
         x_new = x_prev[np.roll(x_next, i)]
         x_prev = x_next
-        x_next = swap_4bits(x_new)
+        for sbox in sboxes:
+            x_next = sbox[x_next]
+        # x_next = swap_4bits(x_new)
         x_next += i
 
     if check_if_sbox_good(x_next) == False:
         return None
 
     return x_next
-
-def apply_f_az(az, x):
-    for a in az:
-        x = f(a, x)
-        if check_if_sbox_good(x) == False:
-            return None
-    return x
 
 def check_if_sbox_good(sbox_8bit):
     arr_sorted = np.sort(sbox_8bit)
@@ -141,24 +136,23 @@ if __name__ == "__main__":
     # sys.exit(0)
 
     x_0 = np.arange(0, 256).astype(np.uint8)
-    a = [2, 10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8,
-         10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8, 7, 4, 11, 64, 7, 5, 3]
-    # a = [(0, 5), (1, 7), (2, 10), (4, 14)]
+    # a = [2, 10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8,
+    #      10, 12, 13, 17, 33, 22, 6, 3, 8, 7, 4, 11, 64, 7, 5, 3, 8, 7, 4, 11, 64, 7, 5, 3]
+    # a = [3, 5, 6, 2, 4, 7, 5, 10, 5, 6, 23, 44, 23, 14]
+    a = np.random.randint(1, 256, (128, ))
 
-    # az = [[(0, 5), (1, 5), (2, 4), (4, 14)],
-    #       [(0, 5), (1, 7), (2, 10), (4, 14)]]
-    # sbox_8bit = f(a, x)
-    # sbox_8bit = apply_f_az(az, x_0)
+    different_sboxes = get_basic_sboxes(8)
 
-    sbox_8bit = apply_f_n_times_roll(a)
+    sbox_8bit = apply_f_n_times_roll(a, different_sboxes)
     # sbox_8bit = apply_f_n_times(a, 2)
 
     if sbox_8bit is None:
         print("NOOO!!")
         sys.exit(0)
 
-    print("a: {}".format(a))
-    print("sbox_8bit:")
+    print("{}a:{}".format(clrs.lgb, clrs.rst))
+    pretty_block_printer(a, 8, a.shape[0])
+    print("{}sbox_8bit:{}".format(clrs.lgb, clrs.rst))
     pretty_block_printer(sbox_8bit, 8, 256)
     
     sbox_int = sbox_8bit.astype(np.int)
@@ -171,20 +165,16 @@ if __name__ == "__main__":
     diff_2 = np.roll(sbox_int, 1)-sbox_int
     diff_2_abs = np.abs(diff_2)
 
-    different_sboxes = get_basic_sboxes(8)
     sbox1, sbox2, sbox3, sbox4 = list(map(lambda x: x.astype(np.int), different_sboxes))
 
-    diff_3 = sbox_8bit-sbox1
+    diff_3 = sbox_int-sbox1
     diff_3_abs = np.abs(diff_3)
-    diff_4 = sbox_8bit-sbox2
+    diff_4 = sbox_int-sbox2
     diff_4_abs = np.abs(diff_4)
-    diff_5 = sbox_8bit-sbox3
+    diff_5 = sbox_int-sbox3
     diff_5_abs = np.abs(diff_5)
-    diff_6 = sbox_8bit-sbox4
+    diff_6 = sbox_int-sbox4
     diff_6_abs = np.abs(diff_6)
-
-    # print("diff_1_abs: {}".format(diff_1_abs))
-    # print("diff_2_abs: {}".format(diff_2_abs))
 
     def get_amount_diff_abs(diff):
         amount_diff_abs = np.zeros(256)
@@ -241,10 +231,6 @@ if __name__ == "__main__":
     plt.savefig(full_folder_path+"/diff_amount_plot.png")
     
     diff_sum = np.sum(amount_diffs_abs, axis=0)
-    
     plot_amount_sum(diff_sum, "Sum of diffs abs")
     print("Saving plot of diffs sum")
     plt.savefig(full_folder_path+"/diff_amount_sum_plot.png")
-    
-    # sbox_inv_8bit = sbox_8bit+0
-    # sbox_inv_8bit[sbox_8bit] = np.arange(0, 256).astype(np.uint8)
