@@ -26,3 +26,9 @@ if __name__ == "__main__":
 
     print("{}read_data:{}".format(clrs.lyb, clrs.rst))
     pretty_block_printer(read_data, 8, read_data.shape[0])
+
+    # with open("/dev/sdf", "rb") as fin:
+    #     data = np.fromfile(fin, dtype=np.uint8, count=512)
+
+    # print("{}data:{}".format(clrs.lyb, clrs.rst))
+    # pretty_block_printer(data, 8, data.shape[0])
