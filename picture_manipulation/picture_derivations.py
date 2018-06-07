@@ -52,8 +52,8 @@ def get_derivations_sobel(pix):
     mask_sobel[-1] = 1
     mask_x = mask_sobel.T.copy().reshape((-1, ))
     mask_y = mask_sobel.copy().reshape((-1, ))
-    mask_d = np.array([-1, -1, 0, -1, 0, 1, 0, 1, 1])
-    mask_cd = np.array([0, -1, -1, 1, 0, -1, 1, 1, 0])
+    mask_d = np.array([-1, -1, 0, -1, 0, 1, 0, 1, 1]).astype(np.int)
+    mask_cd = np.array([0, -1, -1, 1, 0, -1, 1, 1, 0]).astype(np.int)
 
     pix_deriv_x = np.dot(pix_deriv_table, mask_x).reshape(shape)
     pix_deriv_y = np.dot(pix_deriv_table, mask_y).reshape(shape)
@@ -128,10 +128,10 @@ if __name__ == "__main__":
 
     print("Save all images!")
     img.save("img.png", "PNG")
-    img_deriv_x.save("img_deriv_x.png", "PNG")
-    img_deriv_y.save("img_deriv_y.png", "PNG")
-    img_deriv_y.save("img_deriv_d.png", "PNG")
-    img_deriv_y.save("img_deriv_cd.png", "PNG")
+    img_deriv_d.save("img_deriv_1_d.png", "PNG")
+    img_deriv_y.save("img_deriv_2_y.png", "PNG")
+    img_deriv_cd.save("img_deriv_3_cd.png", "PNG")
+    img_deriv_x.save("img_deriv_4_x.png", "PNG")
 
     pix_integral = get_integral_image(pix_int_gray, 200)
 
@@ -141,3 +141,5 @@ if __name__ == "__main__":
 
     img_integral = Image.fromarray(pix_integral_int)
     img_integral.save("img_integral.png", "PNG")
+
+    # TODO: make the box derivations more generic!
