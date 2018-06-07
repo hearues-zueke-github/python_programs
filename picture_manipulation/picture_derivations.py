@@ -27,17 +27,13 @@ def padding_border(pix, border_size=1):
 def get_derivations_sobel(pix):
     shape = pix.shape
 
+    # kernel size is 3 as default, but 5, 7, etc would also work too!
     kernel_size = 3
     pix_pad = padding_border(pix, kernel_size//2)
-    # print("pix_pad:\n{}".format(pix_pad))
 
-    # sys.exit(0)
-
-    # kernel size is 3, but 5, 7, etc would also work too!
     idx_y, idx_x = np.array([(j, i) for j in range(0, kernel_size) for i in range(0, kernel_size)]).T
 
-    rows = shape[0]
-    cols = shape[1]
+    rows, cols = shape
 
     idx_y_tbl = np.zeros((rows, cols)).astype(np.int)
     idx_y_tbl[:] = np.arange(0, rows).reshape((-1, 1))
@@ -47,18 +43,6 @@ def get_derivations_sobel(pix):
     idx_y_row = np.add.outer(idx_y_tbl, idx_y).reshape((-1, ))
     idx_x_row = np.add.outer(idx_x_tbl, idx_x).reshape((-1, ))
 
-    # idx_y_row = np.zeros((rows*cols, kernel_size**2)).astype(np.int)
-    # idx_x_row = np.zeros((rows*cols, kernel_size**2)).astype(np.int)
-    # for j in range(0, rows):
-    #     print("j: {}".format(j))
-    #     for i in range(0, cols):
-    #         # idx_y_row = np.vstack((idx_y_row, idx_y+j))
-    #         # idx_x_row = np.vstack((idx_x_row, idx_x+i))
-    #         idx_y_row[j*cols+i] = idx_y+j
-    #         idx_x_row[j*cols+i] = idx_x+i
-
-    # idx_y_row = idx_y_row.reshape((-1, ))
-    # idx_x_row = idx_x_row.reshape((-1, ))
     print("Now here! Yeah!")
 
     pix_deriv_table = pix_pad[idx_y_row, idx_x_row].reshape((-1, kernel_size**2))
@@ -81,14 +65,13 @@ def get_derivations_sobel(pix):
 def get_integral_image(pix, border_size):
     pix_border = padding_border(pix, border_size).astype(np.float)
 
-    rows, cols = pix_border.shape
-    pix_integral = np.zeros((rows+1, cols+1))
+    pix_border_1 = np.vstack((np.zeros((1, pix_border.shape[1])), pix_border))
+    pix_border_2 = np.hstack((np.zeros((pix_border_1.shape[0], 1)), pix_border_1))
 
-    for i in range(0, rows):
-        sum_row = np.cumsum(pix_border[i])
-        pix_integral[i+1, 1:] = pix_integral[i, 1:]+sum_row
+    pix_integral = np.cumsum(np.cumsum(pix_border_2, axis=1), axis=0)
 
     return pix_integral
+
 
 if __name__ == "__main__":
     # img = Image.open("nature_1.jpg").convert('LA')
