@@ -1,8 +1,11 @@
 #! /usr/bin/python3.5
 
+import os
 import sys
 
 import numpy as np
+
+from time import time
 
 from PIL import Image
 
@@ -28,6 +31,7 @@ def get_derivations_sobel(pix):
     shape = pix.shape
 
     # kernel size is 3 as default, but 5, 7, etc would also work too!
+    start_time = time()
     kernel_size = 3
     pix_pad = padding_border(pix, kernel_size//2)
 
@@ -52,11 +56,16 @@ def get_derivations_sobel(pix):
     mask_sobel[-1] = 1
     mask_x = mask_sobel.T.copy().reshape((-1, ))
     mask_y = mask_sobel.copy().reshape((-1, ))
-    mask_d = np.array([-1, -1, 0, -1, 0, 1, 0, 1, 1]).astype(np.int)
-    mask_cd = np.array([0, -1, -1, 1, 0, -1, 1, 1, 0]).astype(np.int)
 
     pix_deriv_x = np.dot(pix_deriv_table, mask_x).reshape(shape)
     pix_deriv_y = np.dot(pix_deriv_table, mask_y).reshape(shape)
+
+    end_time = time()
+    print("Needed time for deriv normal: {:.4f}".format(end_time-start_time))
+    
+    mask_d = np.array([-1, -1, 0, -1, 0, 1, 0, 1, 1]).astype(np.int)
+    mask_cd = np.array([0, -1, -1, 1, 0, -1, 1, 1, 0]).astype(np.int)
+    
     pix_deriv_d = np.dot(pix_deriv_table, mask_d).reshape(shape)
     pix_deriv_cd = np.dot(pix_deriv_table, mask_cd).reshape(shape)
 
@@ -72,10 +81,50 @@ def get_integral_image(pix, border_size):
 
     return pix_integral
 
+# bs...border_size
+def get_derivatives_box(pix, pix_integral, bs, s=1):
+    # First do the x-derivative
+    # h...height
+    # w...width
+    h, w = pix.shape
+    
+    start_time = time()
+    deriv_x_right = pix_integral[bs-s  :bs+h-s  , bs+1  :bs+w+1] \
+                   +pix_integral[bs+s+1:bs+h+s+1, bs+1+s:bs+w+1+s] \
+                   -pix_integral[bs-s  :bs+h-s  , bs+1+s:bs+w+1+s] \
+                   -pix_integral[bs+s+1:bs+h+s+1, bs+1  :bs+w+1]
+    deriv_x_left  = pix_integral[bs-s  :bs+h-s  , bs-s  :bs+w-s] \
+                   +pix_integral[bs+s+1:bs+h+s+1, bs    :bs+w] \
+                   -pix_integral[bs-s  :bs+h-s  , bs    :bs+w] \
+                   -pix_integral[bs+s+1:bs+h+s+1, bs-s  :bs+w-s]
+
+    deriv_y_right = pix_integral[bs+1  :bs+h+1  , bs-s  :bs+w-s  ] \
+                   +pix_integral[bs+1+s:bs+h+1+s, bs+s+1:bs+w+s+1] \
+                   -pix_integral[bs+1+s:bs+h+1+s, bs-s  :bs+w-s  ] \
+                   -pix_integral[bs+1  :bs+h+1  , bs+s+1:bs+w+s+1]
+    deriv_y_left  = pix_integral[bs-s  :bs+h-s  , bs-s  :bs+w-s  ] \
+                   +pix_integral[bs    :bs+h    , bs+s+1:bs+w+s+1] \
+                   -pix_integral[bs    :bs+h    , bs-s  :bs+w-s  ] \
+                   -pix_integral[bs-s  :bs+h-s  , bs+s+1:bs+w+s+1]
+
+    deriv_x = deriv_x_right-deriv_x_left
+    deriv_y = deriv_y_right-deriv_y_left
+
+    end_time = time()
+
+    print("Needed time for deriv other: {:.4f}".format(end_time-start_time))
+
+    return deriv_x, deriv_y
 
 if __name__ == "__main__":
+    from os.path import expanduser
+    home = expanduser("~")
+    print("home: {}".format(home))
+
     # img = Image.open("nature_1.jpg").convert('LA')
-    img = Image.open("nature_1.jpg")
+    # img = Image.open(home+"/Pictures/picture_manipulation/nature_2.jpg")
+    img = Image.open(home+"/Pictures/picture_manipulation/scanned_puzzels_nr_1.png")
+    # img = Image.open("nature_1.jpg")
 
     # img.show()
     pix_orig = np.array(img)
@@ -90,50 +139,66 @@ if __name__ == "__main__":
     print("Calculate derivations in x and y with sobel!")
     pix_deriv_x, pix_deriv_y, pix_deriv_d, pix_deriv_cd = get_derivations_sobel(pix)
 
-    pix_deriv_x = pix_deriv_x.astype(np.float)
-    pix_deriv_y = pix_deriv_y.astype(np.float)
-    pix_deriv_d = pix_deriv_d.astype(np.float)
-    pix_deriv_cd = pix_deriv_cd.astype(np.float)
+    def get_normalized_derivate(pix_deriv):
+        pix_deriv = pix_deriv.copy().astype(np.float)
+        deriv_max = np.max(np.abs(pix_deriv))
+        pix_deriv /= deriv_max
+        pix_deriv = pix_deriv*128+128
+        pix_deriv_int = pix_deriv.astype(np.uint8)
+        pix_deriv_int[pix_deriv > 255.5] = 255
 
-    deriv_max_x = np.max(np.abs(pix_deriv_x))
-    deriv_max_y = np.max(np.abs(pix_deriv_y))
-    deriv_max_d = np.max(np.abs(pix_deriv_d))
-    deriv_max_cd = np.max(np.abs(pix_deriv_cd))
+        return pix_deriv_int
 
-    pix_deriv_x /= deriv_max_x
-    pix_deriv_y /= deriv_max_y
-    pix_deriv_d /= deriv_max_d
-    pix_deriv_cd /= deriv_max_cd
+    def get_edge_image(pix_deriv, threshold):
+        pix_deriv_abs = np.abs(pix_deriv)
+        pix_edge = np.zeros(pix_deriv.shape).astype(np.uint8)
+        pix_edge[pix_deriv_abs >= threshold] = 255
 
-    pix_deriv_x = pix_deriv_x*128+128
-    pix_deriv_y = pix_deriv_y*128+128
-    pix_deriv_d = pix_deriv_d*128+128
-    pix_deriv_cd = pix_deriv_cd*128+128
+        return pix_edge
 
-    pix_deriv_x_int = pix_deriv_x.astype(np.uint8)
-    pix_deriv_y_int = pix_deriv_y.astype(np.uint8)
-    pix_deriv_d_int = pix_deriv_d.astype(np.uint8)
-    pix_deriv_cd_int = pix_deriv_cd.astype(np.uint8)
+    pix_deriv_x_int = get_normalized_derivate(pix_deriv_x)
+    pix_deriv_y_int = get_normalized_derivate(pix_deriv_y)
+    pix_deriv_d_int = get_normalized_derivate(pix_deriv_d)
+    pix_deriv_cd_int = get_normalized_derivate(pix_deriv_cd)
 
-    pix_deriv_x_int[pix_deriv_x > 255.5] = 255
-    pix_deriv_y_int[pix_deriv_y > 255.5] = 255
-    pix_deriv_d_int[pix_deriv_d > 255.5] = 255
-    pix_deriv_cd_int[pix_deriv_cd > 255.5] = 255
+    # print("pix_deriv_x_int.shape: {}".format(pix_deriv_x_int.shape))
 
     img = Image.fromarray(pix_int_gray)
     img_deriv_x = Image.fromarray(pix_deriv_x_int)
     img_deriv_y = Image.fromarray(pix_deriv_y_int)
     img_deriv_d = Image.fromarray(pix_deriv_d_int)
     img_deriv_cd = Image.fromarray(pix_deriv_cd_int)
+    
+    folder_derivatives = home+"/Pictures/image_derivatives/"
+    if not os.path.exists(folder_derivatives):
+        os.makedirs(folder_derivatives)
 
     print("Save all images!")
-    img.save("img.png", "PNG")
-    img_deriv_d.save("img_deriv_1_d.png", "PNG")
-    img_deriv_y.save("img_deriv_2_y.png", "PNG")
-    img_deriv_cd.save("img_deriv_3_cd.png", "PNG")
-    img_deriv_x.save("img_deriv_4_x.png", "PNG")
+    img.save(folder_derivatives+"img.png", "PNG")
+    img_deriv_d.save(folder_derivatives+"img_deriv_1_d.png", "PNG")
+    img_deriv_y.save(folder_derivatives+"img_deriv_2_y.png", "PNG")
+    img_deriv_cd.save(folder_derivatives+"img_deriv_3_cd.png", "PNG")
+    img_deriv_x.save(folder_derivatives+"img_deriv_4_x.png", "PNG")
 
-    pix_integral = get_integral_image(pix_int_gray, 200)
+    folder_edges = home+"/Pictures/image_edges/"
+    if not os.path.exists(folder_edges):
+        os.makedirs(folder_edges)
+
+    # for threshold in np.arange(25, 101, 25):
+    #     print("threshold: {}".format(threshold))
+    #     img_deriv_x_edge = Image.fromarray(get_edge_image(pix_deriv_x, threshold))
+    #     img_deriv_y_edge = Image.fromarray(get_edge_image(pix_deriv_y, threshold))
+    #     img_deriv_d_edge = Image.fromarray(get_edge_image(pix_deriv_d, threshold))
+    #     img_deriv_cd_edge = Image.fromarray(get_edge_image(pix_deriv_cd, threshold))
+
+    #     img_deriv_d_edge.save(folder_edges+"img_deriv_edge_1_d_threshold_{:03}.png".format(threshold), "PNG")
+    #     img_deriv_y_edge.save(folder_edges+"img_deriv_edge_2_y_threshold_{:03}.png".format(threshold), "PNG")
+    #     img_deriv_cd_edge.save(folder_edges
+    #         +"img_deriv_edge_3_cd_threshold_{:03}.png".format(threshold), "PNG")
+    #     img_deriv_x_edge.save(folder_edges+"img_deriv_edge_4_x_threshold_{:03}.png".format(threshold), "PNG")
+
+    border_size = 200
+    pix_integral = get_integral_image(pix_int_gray, border_size)
 
     pix_integral_norm = pix_integral/np.max(pix_integral)*256
     pix_integral_int = pix_integral_norm.astype(np.uint8)
@@ -142,4 +207,26 @@ if __name__ == "__main__":
     img_integral = Image.fromarray(pix_integral_int)
     img_integral.save("img_integral.png", "PNG")
 
+    # Do the derivative withother function
+    print("Do the derivates with other function!")
+    pix_deriv_x_other, pix_deriv_y_other = get_derivatives_box(pix, pix_integral, border_size, s=2)
+    
+    pix_deriv_x_other_int = get_normalized_derivate(pix_deriv_x_other)
+    img_deriv_x_other = Image.fromarray(pix_deriv_x_other_int)
+    img_deriv_x_other.save(folder_derivatives+"img_deriv_other_x.png", "PNG")
+    
+    pix_deriv_y_other_int = get_normalized_derivate(pix_deriv_y_other)
+    img_deriv_y_other = Image.fromarray(pix_deriv_y_other_int)
+    img_deriv_y_other.save(folder_derivatives+"img_deriv_other_y.png", "PNG")
+
     # TODO: make the box derivations more generic!
+
+    pix_deriv_x_xor = pix_deriv_x_int ^ pix_deriv_x_other_int
+    pix_deriv_x_xor[pix_deriv_x_xor > 0] = 255
+    img_deriv_x_xor = Image.fromarray(pix_deriv_x_xor)
+    img_deriv_x_xor.save(folder_derivatives+"img_deriv_x_xor.png", "PNG")
+
+    pix_deriv_y_xor = pix_deriv_y_int ^ pix_deriv_y_other_int
+    pix_deriv_y_xor[pix_deriv_y_xor > 0] = 255
+    img_deriv_y_xor = Image.fromarray(pix_deriv_y_xor)
+    img_deriv_y_xor.save(folder_derivatives+"img_deriv_y_xor.png", "PNG")

@@ -51,15 +51,15 @@ def pretty_block_printer(block, bits, length, per_line=16):
 
     line = ""
     line += " {}{}".format(" "*digits_cols, clrs.lrb)
-    for i in xrange(0, per_line):
+    for i in range(0, per_line):
         line += " {{:0{}X}}".format(digits).format(i)
     print(line+(clrs.rst if length == 0 else ""))
 
     rows = length // per_line
-    for i in xrange(0, rows):
+    for i in range(0, rows):
         line = ""
         line += "{}{{:0{}X}}:{}".format(clrs.lmb, digits_cols, clrs.rst).format(i*per_line)
-        for j in xrange(0, per_line):
+        for j in range(0, per_line):
             line += " {{:0{}X}}".format(digits).format(block[i*per_line+j])
         print(line)
 
@@ -68,6 +68,6 @@ def pretty_block_printer(block, bits, length, per_line=16):
         i = rows
         line = ""
         line += "{}{{:0{}X}}:{}".format(clrs.lmb, digits_cols, clrs.rst).format(i*per_line)
-        for j in xrange(0, cols):
+        for j in range(0, cols):
             line += " {{:0{}X}}".format(digits).format(block[i*per_line+j])
         print(line)
