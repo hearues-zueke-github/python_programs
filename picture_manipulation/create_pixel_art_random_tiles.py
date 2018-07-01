@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import numpy as np
 
@@ -30,14 +31,28 @@ def transform_square_tiles_to_img(pix, tw):
               .reshape((a, c*d, b*e)) \
               .transpose(0, 2, 1) \
               .reshape((a*c, e, b*d)) \
-              .transpose(0, 2, 1) \
+              .transpose(0, 2, 1)
 
 def get_approx_tiles(pix_img_tiles, tiles_row):
     shape = pix_img_tiles.shape
     print("pix_img_tiles.shape: {}".format(pix_img_tiles.shape))
     pix_img_tiles = pix_img_tiles.reshape((shape[:2]+(1, )+shape[2:])).astype(np.int64)
     print("pix_img_tiles.shape: {}".format(pix_img_tiles.shape))
-    idx_tbl = np.argmin(np.sum(np.sum(np.sum((pix_img_tiles-tiles_row)**2, axis=-1), axis=-1), axis=-1), axis=-1)
+    # TODO: make it less resource consume!!!
+    rows_at_once = 20
+    apply_times = (shape[0]//rows_at_once+1)*rows_at_once
+    rows_idx = np.arange(0, apply_times, rows_at_once)
+    rows_idx[-1] = shape[0]
+    rows_pair_idx = np.vstack((rows_idx[:-1], rows_idx[1:])).T
+    print("rows_pair_idx:\n{}".format(rows_pair_idx))
+    # sys.exit(0)
+
+    idx_tbl = np.zeros((shape[0], shape[1]), dtype=np.int)
+
+    for idx1, idx2 in rows_pair_idx:
+        print("idx1: {}, idx2: {}".format(idx1, idx2))
+        idx_tbl[idx1:idx2] = np.argmin(np.sum(np.sum(np.sum((pix_img_tiles[idx1:idx2]-tiles_row)**2, axis=-1), axis=-1), axis=-1), axis=-1)
+    # idx_tbl = np.argmin(np.sum(np.sum(np.sum((pix_img_tiles-tiles_row)**2, axis=-1), axis=-1), axis=-1), axis=-1)
     
     new_pix = tiles_row[idx_tbl]
     print("new_pix.shape: {}".format(new_pix.shape))
@@ -50,59 +65,26 @@ if __name__ == "__main__":
     print("home: {}".format(home))
 
     path_images = home+"/Pictures/tiles_images/"
+    # path_images = "/ramtemp/"
+    path_images_output = "/ramtemp/"
 
-    img = Image.open(path_images+"smm_smb3_tiles.png")
-    pix = np.array(img)
-    
-    tw = 16 # tile width
-    th = 16 # tile height
-    tiles_x = 10
-    tiles_y = 3
-    pix_tiles = np.zeros((th*tiles_y, tw*tiles_x, 3), dtype=np.uint8)
+    tw = 2 # tile width
+    th = tw # tile height
+    tiles_x = 3000
+    tiles_y = 1
 
-    # get all tiles per indices
-    choose_tiles = [[0, 1, 0, 0],
-                    [0, 2, 0, 1],
-                    [0, 4, 0, 2],
-                    [5, 6, 0, 3],
-                    [0, 17, 1, 0],
-                    [0, 18, 1, 1],
-                    [0, 20, 1, 2],
-                    [5, 22, 1, 3],
-                    [0, 33, 2, 0],
-                    [0, 34, 2, 1],
-                    [0, 36, 2, 2],
-                    [5, 38, 2, 3],
-
-                    [0, 6, 0, 4],
-                    [6, 6, 0, 5],
-                    [7, 8, 0, 6],
-                    [4, 2, 0, 7],
-                    [0, 7, 0, 8],
-
-                    [0, 6+16, 1, 4],
-                    [6, 6+16, 1, 5],
-                    [7, 8+16, 1, 6],
-                    [4, 2+16, 1, 7],
-                    [0, 7+16, 1, 8],
-
-                    [0, 6+32, 2, 4],
-                    [6, 6+32, 2, 5],
-                    [7, 8+32, 2, 6],
-                    [4, 2+32, 2, 7],
-                    [0, 7+32, 2, 8]]
-    
-    # Fill the tiles into the pix_tiles
-    for ts_y, ts_x, t_y, t_x in choose_tiles:
-        pix_tiles[th*t_y:th*(t_y+1), tw*t_x:tw*(t_x+1)] = \
-            pix[(th+1)*ts_y+1:(th+1)*ts_y+th+1, (tw+1)*ts_x+1:(tw+1)*ts_x+tw+1]
+    pix_tiles = np.random.randint(0, 256, (th*tiles_y, tw*tiles_x, 3), dtype=np.uint8)
 
     img_tiles = Image.fromarray(pix_tiles)
-    img_anime = Image.open(path_images+"nature_1.jpeg")
-    # img_anime = Image.open(path_images+"anime_2.jpeg")
-    # img_anime = Image.open(path_images+"anime_1.jpeg")
+    img_tiles.save(path_images_output+"image_tiles.png", "PNG")
+
+    # img_orig = Image.open(path_images+"anime_1.jpeg")
+    img_orig = Image.open(path_images+"anime_2.jpeg")
+    # img_orig = Image.open(path_images+"nature_1.jpeg")
+    img_orig.save(path_images_output+"image_orig.png", "PNG")
     
-    pix_anime = np.array(img_anime)
+    
+    pix_anime = np.array(img_orig)
     print("pix_anime.shape: {}".format(pix_anime.shape))
     anim_h, anim_w, anim_c = pix_anime.shape
 
@@ -147,8 +129,7 @@ if __name__ == "__main__":
     # img_row_col.show()
 
 
-    img_tiles.show()
-    # img_anime.show()
+    # img_tiles.show()
 
     # pix_approx = pix_anime.copy()
     # pix_approx_tiles = get_square_tiles(pix_approx, tw)
@@ -170,4 +151,6 @@ if __name__ == "__main__":
     # img_approx = Image.fromarray(pix_approx_tiles[:2].reshape((2*16, 16*14, 3)))
     img_approx = Image.fromarray(pix_approx)
 
-    img_approx.show()
+    # img_approx.show()
+
+    img_approx.save(path_images_output+"image_approx.png", "PNG")
