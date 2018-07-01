@@ -74,7 +74,7 @@ class ProcessPool(Exception):
 
         return list_ret
 
-    def kill_all_process(self):
+    def kill_all_running_process(self):
         for queue_main_worker in self.queues_main_worker:
             queue_main_worker.put(("EXIT", None, None))
         
