@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     img = Image.open(path_images+"smm_smb3_tiles.png")
     pix = np.array(img)
-    
+
     tw = 16 # tile width
     th = 16 # tile height
     tiles_x = 10
@@ -170,4 +170,4 @@ if __name__ == "__main__":
     # img_approx = Image.fromarray(pix_approx_tiles[:2].reshape((2*16, 16*14, 3)))
     img_approx = Image.fromarray(pix_approx)
 
-    img_approx.show()
+    # img_approx.show()
