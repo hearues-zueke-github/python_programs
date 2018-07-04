@@ -13,7 +13,8 @@ if __name__ == "__main__":
     pix = get_new_binary_pix()
 
     img = Image.fromarray(pix*255)
-    img.show()
+    # img.show()
+    img.save("random_image_1.png", "PNG")
 
     pix_factors = get_new_binary_pix()
 
@@ -24,4 +25,5 @@ if __name__ == "__main__":
     pix %= 2
     
     img_2 = Image.fromarray(pix*255)
-    img_2.show()
+    img.save("random_image_2.png", "PNG")
+    # img_2.show()
