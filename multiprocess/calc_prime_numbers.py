@@ -79,14 +79,14 @@ if __name__ == "__main__":
     path_files = home+"/Documents/"
     file_path = path_files+"primes.pkl"
 
-    dm = DotMap()
-    dm.ps = np.array([2, 3, 5, 7])
-    dm.ps = np.hstack((dm.ps, calc_primes_standard(dm.ps, 8, 50)))
-    dm.ps = np.hstack((dm.ps, calc_primes_standard(dm.ps, 50, 1000)))
-    dm.max_num = 8
+    # dm = DotMap()
+    # dm.ps = np.array([2, 3, 5, 7])
+    # dm.ps = np.hstack((dm.ps, calc_primes_standard(dm.ps, 8, 50)))
+    # dm.ps = np.hstack((dm.ps, calc_primes_standard(dm.ps, 50, 1000)))
+    # dm.max_num = 8
 
-    with open(path_files+"primes_default.pkl", "wb") as fout:
-        dill.dump(dm, fout)
+    # with open(path_files+"primes_default.pkl", "wb") as fout:
+    #     dill.dump(dm, fout)
 
     if not os.path.exists(file_path):
         dm = DotMap()
