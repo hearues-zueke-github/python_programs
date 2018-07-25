@@ -21,15 +21,18 @@ def calc_ln(x, iterations):
 
 def calc_ln_part(x):
     s = Dec("0")
+    d_1 = Dec("1")
     d_2 = Dec("2")
     x = Dec(x)
     print("in generator x: {}".format(x))
-    j = 0
+    # j = 0
+    i = 1
 
     while True:
-        i = j*2+1
-        s += (1/Dec(i)*((x-Dec("1"))/(x+Dec("1")))**i)*d_2
-        j += 1
+        # i = j*2+1
+        s += (1/Dec(i)*((x-d_1)/(x+d_1))**i)*d_2
+        i += 2
+        # j += 1
         yield s
 
 def calc_ln_precision(x, precision):
@@ -68,21 +71,20 @@ if __name__ == "__main__":
     a = Dec("0.2334")
     print("a: {}".format(a))
 
-
-    x = Dec("3")
+    x = Dec("2.71828182818459045235")
     ln_x = calc_ln(x, 10)
     
-    i = 0
-    for s in calc_ln_part(x):
-        # print("i: {}, s: {}".format(i, s))
-        i += 1
-        if i > 100:
-            break
+    # i = 0
+    # for s in calc_ln_part(x):
+    #     # print("i: {}, s: {}".format(i, s))
+    #     i += 1
+    #     if i > 100:
+    #         break
 
-    z = calc_ln_precision(x, 80)
+    z = calc_ln_precision(x, 1000)
 
     print("z: {}".format(z))
 
     print("x: {}".format(x))
-    print("ln_x: {}".format(ln_x))
+    # print("ln_x: {}".format(ln_x))
     
