@@ -8,6 +8,8 @@ import numpy as np
 
 from PIL import Image
 
+import Utils
+
 """
     @param pix: is a numpy array with shape (x, y, z) (x%tw == 0, y%tw == 0)
     @param tw: tile width (also the tile height)
@@ -53,7 +55,7 @@ if __name__ == "__main__":
 
     path_images = home+"/Pictures/tiles_images/"
 
-    img = Image.open(path_images+"smm_smb3_tiles.png")
+    img = Image.open(path_images+"smm_smb1_tiles.png")
     pix = np.array(img)
 
     tw = 16 # tile width
@@ -142,9 +144,16 @@ if __name__ == "__main__":
             pix[(th+1)*ts_y+1:(th+1)*ts_y+th+1, (tw+1)*ts_x+1:(tw+1)*ts_x+tw+1]
 
     img_tiles = Image.fromarray(pix_tiles)
-    img_anime = Image.open(path_images+"nature_1.jpeg")
+    # img_anime = Image.open(path_images+"nature_1.jpeg")
     # img_anime = Image.open(path_images+"anime_2.jpeg")
-    # img_anime = Image.open(path_images+"anime_1.jpeg")
+    img_anime = Image.open(path_images+"anime_1.jpeg")
+
+    baseheight = img_anime.size[0]*4
+    hpercent = (baseheight/float(img_anime.size[1]))
+    wsize = int((float(img_anime.size[0])*hpercent))
+    img_anime = img_anime.resize((wsize, baseheight), Image.ANTIALIAS)
+
+    img_anime.show()
     
     pix_anime = np.array(img_anime)
     print("pix_anime.shape: {}".format(pix_anime.shape))
@@ -205,3 +214,9 @@ if __name__ == "__main__":
     img_approx = Image.fromarray(pix_approx)
 
     img_approx.show()
+
+    # pix_crop_tiles_norm, pix_tiles_line_norm = Utils.get_pixelated_tiled_pix(pix_anime, tw, first_row)
+    pix_crop_filled = Utils.get_pixelated_tiled_pix(pix_anime, tw, first_row)
+    img_crop_filled = Image.fromarray(pix_crop_filled)
+
+    img_crop_filled.show()
