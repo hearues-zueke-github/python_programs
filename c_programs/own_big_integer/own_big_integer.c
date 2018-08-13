@@ -116,6 +116,9 @@ void convert_a_to_base_2(BigNum a, BigNum** result) {
     new_num->last_significant_byte = i;
 
     *result = new_num;
+
+    printf("result: ");
+    print_big_num(*new_num);
 }
 
 void calc_a_plus_b(BigNum a, BigNum b, BigNum** result) {
@@ -188,10 +191,10 @@ void calc_a_mult_b(BigNum a, BigNum b, BigNum** result) {
     int size_b = b.size;
     int base = a.base;
 
-    printf("a: ");
-    print_big_num(a);
-    printf("b: ");
-    print_big_num(b);
+    // printf("a: ");
+    // print_big_num(a);
+    // printf("b: ");
+    // print_big_num(b);
 
     int max_size = size_a+size_b+1;
     uint8_t* arr = calloc(sizeof(uint8_t), max_size);
@@ -229,8 +232,8 @@ void calc_a_mult_b(BigNum a, BigNum b, BigNum** result) {
 
     *result = res;
 
-    printf("res: ");
-    print_big_num(*res);
+    // printf("res: ");
+    // print_big_num(*res);
 }
 
 void calc_a_div_b(BigNum a, BigNum b, BigNum** result, BigNum** rest) {
@@ -441,10 +444,11 @@ void calc_a_pow_b(BigNum a, BigNum b, BigNum** result) {
     int size = b_base2->size-1;
     int i;
     for (i = 0; ; i++) {
-        if (1 || b_base2->arr[i]) {
+        printf("i: %d\n", i);
+        if (b_base2->arr[i]) {
             BigNum* temp3;
-            printf("temp: %p\n", temp);
-            printf("p: %p\n", p);
+            printf("temp: %p, p: %p\n", temp, p);
+            // printf("p: %p\n", p);
             calc_a_mult_b(*temp, *p, &temp3);
             delete_big_num(p);
             p = temp3;
@@ -457,8 +461,8 @@ void calc_a_pow_b(BigNum a, BigNum b, BigNum** result) {
         BigNum* temp2;
         printf("temp: %p\n", temp);
         calc_a_mult_b(*temp, *temp, &temp2);
-        // delete_big_num(temp);
-        // temp = temp2;
+        delete_big_num(temp);
+        temp = temp2;
     }
 
     delete_big_num(b_base2);
@@ -475,17 +479,25 @@ void print_big_num(BigNum bignum) {
     // int last_significant_byte = bignum.last_significant_byte;
 
     int num_size = (base <= 10 ? 1 : base <= 100 ? 2 : 3);
-    char* buffer = malloc(sizeof(char)*((num_size+2)*size));
+    char* buffer = malloc(sizeof(char)*((num_size+2)*size+2));
     char format[6] = {0};
     sprintf(format, "%%%dd, ", num_size);
     int i = 0;
+    buffer[0] = '(';
     for (i = 0; i < size; i++) {
-        sprintf(buffer+i*(num_size+2), format, arr[i]);
+        sprintf(buffer+i*(num_size+2)+1, format, arr[i]);
     }
-    // sprintf(buffer+size*(num_size+2)-2, "\0");
-    *(buffer+size*(num_size+2)-2) = 0;
+    buffer[size*(num_size+2)-1] = ')';
+    buffer[size*(num_size+2)] = 0;
 
-    printf("%s; size: %d\n", buffer, bignum.size);
+    printf("%s; size: %d; base: %d\n", buffer, bignum.size, bignum.base);
+
+    int j;
+    for (i = size-1, j = 0; i > -1; i--, j++) {
+        buffer[i] = '0'+arr[j];
+    }
+    buffer[j] = 0;
+    printf("full number: %s\n", buffer);
 
     free(buffer);
 }
@@ -499,17 +511,17 @@ int main(int argc, char* argv[]) {
     
     BigNum bignum_a;
     bignum_a.base = base;
-    uint8_t arr_a[3] = {2, 3, 9};
+    uint8_t arr_a[1] = {7};
     bignum_a.arr = arr_a;
-    bignum_a.size = 3;
-    bignum_a.last_significant_byte = 2;
+    bignum_a.size = 1;
+    bignum_a.last_significant_byte = 0;
 
     BigNum bignum_b;
     bignum_b.base = base;
-    uint8_t arr_b[4] = {8, 5, 2, 4};
+    uint8_t arr_b[6] = {0, 0, 0, 0, 0, 1};
     bignum_b.arr = arr_b;
-    bignum_b.size = 4;
-    bignum_b.last_significant_byte = 3;
+    bignum_b.size = 6;
+    bignum_b.last_significant_byte = 5;
 
     BigNum* bignum_result;
     BigNum* bignum_result_mult;
