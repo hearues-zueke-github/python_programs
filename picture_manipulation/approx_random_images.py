@@ -9,60 +9,11 @@ import numpy as np
 from PIL import Image
 
 def apply_neighbour_logic(pix_bw, choosen_algo=0):
-    # pos = np.where(pix_bw == 1)
-    # print("len(pos[0]): {}".format(len(pos[0])))
-
+    # # add the frame to the image with itself
+    # # e.g. the left 2 cols add to the right side, and vice versa for all other sides
+    # pix_bw = (lambda x: np.hstack((x[:, -2:], x, x[:, :2])))(np.vstack((pix_bw[-2:], pix_bw, pix_bw[:2])).copy())
+    
     height, width = pix_bw.shape[:2]
-    # pix_blank = np.zeros((height, width), dtype=np.uint8)
-    # pix_u = pix_blank.copy()
-    # pix_d = pix_blank.copy()
-    # pix_l = pix_blank.copy()
-    # pix_r = pix_blank.copy()
-
-    # pix_ul = pix_blank.copy()
-    # pix_ur = pix_blank.copy()
-    # pix_dl = pix_blank.copy()
-    # pix_dr = pix_blank.copy()
-    
-    # pix_uu = pix_blank.copy()
-    # pix_dd = pix_blank.copy()
-    # pix_ll = pix_blank.copy()
-    # pix_rr = pix_blank.copy()
-
-    # get_pos_u = lambda pos: (lambda x: (pos[0][x]-1, pos[1][x]))(pos[0]>0)
-    # get_pos_d = lambda pos: (lambda x: (pos[0][x]+1, pos[1][x]))(pos[0]<(height-1))
-    # get_pos_l = lambda pos: (lambda x: (pos[0][x], pos[1][x]-1))(pos[1]>0)
-    # get_pos_r = lambda pos: (lambda x: (pos[0][x], pos[1][x]+1))(pos[1]<(width-1))
-
-    # pos_u = get_pos_u(pos)
-    # pos_d = get_pos_d(pos)
-    # pos_l = get_pos_l(pos)
-    # pos_r = get_pos_r(pos)
-    
-    # pos_ul = get_pos_l(pos_u)
-    # pos_ur = get_pos_r(pos_u)
-    # pos_dl = get_pos_l(pos_d)
-    # pos_dr = get_pos_r(pos_d)
-
-    # pos_uu = get_pos_u(pos_u)
-    # pos_dd = get_pos_d(pos_d)
-    # pos_ll = get_pos_l(pos_l)
-    # pos_rr = get_pos_r(pos_r)
-
-    # pix_u[pos_u] = 1
-    # pix_d[pos_d] = 1
-    # pix_l[pos_l] = 1
-    # pix_r[pos_r] = 1
-
-    # pix_ul[pos_ul] = 1
-    # pix_ur[pos_ur] = 1
-    # pix_dl[pos_dl] = 1
-    # pix_dr[pos_dr] = 1
-
-    # pix_uu[pos_uu] = 1
-    # pix_dd[pos_dd] = 1
-    # pix_ll[pos_ll] = 1
-    # pix_rr[pos_rr] = 1
 
     zero_row = np.zeros((width, ), dtype=np.uint8)
     zero_col = np.zeros((height, 1), dtype=np.uint8)
@@ -72,199 +23,205 @@ def apply_neighbour_logic(pix_bw, choosen_algo=0):
     move_arr_l = lambda pix_bw: np.hstack((pix_bw[:, 1:], zero_col))
     move_arr_r = lambda pix_bw: np.hstack((zero_col, pix_bw[:, :-1]))
 
-    # pix_u = move_arr_u(pix_bw)
-    # pix_d = move_arr_d(pix_bw)
-    # pix_l = move_arr_l(pix_bw)
-    # pix_r = move_arr_r(pix_bw)
-    
-    # pix_ul = move_arr_l(pix_u)
-    # pix_ur = move_arr_r(pix_u)
-    # pix_dl = move_arr_l(pix_d)
-    # pix_dr = move_arr_r(pix_d)
-
-    # pix_uu = move_arr_u(pix_u)
-    # pix_dd = move_arr_d(pix_d)
-    # pix_ll = move_arr_l(pix_l)
-    # pix_rr = move_arr_r(pix_r)
-
     pixs = np.zeros((5, 5, height, width), dtype=np.uint8)
     pixs[2, 2] = pix_bw
-    
-    for i in range(2, 0, -1):
-        pixs[2, i-1] = move_arr_l(pixs[2, i])
-    for i in range(2, 4):
-        pixs[2, i+1] = move_arr_r(pixs[2, i])
+
     for i in range(2, 0, -1):
         pixs[i-1, 2] = move_arr_u(pixs[i, 2])
     for i in range(2, 4):
         pixs[i+1, 2] = move_arr_d(pixs[i, 2])
 
-    for j in list(range(0, 2))+list(range(3, 5)):
+    for j in range(0, 5):
         for i in range(2, 0, -1):
             pixs[j, i-1] = move_arr_l(pixs[j, i])
         for i in range(2, 4):
             pixs[j, i+1] = move_arr_r(pixs[j, i])
 
-    pdb.set_trace()
+    var_map = {(2, 2): "pix",
 
-    # print("np.sum(pix_u!=pix_u_2): {}".format(np.sum(pix_u!=pix_u_2)))
-    # print("np.sum(pix_d!=pix_d_2): {}".format(np.sum(pix_d!=pix_d_2)))
-    # print("np.sum(pix_l!=pix_l_2): {}".format(np.sum(pix_l!=pix_l_2)))
-    # print("np.sum(pix_r!=pix_r_2): {}".format(np.sum(pix_r!=pix_r_2)))
-    
-    # print("np.sum(pix_ul!=pix_ul_2): {}".format(np.sum(pix_ul!=pix_ul_2)))
-    # print("np.sum(pix_ur!=pix_ur_2): {}".format(np.sum(pix_ur!=pix_ur_2)))
-    # print("np.sum(pix_dl!=pix_dl_2): {}".format(np.sum(pix_dl!=pix_dl_2)))
-    # print("np.sum(pix_dr!=pix_dr_2): {}".format(np.sum(pix_dr!=pix_dr_2)))
+               (1, 2): "p_u",
+               (3, 2): "p_d",
+               (2, 1): "p_l",
+               (2, 3): "p_r",
 
-    # print("np.sum(pix_uu!=pix_uu_2): {}".format(np.sum(pix_uu!=pix_uu_2)))
-    # print("np.sum(pix_dd!=pix_dd_2): {}".format(np.sum(pix_dd!=pix_dd_2)))
-    # print("np.sum(pix_ll!=pix_ll_2): {}".format(np.sum(pix_ll!=pix_ll_2)))
-    # print("np.sum(pix_rr!=pix_rr_2): {}".format(np.sum(pix_rr!=pix_rr_2)))
-    # sys.exit(2)
+               (1, 1): "p_ul",
+               (1, 3): "p_ur",
+               (3, 1): "p_dl",
+               (3, 3): "p_dr",
 
-    idx_algo = [2, 3, 4, 5]
+               (0, 2): "p_uu",
+               (4, 2): "p_dd",
+               (2, 0): "p_ll",
+               (2, 4): "p_rr",
+
+               (0, 1): "p_uul",
+               (0, 3): "p_uur",
+               (4, 1): "p_ddl",
+               (4, 3): "p_ddr",
+               (1, 0): "p_ull",
+               (1, 4): "p_urr",
+               (3, 0): "p_dll",
+               (3, 4): "p_drr",
+
+               (0, 0): "p_uull",
+               (0, 4): "p_uurr",
+               (4, 0): "p_ddll",
+               (4, 4): "p_ddrr"}
+
+    for key, value in var_map.items():
+        exec("globals()['{}'] = pixs[{}, {}]".format(value, key[0], key[1]))
+
+    p = pix_bw
+    idx_algo = [1, 3, 4, 2, 5]
     fs = [
         lambda: \
-        ((pix_u&pix_l|pix_d&pix_r)&(pix_bw == 1))^
-        ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0))|
-        ((pix_u&pix_d&pix_l&pix_r)|(pix_bw == 0)&(pix_bw == 1)),
+        ((p_uu&p_dd&p_rr&p_ll|p_u&p_d&p_l&p_r)&(p==0))|
+        ((p_uull&p_uurr&p_ddll&p_ddrr|p_ul&p_ur&p_dl&p_dr)&(p==1)),
+        lambda: \
+        ((p_u&p_r|p_ur&p_dr)&(p==0))|
+        ((p_d&p_l|p_ul&p_dl)&(p==1)),
+        lambda: \
+        ((p_u&p_l)&(p==0))^
+        ((p_d&p_r)&(p==1)),
+        lambda: \
+        ((p_u&p_l|p_d&p_r)&(p==1))^
+        ((p_u&p_d|p_l&p_r)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_l|p_d&p_r)&(p==0))^
+        ((p_u&p_d|p_l&p_r)&(p==1))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r|p_d&p_l)&(p==1))^
+        ((p_u&p_l|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r|p_d&p_l)&(p==0))^
+        ((p_u&p_l|p_r&p_d)&(p==1))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r&p_d|p_l)&(p==1))^
+        ((p_u&p_r|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r&p_d|p_l)&(p==1))^
+        ((p_u&p_r|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
         
         lambda: \
-        ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0))^
-        ((pix_ul&pix_ur|pix_dl&pix_dr)&(pix_bw == 1)),
+        ((p_u&p_d|p_l&p_r)&(p==0))^
+        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
 
         lambda:
-        (((pix_uu&pix_u)^(pix_dd&pix_d))&(pix_bw==0))|
-        (((pix_ll&pix_l)|(pix_rr&pix_r))&(pix_bw==1)),
+        (((p_uu&p_u)^(p_dd&p_d))&(p==0))|
+        (((p_ll&p_l)|(p_rr&p_r))&(p==1)),
         lambda:
-        (((pix_uu&pix_u)&(pix_dd&pix_d))&(pix_bw==1))|
-        (((pix_ll&pix_l)^(pix_rr&pix_r))&(pix_bw==0)),
+        (((p_uu&p_u)&(p_dd&p_d))&(p==1))|
+        (((p_ll&p_l)^(p_rr&p_r))&(p==0)),
         
         lambda:
-        ((pix_uu&pix_dd)&(pix_bw==0))|
-        ((pix_ll&pix_rr)&(pix_bw==1)),
+        ((p_uu&p_dd)&(p==0))|
+        ((p_ll&p_rr)&(p==1)),
         lambda:
-        ((pix_uu&pix_dd)&(pix_bw==1))^
-        ((pix_ll&pix_rr)&(pix_bw==0)),
+        ((p_uu&p_dd)&(p==1))^
+        ((p_ll&p_rr)&(p==0)),
 
         lambda: \
-        ((pix_ul&pix_u&pix_ur&pix_d)&(pix_bw == 0))^
-        ((pix_l&pix_r&pix_dl&pix_dr)&(pix_bw == 1)),
+        ((p_ul&p_u&p_ur&p_d)&(p==0))^
+        ((p_l&p_r&p_dl&p_dr)&(p==1)),
         lambda: \
-        ((pix_dl&pix_d&pix_dr&pix_u)&(pix_bw == 0))^
-        ((pix_l&pix_r&pix_ul&pix_ur)&(pix_bw == 1)),
+        ((p_dl&p_d&p_dr&p_u)&(p==0))^
+        ((p_l&p_r&p_ul&p_ur)&(p==1)),
         lambda: \
-        ((pix_ul&pix_l&pix_dl&pix_r)&(pix_bw == 0))^
-        ((pix_u&pix_d&pix_ur&pix_dr)&(pix_bw == 1)),
+        ((p_ul&p_l&p_dl&p_r)&(p==0))^
+        ((p_u&p_d&p_ur&p_dr)&(p==1)),
         lambda: \
-        ((pix_ur&pix_r&pix_dr&pix_l)&(pix_bw == 0))^
-        ((pix_u&pix_d&pix_ul&pix_dl)&(pix_bw == 1)),
+        ((p_ur&p_r&p_dr&p_l)&(p==0))^
+        ((p_u&p_d&p_ul&p_dl)&(p==1)),
 
         lambda: \
-        ((pix_u&pix_d&pix_l&pix_r)&(pix_bw == 0))^
-        ((pix_ul&pix_ur&pix_dl&pix_dr)&(pix_bw == 1)),
+        ((p_u&p_d&p_l&p_r)&(p==0))^
+        ((p_ul&p_ur&p_dl&p_dr)&(p==1)),
         lambda: \
-        ((pix_u&pix_d&pix_l&pix_r)&(pix_bw == 1))^
-        ((pix_ul&pix_ur&pix_dl&pix_dr)&(pix_bw == 0)),
+        ((p_u&p_d&p_l&p_r)&(p==1))^
+        ((p_ul&p_ur&p_dl&p_dr)&(p==0)),
         lambda: \
-        ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0))|
-        ((pix_ul&pix_ur|pix_dl&pix_dr)&(pix_bw == 1)),
+        ((p_u&p_d|p_l&p_r)&(p==0))|
+        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
         
         lambda: \
-        (pix_u&pix_ur&pix_r&pix_dr)|
-        (pix_ur&pix_r&pix_dr&pix_d)|
-        (pix_r&pix_dr&pix_d&pix_dl)|
-        (pix_dr&pix_d&pix_dl&pix_l)|
-        (pix_d&pix_dl&pix_l&pix_ul)|
-        (pix_dl&pix_l&pix_ul&pix_u)|
-        (pix_l&pix_ul&pix_u&pix_ur)|
-        (pix_ul&pix_u&pix_ur&pix_r),
+        (p_u&p_ur&p_r&p_dr)|
+        (p_ur&p_r&p_dr&p_d)|
+        (p_r&p_dr&p_d&p_dl)|
+        (p_dr&p_d&p_dl&p_l)|
+        (p_d&p_dl&p_l&p_ul)|
+        (p_dl&p_l&p_ul&p_u)|
+        (p_l&p_ul&p_u&p_ur)|
+        (p_ul&p_u&p_ur&p_r),
         lambda: \
-        (pix_u&pix_ur&pix_r&pix_dr&pix_d)|
-        (pix_ur&pix_r&pix_dr&pix_d&pix_dl)|
-        (pix_r&pix_dr&pix_d&pix_dl&pix_l)|
-        (pix_dr&pix_d&pix_dl&pix_l&pix_ul)|
-        (pix_d&pix_dl&pix_l&pix_ul&pix_u)|
-        (pix_dl&pix_l&pix_ul&pix_u&pix_ur)|
-        (pix_l&pix_ul&pix_u&pix_ur&pix_r)|
-        (pix_ul&pix_u&pix_ur&pix_r&pix_dr),
+        (p_u&p_ur&p_r&p_dr&p_d)|
+        (p_ur&p_r&p_dr&p_d&p_dl)|
+        (p_r&p_dr&p_d&p_dl&p_l)|
+        (p_dr&p_d&p_dl&p_l&p_ul)|
+        (p_d&p_dl&p_l&p_ul&p_u)|
+        (p_dl&p_l&p_ul&p_u&p_ur)|
+        (p_l&p_ul&p_u&p_ur&p_r)|
+        (p_ul&p_u&p_ur&p_r&p_dr),
 
         lambda: \
-        (pix_u&pix_ur&pix_r)|
-        (pix_ur&pix_r&pix_dr)|
-        (pix_r&pix_dr&pix_d)|
-        (pix_dr&pix_d&pix_dl)|
-        (pix_d&pix_dl&pix_l)|
-        (pix_dl&pix_l&pix_ul)|
-        (pix_l&pix_ul&pix_u)|
-        (pix_ul&pix_u&pix_ur),
+        (p_u&p_ur&p_r)|
+        (p_ur&p_r&p_dr)|
+        (p_r&p_dr&p_d)|
+        (p_dr&p_d&p_dl)|
+        (p_d&p_dl&p_l)|
+        (p_dl&p_l&p_ul)|
+        (p_l&p_ul&p_u)|
+        (p_ul&p_u&p_ur),
         
         lambda: \
-        ((pix_u&pix_r)|(pix_l&pix_d))&((pix_ul&pix_ur)|(pix_dl&pix_dr)),
+        ((p_u&p_r)|(p_l&p_d))&((p_ul&p_ur)|(p_dl&p_dr)),
         
         lambda: \
-        ((pix_u&pix_d)|(pix_l&pix_r))^((pix_ul&pix_dr)|(pix_dl&pix_ur)),
+        ((p_u&p_d)|(p_l&p_r))^((p_ul&p_dr)|(p_dl&p_ur)),
         lambda: \
-        ((pix_u&pix_r)|(pix_l&pix_d))^((pix_ul&pix_ur)|(pix_dl&pix_dr)),
+        ((p_u&p_r)|(p_l&p_d))^((p_ul&p_ur)|(p_dl&p_dr)),
         
         lambda: \
-        ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0))|
-        ((pix_ul&pix_ur|pix_dl&pix_dr)&(pix_bw == 1)),
+        ((p_u&p_d|p_l&p_r)&(p==0))|
+        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
         lambda: \
-        ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 1))|
-        ((pix_ul&pix_ur|pix_dl&pix_dr)&(pix_bw == 0)),
+        ((p_u&p_d|p_l&p_r)&(p==1))|
+        ((p_ul&p_ur|p_dl&p_dr)&(p==0)),
         
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_dl&pix_d&pix_dr)&(pix_bw == 0))|
-        ((pix_ul&pix_l&pix_dl|pix_ur&pix_r&pix_dr)&(pix_bw == 1)),
+        ((p_ul&p_u&p_ur|p_dl&p_d&p_dr)&(p==0))|
+        ((p_ul&p_l&p_dl|p_ur&p_r&p_dr)&(p==1)),
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_dl&pix_d&pix_dr)&(pix_bw == 1))|
-        ((pix_ul&pix_l&pix_dl|pix_ur&pix_r&pix_dr)&(pix_bw == 0)),
+        ((p_ul&p_u&p_ur|p_dl&p_d&p_dr)&(p==1))|
+        ((p_ul&p_l&p_dl|p_ur&p_r&p_dr)&(p==0)),
         
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_ul&pix_l&pix_dl)&(pix_bw == 0))|
-        ((pix_dl&pix_d&pix_dr|pix_ur&pix_r&pix_dr)&(pix_bw == 1)),
+        ((p_ul&p_u&p_ur|p_ul&p_l&p_dl)&(p==0))|
+        ((p_dl&p_d&p_dr|p_ur&p_r&p_dr)&(p==1)),
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_ul&pix_l&pix_dl)&(pix_bw == 1))|
-        ((pix_dl&pix_d&pix_dr|pix_ur&pix_r&pix_dr)&(pix_bw == 0)),
+        ((p_ul&p_u&p_ur|p_ul&p_l&p_dl)&(p==1))|
+        ((p_dl&p_d&p_dr|p_ur&p_r&p_dr)&(p==0)),
         
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_ur&pix_r&pix_dr)&(pix_bw == 0))|
-        ((pix_dl&pix_d&pix_dr|pix_ul&pix_l&pix_dl)&(pix_bw == 1)),
+        ((p_ul&p_u&p_ur|p_ur&p_r&p_dr)&(p==0))|
+        ((p_dl&p_d&p_dr|p_ul&p_l&p_dl)&(p==1)),
         lambda: \
-        ((pix_ul&pix_u&pix_ur|pix_ur&pix_r&pix_dr)&(pix_bw == 1))|
-        ((pix_dl&pix_d&pix_dr|pix_ul&pix_l&pix_dl)&(pix_bw == 0))
+        ((p_ul&p_u&p_ur|p_ur&p_r&p_dr)&(p==1))|
+        ((p_dl&p_d&p_dr|p_ul&p_l&p_dl)&(p==0))
         ]
-    # pix_bw = ((((pix_u&pix_l|pix_d&pix_r)&(pix_bw == 1))^
-    #            ((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0))|
-    #            ((pix_u&pix_d&pix_l&pix_r)|(pix_bw == 0)&(pix_bw == 1)))*1).astype(np.uint8)
-    pix_bw = fs[idx_algo[choosen_algo]]().astype(np.uint8)
 
-    # if choosen_algo == 0:
-    #     pix_bw = (((pix_u&pix_d)^(pix_l&pix_r))&
-    #               ((pix_u&pix_l)^(pix_d&pix_r))|
-    #               ((pix_u&pix_d&pix_l)^(pix_r))&
-    #               ((pix_u&pix_r&pix_l)^(pix_d))|
-    #               ((pix_u&(pix_l==0))&(pix_bw==0))&
-    #               ((pix_d&(pix_r==0))&(pix_bw==1))|
-    #               ((pix_u&(pix_l==1))&(pix_bw==1))&
-    #               ((pix_d&(pix_r==1))&(pix_bw==0))).astype(np.uint8)
-    # elif choosen_algo == 1:
-    #     pix_bw = ((pix_ur&pix_dl)^
-    #               (pix_ul&pix_dr)|
-    #               (pix_u&pix_d)^
-    #               (pix_l&pix_r)).astype(np.uint8)
-    # elif choosen_algo == 2:
-    #     pix_bw = ((pix_ur&pix_ul&pix_dr&pix_dl)|
-    #               (pix_u&pix_d&pix_l&pix_r)).astype(np.uint8)
-    # elif choosen_algo == 3:
-    #     pix_bw = ((pix_u+pix_d+pix_l+pix_r+pix_ur+pix_ul+pix_dr+pix_dl+pix_bw) > 5).astype(np.uint8)
-    # elif choosen_algo == 4:
-    #     pix_bw = ((((pix_u&pix_l|pix_d&pix_r)&(pix_bw == 1))^((pix_u&pix_d|pix_l&pix_r)&(pix_bw == 0)))*1).astype(np.uint8)
-    # else:
-    #     pix_bw = (((pix_u&pix_l|pix_d&pix_r)&(pix_bw == 1))*1).astype(np.uint8)
+    pix_bw_1 = fs[idx_algo[choosen_algo]]()
+    pix_bw_2 = fs[idx_algo[choosen_algo+1]]()
+    pix_bw_3 = fs[idx_algo[choosen_algo+2]]()
+    pix_bw = (pix_bw_1^pix_bw_2^pix_bw_3).astype(np.uint8)
 
+    # # remove the frame from the image again
+    # return pix_bw[2:-2, 2:-2]
     return pix_bw
 
 def create_1_bit_neighbour_pictures(height, width):
@@ -325,13 +282,12 @@ def create_1_byte_neighbour_pictures(height, width):
 def create_3_byte_neighbour_pictures(height, width):
     path_pictures = "images/changing_bw_3_byte_{}_{}/".format(height, width)
     
-    
     if os.path.exists(path_pictures):
         os.system("rm -rf {}".format(path_pictures))
     if not os.path.exists(path_pictures):
         os.makedirs(path_pictures)
     
-    # prev_folder = os.getcwd()
+    prev_folder = os.getcwd()
     # os.chdir("./{}".format(path_pictures))
     # os.chdir(prev_folder)
 
@@ -362,7 +318,7 @@ def create_3_byte_neighbour_pictures(height, width):
         print("it: {}".format(it))
         
         for i in range(0, 24):
-            pix_bws[i] = apply_neighbour_logic(pix_bws[i], choosen_algo=i%2)
+            pix_bws[i] = apply_neighbour_logic(pix_bws[i], choosen_algo=it%2)
 
         pix_combine = combine_1_byte_neighbours(pix_bws)
         pix_combines.append(pix_combine)
@@ -376,7 +332,7 @@ def create_3_byte_neighbour_pictures(height, width):
     path_template = path_pictures+"rnd_{}_{}_bw_i_{{:03}}_{{:02}}.png".format(height, width)
     for i, (pix_1, pix_2) in enumerate(zip(pix_combines[:-1], pix_combines[1:])):
         Image.fromarray(pix_1).save(path_template.format(i, 0))
-        amount_combines = 2
+        amount_combines = 1
         for j in range(1, amount_combines):
             print("i: {}, j: {}".format(i, j))
             Image.fromarray(get_pix_between(pix_1, pix_2, float(amount_combines-j)/amount_combines)).save(path_template.format(i, j))
@@ -403,10 +359,20 @@ def create_3_byte_neighbour_pictures(height, width):
             # file_name_jpg = file_name.replace(".png", ".jpg")
             # os.system("convert {} -quality 20% {}".format(file_name_jpg, file_name_jpg))
     
-    print("Create an animation with png's!")
-    os.system("convert -delay 5 -loop 0 *.png animated_png.gif")
-    # print("Create an animation with jpg's!")
-    # os.system("convert -delay 2 -loop 0 *.jpg animated_jpg.gif")
+    for root_dir, dirs, files in os.walk("."):
+        if not root_dir == ".":
+            continue
+
+        arr = np.sort(np.array(files))
+        for i, file_name in enumerate(arr):
+            os.system("mv {} pic_{:04d}.png".format(file_name, i))
+
+    # print("Create an animation (gif) with png's!")
+    # os.system("convert -delay 5 -loop 0 *.png animated_png.gif")
+    print("Create an animation (mp4) with png's!")
+    os.system("ffmpeg -r 20 -i pic_%04d.png -vcodec mpeg4 -y movie.mp4")
+
+    os.chdir(prev_folder)
 
 def create_from_image_neighbour_pictures(image_path):
     if not os.path.exists(image_path):
@@ -531,15 +497,15 @@ def create_from_image_neighbour_pictures(image_path):
     os.chdir(prev_folder)
 
 if __name__ == "__main__":
-    height = 64
-    # height = 128
+    # height = 64
+    height = 128
     # height = 256
     # height = 512
     width = height
 
     # create_1_bit_neighbour_pictures(height, width)
     # create_1_byte_neighbour_pictures(height, width)
-    # create_3_byte_neighbour_pictures(height, width)    
+    create_3_byte_neighbour_pictures(height, width)    
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
-    ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
+    # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
     create_from_image_neighbour_pictures("images/fall-autumn-red-season_resized.jpg")
