@@ -2,6 +2,7 @@
 
 import os
 import pdb
+import shutil
 import string
 import sys
 
@@ -15,11 +16,162 @@ def get_random_64_bit_number(n):
     return "".join(np.random.choice(arr, (n, )).tolist())
 
 # TODO: create an object out of these apply able functions
+class BitNeighborManipulation(Exception):
+    def __init__(self, ft=2, with_frame=True):
+        self.ft = ft
+        if with_frame:
+            self.add_frame = self._get_add_frame_function() # function
+            self.remove_frame = self._get_remove_frame_function() # function
+        else:
+            self.add_frame = None
+            self.remove_frame = None
+
+        self.get_pixs = self._generate_pixs_function() # function
+        self.bit_operations = self._generate_lambda_functions() # list of lambdas
+        self.it1 = 0 # for the iterator variable (1st)
+        self.it2 = 0 # for the iterator variable (2nd)
+
+        self.max_bit_operators = 1
+        self.bit_operators_idx = [0, 1, 2, 3, 1]
+
+        # print("len(self.bit_operations): {}".format(len(self.bit_operations)))
+
+    def _get_add_frame_function(self):
+        ft = self.ft
+        def add_frame(pix_bw):
+            t = np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft]))
+            return np.hstack((t[:, -ft:], t, t[:, :ft]))
+        return add_frame
+
+    def _generate_pixs_function(self):
+        ft = self.ft
+
+        def generate_pixs(pix_bw):
+            height, width = pix_bw.shape[:2]
+
+            zero_row = np.zeros((width, ), dtype=np.uint8)
+            zero_col = np.zeros((height, 1), dtype=np.uint8)
+
+            move_arr_u = lambda pix_bw: np.vstack((pix_bw[1:], zero_row))
+            move_arr_d = lambda pix_bw: np.vstack((zero_row, pix_bw[:-1]))
+            move_arr_l = lambda pix_bw: np.hstack((pix_bw[:, 1:], zero_col))
+            move_arr_r = lambda pix_bw: np.hstack((zero_col, pix_bw[:, :-1]))
+
+            pixs = np.zeros((ft*2+1, ft*2+1, height, width), dtype=np.uint8)
+            pixs[ft, ft] = pix_bw
+
+            # first set all y pixs (center ones)
+            for i in range(ft, 0, -1):
+                pixs[i-1, ft] = move_arr_u(pixs[i, ft])
+            for i in range(ft, 4):
+                pixs[i+1, ft] = move_arr_d(pixs[i, ft])
+
+            # then set all x pixs (except the center ones, they are already set)
+            for j in range(0, 5):
+                for i in range(ft, 0, -1):
+                    pixs[j, i-1] = move_arr_l(pixs[j, i])
+                for i in range(ft, 4):
+                    pixs[j, i+1] = move_arr_r(pixs[j, i])
+
+            return pixs
+
+        return generate_pixs
+
+    def _generate_lambda_functions(self):
+        # TODO: make it as simple as possible for the beginning!!!
+        # TODO: should be generic as much as possible for more possibilities later on!
+
+        return [
+        lambda:
+        p_ul,
+        lambda:
+        ((p_ull&p_ddr)&(p==0))|
+        ((p_ul&p_ddrr&p_dl)&(p==1)),
+        lambda: \
+        ((p_uu&p_dd&p_rr&p_ll|p_u&p_d&p_l&p_r)&(p==0))|
+        ((p_uull&p_uurr&p_ddll&p_ddrr|p_ul&p_ur&p_dl&p_dr)&(p==1)),
+        lambda: \
+        ((p_u&p_r|p_ur&p_dr)&(p==0))|
+        ((p_d&p_l|p_ul&p_dl)&(p==1)),
+        lambda: \
+        ((p_u&p_l)&(p==0))^
+        ((p_d&p_r)&(p==1)),
+        lambda: \
+        ((p_u&p_l|p_d&p_r)&(p==1))^
+        ((p_u&p_d|p_l&p_r)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_l|p_d&p_r)&(p==0))^
+        ((p_u&p_d|p_l&p_r)&(p==1))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r|p_d&p_l)&(p==1))^
+        ((p_u&p_l|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r|p_d&p_l)&(p==0))^
+        ((p_u&p_l|p_r&p_d)&(p==1))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r&p_d|p_l)&(p==1))^
+        ((p_u&p_r|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r)),
+        lambda: \
+        ((p_u&p_r&p_d|p_l)&(p==1))^
+        ((p_u&p_r|p_l&p_d)&(p==0))^
+        ((p_u&p_d&p_l&p_r))
+        ]
+
+    def _get_remove_frame_function(self):
+        ft = self.ft
+        def remove_frame(pix_bw):
+            return pix_bw[ft:-ft, ft:-ft]
+        return remove_frame
+
+    def apply_neighbor_logic_1_bit(self, pix_bw):
+        if self.add_frame != None:
+            pix_bw = self.add_frame(pix_bw)
+        pixs = self.get_pixs(pix_bw)
+
+        ft = self.ft
+        exec("globals()['p'] = pixs[ft, ft]")
+        for y in range(0, ft*2+1):
+            for x in range(0, ft*2+1):
+                if y == ft and x == ft:
+                    continue
+                var_name = "p_"+("u"*(ft-y) if y < ft else "d"*(y-ft))+("l"*(ft-x) if x < ft else "r"*(x-ft))
+                # variables.append(var_name)
+                exec("globals()['{}'] = pixs[{}, {}]".format(var_name, y, x))
+
+        pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1)%self.max_bit_operators]]()
+        # pix_bw2 = self.bit_operations[self.bit_operators_idx[(self.it1+1)%self.max_bit_operators]]()
+        # pix_bw3 = self.bit_operations[self.bit_operators_idx[(self.it1+2)%self.max_bit_operators]]()
+
+        # assert np.sum(pix_prev_1 != pix_prev_2) == 0
+        pix_bw = pix_bw1
+        # pix_bw = pix_bw1^pix_bw2^pix_bw3
+        # pix_bw = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
+        self.it2 += 1
+        
+        if self.remove_frame != None:
+            return self.remove_frame(pix_bw)
+        return pix_bw
+
+    def apply_neighbor_logic(self, pix_bws):
+        pix_bws_new = []
+
+        for i, pix_bw in enumerate(pix_bws):
+           pix_bws_new.append(self.apply_neighbor_logic_1_bit(pix_bw))
+        self.it1 += 1
+
+        return pix_bws_new
+
+
 def apply_neighbour_logic(pix_bw, choosen_algo=0):
     ft = 3 # frame_thickness
     # add the frame to the image with itself
     # e.g. the left 2 cols add to the right side, and vice versa for all other sides
-    pix_bw = (lambda x: np.hstack((x[:, -ft:], x, x[:, :ft])))(np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft])).copy())
+    pix_bw = lambda pix_bw: (lambda x: np.hstack((x[:, -ft:], x, x[:, :ft])))(np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft])).copy())
     
     height, width = pix_bw.shape[:2]
 
@@ -270,9 +422,14 @@ def create_1_byte_neighbour_pictures(height, width):
         Image.fromarray(pix_combine).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
 
-def create_3_byte_neighbour_pictures(img_type, f_args):
+def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_image=None, with_frame=None, image_path=None, max_iterations=-1):
+    prev_folder = os.getcwd()
+
+    get_pix_bws_from_pix_img = lambda pix_img: [(pix_c>>j)&0x1 for pix_c in [pix_img[:, :, i] for i in range(0, 3)] for j in range(0, 8)]
+    
     if img_type == "picture":
-        image_path = f_args[0]
+        if image_path == None:
+            sys.exit(-1)
 
         if not os.path.exists(image_path):
             print("Path to image '{}' does not exists!".format(image_path))
@@ -284,20 +441,24 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
 
         path_pictures = "images/changing_image_{}_{}/".format(height, width)
         
-        pix_bws = [(pix_c>>j)&0x1 for pix_c in [pix_img[:, :, i] for i in range(0, 3)] for j in range(0, 8)]
-
     elif img_type == "random":
-        height = f_args[0]
-        width = f_args[1]
+        if height == None or width == None or same_image == None or with_frame == None:
+            system.exit(-1)
 
         path_pictures = "images/changing_bw_3_byte_{}_{}/".format(height, width)
     
-        get_pix_bw = lambda: np.random.randint(0, 2, (height, width), dtype=np.uint8)
-        pix_bws = [get_pix_bw() for _ in range(0, 24)]
-    
+        orig_file_path = "images/orig_image_{}_{}.png".format(height, width)
+        if same_image and os.path.exists(orig_file_path):
+            pix_img = np.array(Image.open(orig_file_path))
+        else:
+            pix_img = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
+            Image.fromarray(pix_img).save(orig_file_path)
+
+    pix_bws = get_pix_bws_from_pix_img(pix_img)
+   
     if os.path.exists(path_pictures):
-        os.system("rm -rf {}".format(path_pictures))
-    if not os.path.exists(path_pictures):
+        os.system("rm -rf {}*".format(path_pictures))
+    else:
         os.makedirs(path_pictures)
     
     path_animations = "images/animations/"
@@ -307,7 +468,6 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
     if not os.path.exists(path_movies):
         os.makedirs(path_movies)
     
-    prev_folder = os.getcwd()
 
     def combine_1_byte_neighbours(pix_bws):
         def combine_1_bit_neighbours(pix_bws):
@@ -325,15 +485,17 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
     pix_combine = combine_1_byte_neighbours(pix_bws)
     pix_combines = [pix_combine]
 
+    bit_neighbor_manipulation = BitNeighborManipulation(ft=2, with_frame=with_frame)
+
     # so long there are white pixels, repeat the elimination_process!
+    # TODO: or add an termination point too!
     it = 1
     # repeat anything until it is complete blank / black / 0
-    while np.sum([np.sum(pix_bw == 1) for pix_bw in pix_bws]) > 0:
+    while np.sum([np.sum(pix_bw == 1) for pix_bw in pix_bws]) > 0 and (it < max_iterations if max_iterations > 0 else True):
         if it%10 == 0:
             print("it: {}".format(it))
         
-        for i in range(0, 24):
-            pix_bws[i] = apply_neighbour_logic(pix_bws[i], choosen_algo=it%4)
+        pix_bws = bit_neighbor_manipulation.apply_neighbor_logic(pix_bws)
 
         pix_combine = combine_1_byte_neighbours(pix_bws)
         pix_combines.append(pix_combine)
@@ -342,11 +504,12 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
     # now take each image and interpolate between each image e.g. 10 samples
     def get_pix_between(pix_1, pix_2, alpha=0.5):
         return (pix_1.astype(np.float)*alpha+pix_2.astype(np.float)*(1.-alpha)).astype(np.uint8)
+    
     arr_pix_combines = np.array(pix_combines)
     path_template = path_pictures+"rnd_{}_{}_bw_i_{{:03}}_{{:02}}.png".format(height, width)
     for i, (pix_1, pix_2) in enumerate(zip(pix_combines[:-1], pix_combines[1:])):
         Image.fromarray(pix_1).save(path_template.format(i, 0))
-        amount_combines = 5
+        amount_combines = 1
         for j in range(1, amount_combines):
             print("i: {}, j: {}".format(i, j))
             Image.fromarray(get_pix_between(pix_1, pix_2, float(amount_combines-j)/amount_combines)).save(path_template.format(i, j))
@@ -361,7 +524,7 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
                 continue
 
             for file_name in files:
-                if not ".png" in file_name:
+                if not ".png" in file_name or file_name == "orig_image.png":
                     print("continue: file_name: {}".format(file_name))
                     continue
                 print("Resize, convert and reduce quality for file: '{}'".format(file_name))
@@ -374,6 +537,9 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
         arr = np.sort(np.array(files))
         file_num = 0
         for file_name in arr:
+            if not ".png" in file_name or file_name == "orig_image.png":
+                continue
+
             if file_num == 0:
                 for _ in range(0, 3):
                     os.system("cp {} pic_{:04d}.png".format(file_name, file_num))
@@ -382,7 +548,7 @@ def create_3_byte_neighbour_pictures(img_type, f_args):
             file_num += 1
 
     random_64_bit_num = get_random_64_bit_number(4)
-    suffix = "_{}_{}_{}_{}".format(img_type, height, width, random_64_bit_num)
+    suffix = "_{}_{}_{}_{}_{}".format(img_type, height, width, (lambda x: "-".join(list(map(str, x.bit_operators_idx[:x.max_bit_operators]))))(bit_neighbor_manipulation), random_64_bit_num)
     print("Create an animation (gif) with png's and suffix '{}'!".format(suffix))
     os.system("convert -delay 5 -loop 0 *.png ../../{}animated{}.gif".format(path_animations, suffix))
     print("Create an animation (mp4) with png's and suffix '{}'!".format(suffix))
@@ -399,7 +565,17 @@ if __name__ == "__main__":
 
     # create_1_bit_neighbour_pictures(height, width)
     # create_1_byte_neighbour_pictures(height, width)
-    create_3_byte_neighbour_pictures("random", (height, width))
+    # create_3_byte_neighbour_pictures("random", (height, width, False))
+
+    # create_3_byte_neighbour_pictures("random", height=height, width=width, same_image=False, with_frame=True)
+    # TODO: make the system call multithreaded!
+    create_3_byte_neighbour_pictures("random",
+                                     height=height,
+                                     width=width,
+                                     same_image=True,
+                                     with_frame=True,
+                                     max_iterations=128)
+
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
     # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
-    create_3_byte_neighbour_pictures("picture", ("images/fall-autumn-red-season_resized.jpg", ))
+    # create_3_byte_neighbour_pictures("picture", image_path="images/fall-autumn-red-season_resized.jpg", )
