@@ -14,10 +14,12 @@ def get_random_64_bit_number(n):
     arr = np.array(list(s))
     return "".join(np.random.choice(arr, (n, )).tolist())
 
+# TODO: create an object out of these apply able functions
 def apply_neighbour_logic(pix_bw, choosen_algo=0):
+    ft = 3 # frame_thickness
     # add the frame to the image with itself
     # e.g. the left 2 cols add to the right side, and vice versa for all other sides
-    pix_bw = (lambda x: np.hstack((x[:, -2:], x, x[:, :2])))(np.vstack((pix_bw[-2:], pix_bw, pix_bw[:2])).copy())
+    pix_bw = (lambda x: np.hstack((x[:, -ft:], x, x[:, :ft])))(np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft])).copy())
     
     height, width = pix_bw.shape[:2]
 
@@ -29,56 +31,39 @@ def apply_neighbour_logic(pix_bw, choosen_algo=0):
     move_arr_l = lambda pix_bw: np.hstack((pix_bw[:, 1:], zero_col))
     move_arr_r = lambda pix_bw: np.hstack((zero_col, pix_bw[:, :-1]))
 
-    pixs = np.zeros((5, 5, height, width), dtype=np.uint8)
-    pixs[2, 2] = pix_bw
+    pixs = np.zeros((ft*2+1, ft*2+1, height, width), dtype=np.uint8)
+    pixs[ft, ft] = pix_bw
 
-    for i in range(2, 0, -1):
-        pixs[i-1, 2] = move_arr_u(pixs[i, 2])
-    for i in range(2, 4):
-        pixs[i+1, 2] = move_arr_d(pixs[i, 2])
+    # first set all y pixs (center ones)
+    for i in range(ft, 0, -1):
+        pixs[i-1, ft] = move_arr_u(pixs[i, ft])
+    for i in range(ft, 4):
+        pixs[i+1, ft] = move_arr_d(pixs[i, ft])
 
+    # then set all x pixs (except the center ones, they are already set)
     for j in range(0, 5):
-        for i in range(2, 0, -1):
+        for i in range(ft, 0, -1):
             pixs[j, i-1] = move_arr_l(pixs[j, i])
-        for i in range(2, 4):
+        for i in range(ft, 4):
             pixs[j, i+1] = move_arr_r(pixs[j, i])
 
-    var_map = {(2, 2): "pix",
+    # now define for each pix a variable name
+    # e.g. p_urr = pixs[1, 4] for ft == 2
+    # or   p_ddll = pixs[4, 0] also for ft == 2
+    # or   p_ulll = pixs[2, 0] for ft == 3, and so on...
+    variables = ["p"]
+    p = pixs[ft, ft]
+    for y in range(0, ft*2+1):
+        for x in range(0, ft*2+1):
+            if y == ft and x == ft:
+                continue
+            var_name = "p_"+("u"*(ft-y) if y < ft else "d"*(y-ft))+("l"*(ft-x) if x < ft else "r"*(x-ft))
+            variables.append(var_name)
+            exec("globals()['{}'] = pixs[{}, {}]".format(var_name, y, x))
+    
+    pdb.set_trace()
 
-               (1, 2): "p_u",
-               (3, 2): "p_d",
-               (2, 1): "p_l",
-               (2, 3): "p_r",
-
-               (1, 1): "p_ul",
-               (1, 3): "p_ur",
-               (3, 1): "p_dl",
-               (3, 3): "p_dr",
-
-               (0, 2): "p_uu",
-               (4, 2): "p_dd",
-               (2, 0): "p_ll",
-               (2, 4): "p_rr",
-
-               (0, 1): "p_uul",
-               (0, 3): "p_uur",
-               (4, 1): "p_ddl",
-               (4, 3): "p_ddr",
-               (1, 0): "p_ull",
-               (1, 4): "p_urr",
-               (3, 0): "p_dll",
-               (3, 4): "p_drr",
-
-               (0, 0): "p_uull",
-               (0, 4): "p_uurr",
-               (4, 0): "p_ddll",
-               (4, 4): "p_ddrr"}
-
-    for key, value in var_map.items():
-        exec("globals()['{}'] = pixs[{}, {}]".format(value, key[0], key[1]))
-
-    p = pix_bw
-    idx_algo = [1, 3, 4, 2, 11, 7, 9]
+    idx_algo = [0, 1, 3, 4, 2, 11, 7, 9]
     fs = [
         lambda: \
         ((p_uu&p_dd&p_rr&p_ll|p_u&p_d&p_l&p_r)&(p==0))|
