@@ -31,7 +31,7 @@ class BitNeighborManipulation(Exception):
         self.it1 = 0 # for the iterator variable (1st)
         self.it2 = 0 # for the iterator variable (2nd)
 
-        self.max_bit_operators = 1
+        self.max_bit_operators = 4
         self.bit_operators_idx = [0, 1, 2, 3, 1]
 
         # print("len(self.bit_operations): {}".format(len(self.bit_operations)))
@@ -82,6 +82,8 @@ class BitNeighborManipulation(Exception):
         # TODO: should be generic as much as possible for more possibilities later on!
 
         return [
+        lambda:
+        p_ulll,
         lambda:
         p_ul,
         lambda:
@@ -144,11 +146,12 @@ class BitNeighborManipulation(Exception):
                 exec("globals()['{}'] = pixs[{}, {}]".format(var_name, y, x))
 
         pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1)%self.max_bit_operators]]()
-        # pix_bw2 = self.bit_operations[self.bit_operators_idx[(self.it1+1)%self.max_bit_operators]]()
+        pix_bw2 = self.bit_operations[self.bit_operators_idx[(self.it1+1)%self.max_bit_operators]]()
         # pix_bw3 = self.bit_operations[self.bit_operators_idx[(self.it1+2)%self.max_bit_operators]]()
 
         # assert np.sum(pix_prev_1 != pix_prev_2) == 0
-        pix_bw = pix_bw1
+        # pix_bw = pix_bw1
+        pix_bw = pix_bw1^pix_bw2
         # pix_bw = pix_bw1^pix_bw2^pix_bw3
         # pix_bw = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
         self.it2 += 1
@@ -485,7 +488,7 @@ def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_ima
     pix_combine = combine_1_byte_neighbours(pix_bws)
     pix_combines = [pix_combine]
 
-    bit_neighbor_manipulation = BitNeighborManipulation(ft=2, with_frame=with_frame)
+    bit_neighbor_manipulation = BitNeighborManipulation(ft=3, with_frame=with_frame)
 
     # so long there are white pixels, repeat the elimination_process!
     # TODO: or add an termination point too!
@@ -574,8 +577,11 @@ if __name__ == "__main__":
                                      width=width,
                                      same_image=True,
                                      with_frame=True,
-                                     max_iterations=128)
+                                     max_iterations=64)
 
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
     # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
-    # create_3_byte_neighbour_pictures("picture", image_path="images/fall-autumn-red-season_resized.jpg", )
+    # create_3_byte_neighbour_pictures("picture",
+    #                                  image_path="images/fall-autumn-red-season_resized.jpg",
+    #                                  with_frame=True,
+    #                                  max_iterations=96)
