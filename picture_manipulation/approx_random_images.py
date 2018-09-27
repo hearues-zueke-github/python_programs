@@ -1,5 +1,6 @@
 #! /usr/bin/python3.6
 
+import dill
 import os
 import pdb
 import shutil
@@ -8,6 +9,7 @@ import sys
 
 import numpy as np
 
+from dotmap import DotMap
 from PIL import Image
 
 def get_random_64_bit_number(n):
@@ -15,9 +17,8 @@ def get_random_64_bit_number(n):
     arr = np.array(list(s))
     return "".join(np.random.choice(arr, (n, )).tolist())
 
-# TODO: create an object out of these apply able functions
 class BitNeighborManipulation(Exception):
-    def __init__(self, ft=2, with_frame=True):
+    def __init__(self, ft=2, with_frame=True, path_lambda_functions=None):
         self.ft = ft
         if with_frame:
             self.add_frame = self._get_add_frame_function() # function
@@ -26,15 +27,13 @@ class BitNeighborManipulation(Exception):
             self.add_frame = None
             self.remove_frame = None
 
+        self.max_bit_operators = 4
+        self.bit_operators_idx = [0, 1, 2, 3]
+        
         self.get_pixs = self._generate_pixs_function() # function
-        self.bit_operations = self._generate_lambda_functions() # list of lambdas
+        self.bit_operations = self._generate_lambda_functions(path_lambda_functions) # list of lambdas
         self.it1 = 0 # for the iterator variable (1st)
         self.it2 = 0 # for the iterator variable (2nd)
-
-        self.max_bit_operators = 4
-        self.bit_operators_idx = [0, 1, 2, 3, 1]
-
-        # print("len(self.bit_operations): {}".format(len(self.bit_operations)))
 
     def _get_add_frame_function(self):
         ft = self.ft
@@ -63,24 +62,41 @@ class BitNeighborManipulation(Exception):
             # first set all y pixs (center ones)
             for i in range(ft, 0, -1):
                 pixs[i-1, ft] = move_arr_u(pixs[i, ft])
-            for i in range(ft, 4):
+            for i in range(ft, ft*2):
                 pixs[i+1, ft] = move_arr_d(pixs[i, ft])
 
             # then set all x pixs (except the center ones, they are already set)
-            for j in range(0, 5):
+            for j in range(0, ft*2+1):
                 for i in range(ft, 0, -1):
                     pixs[j, i-1] = move_arr_l(pixs[j, i])
-                for i in range(ft, 4):
+                for i in range(ft, ft*2):
                     pixs[j, i+1] = move_arr_r(pixs[j, i])
 
             return pixs
 
         return generate_pixs
 
-    def _generate_lambda_functions(self):
+    def _generate_lambda_functions(self, path_lambda_functions):
         # TODO: make it as simple as possible for the beginning!!!
         # TODO: should be generic as much as possible for more possibilities later on!
 
+        if not os.path.exists(path_lambda_functions):
+            print("File path '{}' does not exists!".fornat(path_lambda_functions))
+            print("Will use default lambda functions then instead!")
+            sys.exit(-1)
+
+        with open(path_lambda_functions, "r") as fin:
+            # lines = fin.readlines()
+            lines = list(filter(lambda x: len(x) > 0, fin.read().splitlines()))
+
+        lambdas = [eval(line) for line in lines]
+        self.max_bit_operators = 5
+        # self.max_bit_operators = len(lambdas)
+        # pdb.set_trace()
+
+        return lambdas
+
+        # TODO: make this as the default lambdas list!
         return [
         lambda:
         p_ulll,
@@ -141,12 +157,17 @@ class BitNeighborManipulation(Exception):
             for x in range(0, ft*2+1):
                 if y == ft and x == ft:
                     continue
-                var_name = "p_"+("u"*(ft-y) if y < ft else "d"*(y-ft))+("l"*(ft-x) if x < ft else "r"*(x-ft))
+                # Removed "p_" at the beginning of each variable name!
+                var_name = ("u"*(ft-y) if y < ft else "d"*(y-ft))+("l"*(ft-x) if x < ft else "r"*(x-ft))
                 # variables.append(var_name)
                 exec("globals()['{}'] = pixs[{}, {}]".format(var_name, y, x))
 
-        pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1)%self.max_bit_operators]]()
-        pix_bw2 = self.bit_operations[self.bit_operators_idx[(self.it1+1)%self.max_bit_operators]]()
+        # idxs_lambda = (self.it1+self.it2)%self.max_bit_operators
+        # idxs_lambda = (self.it1)%self.max_bit_operators
+        # pix_bw1 = self.bit_operations[idxs_lambda]()
+        # pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
+        pix_bw1 = self.bit_operations[(self.it1)%self.max_bit_operators]()
+        pix_bw2 = self.bit_operations[(self.it1+1)%self.max_bit_operators]()
         # pix_bw3 = self.bit_operations[self.bit_operators_idx[(self.it1+2)%self.max_bit_operators]]()
 
         # assert np.sum(pix_prev_1 != pix_prev_2) == 0
@@ -163,212 +184,13 @@ class BitNeighborManipulation(Exception):
     def apply_neighbor_logic(self, pix_bws):
         pix_bws_new = []
 
+        self.it2 = 0
         for i, pix_bw in enumerate(pix_bws):
            pix_bws_new.append(self.apply_neighbor_logic_1_bit(pix_bw))
         self.it1 += 1
 
         return pix_bws_new
 
-
-def apply_neighbour_logic(pix_bw, choosen_algo=0):
-    ft = 3 # frame_thickness
-    # add the frame to the image with itself
-    # e.g. the left 2 cols add to the right side, and vice versa for all other sides
-    pix_bw = lambda pix_bw: (lambda x: np.hstack((x[:, -ft:], x, x[:, :ft])))(np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft])).copy())
-    
-    height, width = pix_bw.shape[:2]
-
-    zero_row = np.zeros((width, ), dtype=np.uint8)
-    zero_col = np.zeros((height, 1), dtype=np.uint8)
-
-    move_arr_u = lambda pix_bw: np.vstack((pix_bw[1:], zero_row))
-    move_arr_d = lambda pix_bw: np.vstack((zero_row, pix_bw[:-1]))
-    move_arr_l = lambda pix_bw: np.hstack((pix_bw[:, 1:], zero_col))
-    move_arr_r = lambda pix_bw: np.hstack((zero_col, pix_bw[:, :-1]))
-
-    pixs = np.zeros((ft*2+1, ft*2+1, height, width), dtype=np.uint8)
-    pixs[ft, ft] = pix_bw
-
-    # first set all y pixs (center ones)
-    for i in range(ft, 0, -1):
-        pixs[i-1, ft] = move_arr_u(pixs[i, ft])
-    for i in range(ft, 4):
-        pixs[i+1, ft] = move_arr_d(pixs[i, ft])
-
-    # then set all x pixs (except the center ones, they are already set)
-    for j in range(0, 5):
-        for i in range(ft, 0, -1):
-            pixs[j, i-1] = move_arr_l(pixs[j, i])
-        for i in range(ft, 4):
-            pixs[j, i+1] = move_arr_r(pixs[j, i])
-
-    # now define for each pix a variable name
-    # e.g. p_urr = pixs[1, 4] for ft == 2
-    # or   p_ddll = pixs[4, 0] also for ft == 2
-    # or   p_ulll = pixs[2, 0] for ft == 3, and so on...
-    variables = ["p"]
-    p = pixs[ft, ft]
-    for y in range(0, ft*2+1):
-        for x in range(0, ft*2+1):
-            if y == ft and x == ft:
-                continue
-            var_name = "p_"+("u"*(ft-y) if y < ft else "d"*(y-ft))+("l"*(ft-x) if x < ft else "r"*(x-ft))
-            variables.append(var_name)
-            exec("globals()['{}'] = pixs[{}, {}]".format(var_name, y, x))
-    
-    pdb.set_trace()
-
-    idx_algo = [0, 1, 3, 4, 2, 11, 7, 9]
-    fs = [
-        lambda: \
-        ((p_uu&p_dd&p_rr&p_ll|p_u&p_d&p_l&p_r)&(p==0))|
-        ((p_uull&p_uurr&p_ddll&p_ddrr|p_ul&p_ur&p_dl&p_dr)&(p==1)),
-        lambda: \
-        ((p_u&p_r|p_ur&p_dr)&(p==0))|
-        ((p_d&p_l|p_ul&p_dl)&(p==1)),
-        lambda: \
-        ((p_u&p_l)&(p==0))^
-        ((p_d&p_r)&(p==1)),
-        lambda: \
-        ((p_u&p_l|p_d&p_r)&(p==1))^
-        ((p_u&p_d|p_l&p_r)&(p==0))^
-        ((p_u&p_d&p_l&p_r)),
-        lambda: \
-        ((p_u&p_l|p_d&p_r)&(p==0))^
-        ((p_u&p_d|p_l&p_r)&(p==1))^
-        ((p_u&p_d&p_l&p_r)),
-        lambda: \
-        ((p_u&p_r|p_d&p_l)&(p==1))^
-        ((p_u&p_l|p_l&p_d)&(p==0))^
-        ((p_u&p_d&p_l&p_r)),
-        lambda: \
-        ((p_u&p_r|p_d&p_l)&(p==0))^
-        ((p_u&p_l|p_r&p_d)&(p==1))^
-        ((p_u&p_d&p_l&p_r)),
-        lambda: \
-        ((p_u&p_r&p_d|p_l)&(p==1))^
-        ((p_u&p_r|p_l&p_d)&(p==0))^
-        ((p_u&p_d&p_l&p_r)),
-        lambda: \
-        ((p_u&p_r&p_d|p_l)&(p==1))^
-        ((p_u&p_r|p_l&p_d)&(p==0))^
-        ((p_u&p_d&p_l&p_r)),
-        
-        lambda: \
-        ((p_u&p_d|p_l&p_r)&(p==0))^
-        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
-
-        lambda:
-        (((p_uu&p_u)^(p_dd&p_d))&(p==0))|
-        (((p_ll&p_l)|(p_rr&p_r))&(p==1)),
-        lambda:
-        (((p_uu&p_u)&(p_dd&p_d))&(p==1))|
-        (((p_ll&p_l)^(p_rr&p_r))&(p==0)),
-        
-        lambda:
-        ((p_uu&p_dd)&(p==0))|
-        ((p_ll&p_rr)&(p==1)),
-        lambda:
-        ((p_uu&p_dd)&(p==1))^
-        ((p_ll&p_rr)&(p==0)),
-
-        lambda: \
-        ((p_ul&p_u&p_ur&p_d)&(p==0))^
-        ((p_l&p_r&p_dl&p_dr)&(p==1)),
-        lambda: \
-        ((p_dl&p_d&p_dr&p_u)&(p==0))^
-        ((p_l&p_r&p_ul&p_ur)&(p==1)),
-        lambda: \
-        ((p_ul&p_l&p_dl&p_r)&(p==0))^
-        ((p_u&p_d&p_ur&p_dr)&(p==1)),
-        lambda: \
-        ((p_ur&p_r&p_dr&p_l)&(p==0))^
-        ((p_u&p_d&p_ul&p_dl)&(p==1)),
-
-        lambda: \
-        ((p_u&p_d&p_l&p_r)&(p==0))^
-        ((p_ul&p_ur&p_dl&p_dr)&(p==1)),
-        lambda: \
-        ((p_u&p_d&p_l&p_r)&(p==1))^
-        ((p_ul&p_ur&p_dl&p_dr)&(p==0)),
-        lambda: \
-        ((p_u&p_d|p_l&p_r)&(p==0))|
-        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
-        
-        lambda: \
-        (p_u&p_ur&p_r&p_dr)|
-        (p_ur&p_r&p_dr&p_d)|
-        (p_r&p_dr&p_d&p_dl)|
-        (p_dr&p_d&p_dl&p_l)|
-        (p_d&p_dl&p_l&p_ul)|
-        (p_dl&p_l&p_ul&p_u)|
-        (p_l&p_ul&p_u&p_ur)|
-        (p_ul&p_u&p_ur&p_r),
-        lambda: \
-        (p_u&p_ur&p_r&p_dr&p_d)|
-        (p_ur&p_r&p_dr&p_d&p_dl)|
-        (p_r&p_dr&p_d&p_dl&p_l)|
-        (p_dr&p_d&p_dl&p_l&p_ul)|
-        (p_d&p_dl&p_l&p_ul&p_u)|
-        (p_dl&p_l&p_ul&p_u&p_ur)|
-        (p_l&p_ul&p_u&p_ur&p_r)|
-        (p_ul&p_u&p_ur&p_r&p_dr),
-
-        lambda: \
-        (p_u&p_ur&p_r)|
-        (p_ur&p_r&p_dr)|
-        (p_r&p_dr&p_d)|
-        (p_dr&p_d&p_dl)|
-        (p_d&p_dl&p_l)|
-        (p_dl&p_l&p_ul)|
-        (p_l&p_ul&p_u)|
-        (p_ul&p_u&p_ur),
-        
-        lambda: \
-        ((p_u&p_r)|(p_l&p_d))&((p_ul&p_ur)|(p_dl&p_dr)),
-        
-        lambda: \
-        ((p_u&p_d)|(p_l&p_r))^((p_ul&p_dr)|(p_dl&p_ur)),
-        lambda: \
-        ((p_u&p_r)|(p_l&p_d))^((p_ul&p_ur)|(p_dl&p_dr)),
-        
-        lambda: \
-        ((p_u&p_d|p_l&p_r)&(p==0))|
-        ((p_ul&p_ur|p_dl&p_dr)&(p==1)),
-        lambda: \
-        ((p_u&p_d|p_l&p_r)&(p==1))|
-        ((p_ul&p_ur|p_dl&p_dr)&(p==0)),
-        
-        lambda: \
-        ((p_ul&p_u&p_ur|p_dl&p_d&p_dr)&(p==0))|
-        ((p_ul&p_l&p_dl|p_ur&p_r&p_dr)&(p==1)),
-        lambda: \
-        ((p_ul&p_u&p_ur|p_dl&p_d&p_dr)&(p==1))|
-        ((p_ul&p_l&p_dl|p_ur&p_r&p_dr)&(p==0)),
-        
-        lambda: \
-        ((p_ul&p_u&p_ur|p_ul&p_l&p_dl)&(p==0))|
-        ((p_dl&p_d&p_dr|p_ur&p_r&p_dr)&(p==1)),
-        lambda: \
-        ((p_ul&p_u&p_ur|p_ul&p_l&p_dl)&(p==1))|
-        ((p_dl&p_d&p_dr|p_ur&p_r&p_dr)&(p==0)),
-        
-        lambda: \
-        ((p_ul&p_u&p_ur|p_ur&p_r&p_dr)&(p==0))|
-        ((p_dl&p_d&p_dr|p_ul&p_l&p_dl)&(p==1)),
-        lambda: \
-        ((p_ul&p_u&p_ur|p_ur&p_r&p_dr)&(p==1))|
-        ((p_dl&p_d&p_dr|p_ul&p_l&p_dl)&(p==0))
-        ]
-
-    pix_bw_1 = fs[idx_algo[choosen_algo]]()
-    pix_bw_2 = fs[idx_algo[choosen_algo+1]]()
-    pix_bw_3 = fs[idx_algo[choosen_algo+2]]()
-    pix_bw = (pix_bw_1^pix_bw_2^pix_bw_3).astype(np.uint8)
-
-    # remove the frame from the image again
-    return pix_bw[2:-2, 2:-2]
-    # return pix_bw
 
 def create_1_bit_neighbour_pictures(height, width):
     path_pictures = "images/changing_bw_1_bit_{}_{}/".format(height, width)
@@ -388,6 +210,7 @@ def create_1_bit_neighbour_pictures(height, width):
     while np.sum(pix_bw == 1) > 0:
         print("it: {}".format(it))
         
+        # TODO: need to be fixed!
         pix_bw = apply_neighbour_logic(pix_bw)
 
         Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
@@ -419,13 +242,17 @@ def create_1_byte_neighbour_pictures(height, width):
         print("it: {}".format(it))
         
         for i in range(0, 8):
+            # TODO: need to be fixed!
             pix_bws[i] = apply_neighbour_logic(pix_bws[i])
 
         pix_combine = combine_1_bit_neighbours(pix_bws)
         Image.fromarray(pix_combine).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
 
-def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_image=None, with_frame=None, image_path=None, max_iterations=-1):
+def create_3_byte_neighbour_pictures(img_type,
+    height=None, width=None, same_image=None, with_frame=None,
+    image_path=None, max_iterations=-1, path_lambda_functions=None,
+    resize_params=None, ft=2):
     prev_folder = os.getcwd()
 
     get_pix_bws_from_pix_img = lambda pix_img: [(pix_c>>j)&0x1 for pix_c in [pix_img[:, :, i] for i in range(0, 3)] for j in range(0, 8)]
@@ -445,7 +272,10 @@ def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_ima
         path_pictures = "images/changing_image_{}_{}/".format(height, width)
         
     elif img_type == "random":
-        if height == None or width == None or same_image == None or with_frame == None:
+        if height == None or \
+           width == None or \
+           same_image == None or \
+           with_frame == None:
             system.exit(-1)
 
         path_pictures = "images/changing_bw_3_byte_{}_{}/".format(height, width)
@@ -488,7 +318,7 @@ def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_ima
     pix_combine = combine_1_byte_neighbours(pix_bws)
     pix_combines = [pix_combine]
 
-    bit_neighbor_manipulation = BitNeighborManipulation(ft=3, with_frame=with_frame)
+    bit_neighbor_manipulation = BitNeighborManipulation(ft=ft, with_frame=with_frame, path_lambda_functions=path_lambda_functions)
 
     # so long there are white pixels, repeat the elimination_process!
     # TODO: or add an termination point too!
@@ -533,6 +363,7 @@ def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_ima
                 print("Resize, convert and reduce quality for file: '{}'".format(file_name))
                 os.system("convert {} -filter Point -resize 256x256 +antialias {}".format(file_name, file_name))
     
+    num_copies_first_image = 3
     for root_dir, dirs, files in os.walk("."):
         if not root_dir == ".":
             continue
@@ -544,20 +375,38 @@ def create_3_byte_neighbour_pictures(img_type, height=None, width=None, same_ima
                 continue
 
             if file_num == 0:
-                for _ in range(0, 3):
+                for _ in range(0, num_copies_first_image):
                     os.system("cp {} pic_{:04d}.png".format(file_name, file_num))
                     file_num += 1
             os.system("mv {} pic_{:04d}.png".format(file_name, file_num))
             file_num += 1
 
     random_64_bit_num = get_random_64_bit_number(4)
-    suffix = "_{}_{}_{}_{}_{}".format(img_type, height, width, (lambda x: "-".join(list(map(str, x.bit_operators_idx[:x.max_bit_operators]))))(bit_neighbor_manipulation), random_64_bit_num)
+    suffix_temp = "_{}_{{}}_{{}}_{}".format(img_type, random_64_bit_num)
+    suffix = suffix_temp.format(height, width)
+
+    # suffix = "_{}_{}_{}_{}_{}".format(img_type, height, width, (lambda x: "-".join(list(map(str, x.bit_operators_idx[:x.max_bit_operators]))))(bit_neighbor_manipulation), random_64_bit_num)
     print("Create an animation (gif) with png's and suffix '{}'!".format(suffix))
     os.system("convert -delay 5 -loop 0 *.png ../../{}animated{}.gif".format(path_animations, suffix))
     print("Create an animation (mp4) with png's and suffix '{}'!".format(suffix))
     os.system("ffmpeg -r 20 -i pic_%04d.png -vcodec mpeg4 -y ../../{}movie{}.mp4".format(path_movies, suffix))
 
     os.chdir(prev_folder)
+    if resize_params != None:
+        os.chdir(path_animations)
+
+        new_height = height-resize_params[0]-resize_params[1]
+        new_width = width-resize_params[2]-resize_params[3]
+        
+        orig_animated_file_name = "animated{}.gif".format(suffix_temp.format(height, width))
+        modif_animated_file_name = "animated{}.gif".format(suffix_temp.format(new_height, new_width))
+        print("Now crop the image! (only when needed!)")
+        os.system("convert {} -coalesce -repage 0x0 -crop {}x{}+{}+{} +repage {}".format(
+            orig_animated_file_name,
+            # new_width, new_height, resize_params[2], resize_params[0],
+            new_width, new_height, resize_params[3], resize_params[1],
+            modif_animated_file_name))
+
 
 if __name__ == "__main__":
     # height = 64
@@ -572,16 +421,34 @@ if __name__ == "__main__":
 
     # create_3_byte_neighbour_pictures("random", height=height, width=width, same_image=False, with_frame=True)
     # TODO: make the system call multithreaded!
-    create_3_byte_neighbour_pictures("random",
-                                     height=height,
-                                     width=width,
-                                     same_image=True,
-                                     with_frame=True,
-                                     max_iterations=64)
 
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
     # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
-    # create_3_byte_neighbour_pictures("picture",
-    #                                  image_path="images/fall-autumn-red-season_resized.jpg",
+    
+    max_iterations = 70
+    resize_params = None
+    ft = 3
+
+    # with open("lambda_functions/resize_params_2.pkl", "rb") as fout:
+    #     dm = dill.load(fout)
+    # resize_params = dm.resize_params
+    # max_iterations = dm.max_iterations
+    # print("resize_params: {}".format(resize_params))
+    # print("max_iterations: {}".format(max_iterations))
+
+    # create_3_byte_neighbour_pictures("random",
+    #                                  height=height,
+    #                                  width=width,
+    #                                  same_image=True,
     #                                  with_frame=True,
-    #                                  max_iterations=96)
+    #                                  path_lambda_functions="lambda_functions/lambdas_3.txt",
+    #                                  max_iterations=max_iterations,
+    #                                  ft=ft)
+    
+    create_3_byte_neighbour_pictures("picture",
+                                     image_path="images/fall-autumn-red-season_resized.jpg",
+                                     with_frame=True,
+                                     path_lambda_functions="lambda_functions/lambdas_3.txt",
+                                     max_iterations=max_iterations,
+                                     resize_params=resize_params,
+                                     ft=ft)
