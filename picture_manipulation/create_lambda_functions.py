@@ -117,7 +117,7 @@ def create_lambda_functions_2(path_lambda_functions):
         dill.dump(dm, fout)
 
 
-def create_lambda_functions_3(path_lambda_functions):
+def create_lambda_functions_3(path_lambda_functions, tf=2):
     n = np.random.randint(5, 31)
     moves_operations = []
     def get_rnd_move():
@@ -125,14 +125,19 @@ def create_lambda_functions_3(path_lambda_functions):
         used_ud = np.random.randint(0, 2) == 0
         used_lr = np.random.randint(0, 2) == 0
         if used_ud:
-            moves += ("u" if np.random.randint(0, 2) == 0 else "d")*np.random.randint(1, 2)
+            moves += ("u" if np.random.randint(0, 2) == 0 else "d")*np.random.randint(1, tf+1)
         if not used_ud or used_lr:
-            moves += ("l" if np.random.randint(0, 2) == 0 else "r")*np.random.randint(1, 2)
+            moves += ("l" if np.random.randint(0, 2) == 0 else "r")*np.random.randint(1, tf+1)
         return moves
 
+    def get_and_concat():
+        return "&".join([get_rnd_move() for _ in range(0, np.random.randint(2, 5))]+([] if np.random.randint(0, (tf*2+1)**2) != 0 else ["p"]))
+
+    def get_or_concat():
+        return "|".join([get_and_concat() for _ in range(0, np.random.randint(4, 12))])
+
     for i in range(0, n):
-        # print("i: {}".format(i))
-        moves = "|".join(["&".join([get_rnd_move() for _ in range(0, np.random.randint(2, 5))]) for _ in range(0, np.random.randint(4, 12))])
+        moves = get_or_concat()
         moves_operations.append(moves)
 
     with open(path_lambda_functions+"lambdas_3.txt", "w") as fout:
@@ -140,6 +145,123 @@ def create_lambda_functions_3(path_lambda_functions):
             print("moves_operation: {}".format(moves_operation))
             fout.write("lambda: {}\n".format(moves_operation))
 
+def create_lambda_functions_4(path_lambda_functions, tf=2):
+    n = np.random.randint(20, 51)
+    # create a list of all moves
+    all_moves = ["u"*i for i in range(1, tf+1)]+\
+                ["d"*i for i in range(1, tf+1)]+\
+                ["l"*i for i in range(1, tf+1)]+\
+                ["r"*i for i in range(1, tf+1)]+\
+                ["u"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["u"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["d"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["d"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["p"]
+    all_moves = np.array(all_moves)
+    print("all_moves: {}".format(all_moves))
+    print("all_moves.shape: {}".format(all_moves.shape))
+
+    moves_operations = []
+    moves_operations_bits = []
+    moves_operations_sizes = []
+
+    def get_permutated_1_0():
+        arr = np.zeros((all_moves.shape[0], ), dtype=np.int)
+        and_concats = np.random.randint(3, 6)
+        arr[:and_concats] = 1
+        return np.random.permutation(arr)
+
+    for i in range(0, n):
+        # this is a matrix with 1's and 0's but with each row containing 2-4 1's e.g.
+        # also there can be 2-6 lines e.g., sooo this matrix has the dimension
+        # in this case (6, all_moves.shape[0])
+        or_concats = np.random.randint(2, 9)
+        moves_bits_arr = np.vstack((get_permutated_1_0() for _ in range(0, or_concats)))
+        moves_operations_bits.append(moves_bits_arr)
+        moves_operations_sizes.append(moves_bits_arr.shape[0])
+        moves = "|".join(["&".join(all_moves[bits_row==1]) for bits_row in moves_bits_arr])
+        moves_operations.append(moves)
+
+        print("\ni: {}".format(i))
+        print("moves_bits_arr:\n{}".format(moves_bits_arr))
+        print("moves: {}".format(moves))
+
+    print("\nmoves_operations_sizes: {}".format(moves_operations_sizes))
+
+    with open(path_lambda_functions+"lambdas_4.txt", "w") as fout:
+        for moves_operation in moves_operations:
+            # print("moves_operation: {}".format(moves_operation))
+            fout.write("lambda: {}\n".format(moves_operation))
+
+    # globals()["mdoves_operations"] = moves_operations
+    # globals()["moves_operations_bits"] = moves_operations_bits
+    # globals()["moves_operations_sizes"] = moves_operations_sizes
+
+def create_lambda_functions_5(path_lambda_functions, tf=2):
+    n = np.random.randint(20, 51)
+    # create a list of all moves
+    all_moves = ["u"*i for i in range(1, tf+1)]+\
+                ["d"*i for i in range(1, tf+1)]+\
+                ["l"*i for i in range(1, tf+1)]+\
+                ["r"*i for i in range(1, tf+1)]+\
+                ["u"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["u"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["d"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["d"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
+                ["p"]
+    all_moves = np.array(all_moves)
+    print("all_moves: {}".format(all_moves))
+    print("all_moves.shape: {}".format(all_moves.shape))
+
+    moves_operations = []
+    moves_operations_bits = []
+    moves_operations_sizes = []
+
+    def get_permutated_1_0():
+        arr = np.zeros((all_moves.shape[0], ), dtype=np.int)
+        and_concats = np.random.randint(2, 5)
+        arr[:and_concats] = 1
+        return np.random.permutation(arr)
+
+    for i in range(0, n):
+        # this is a matrix with 1's and 0's but with each row containing 2-4 1's e.g.
+        # also there can be 2-6 lines e.g., sooo this matrix has the dimension
+        # in this case (6, all_moves.shape[0])
+        or_concats = np.random.randint(2, 8)
+        moves_bits_arr = np.vstack((get_permutated_1_0() for _ in range(0, or_concats)))
+        moves_operations_bits.append(moves_bits_arr)
+        moves_operations_sizes.append(moves_bits_arr.shape[0])
+        
+    # find duplicates in moves_operations_bits
+
+    k = 0
+    check_if_equal = lambda x, y: np.sum(x!=y)==0 if x.shape == y.shape else False
+    check_if_in_lst = lambda k, xs: (lambda x: np.sum([check_if_equal(x, y) for i, y in enumerate(xs) if i != k]) != 0)(xs[k])
+    print("len(moves_operations_bits): {}".format(len(moves_operations_bits)))
+    for k in range(len(moves_operations_bits)-1, 0, -1):
+        if check_if_in_lst(k, moves_operations_bits):
+            print("moves_operations_bits[k]: {}".format(moves_operations_bits[k]))
+            moves_operations_bits.pop(k)
+    print("len(moves_operations_bits): {}".format(len(moves_operations_bits)))
+
+    for moves_bits_arr in moves_operations_bits:
+        moves = "|".join(["&".join(all_moves[bits_row==1]) for bits_row in moves_bits_arr])
+        moves_operations.append(moves)
+
+        print("\ni: {}".format(i))
+        print("moves_bits_arr:\n{}".format(moves_bits_arr))
+        print("moves: {}".format(moves))
+
+    print("\nmoves_operations_sizes: {}".format(moves_operations_sizes))
+
+    with open(path_lambda_functions+"lambdas_5.txt", "w") as fout:
+        for moves_operation in moves_operations:
+            # print("moves_operation: {}".format(moves_operation))
+            fout.write("lambda: {}\n".format(moves_operation))
+
+    # globals()["mdoves_operations"] = moves_operations
+    # globals()["moves_operations_bits"] = moves_operations_bits
+    # globals()["moves_operations_sizes"] = moves_operations_sizes
 
 if __name__ == "__main__":
     path_lambda_functions = "lambda_functions/"
@@ -150,4 +272,6 @@ if __name__ == "__main__":
     # create lambda for shaking images
     # create_lambda_functions_2(path_lambda_functions)
     
-    create_lambda_functions_3(path_lambda_functions)
+    # create_lambda_functions_3(path_lambda_functions)
+    # create_lambda_functions_4(path_lambda_functions)
+    create_lambda_functions_5(path_lambda_functions)

@@ -77,8 +77,6 @@ class BitNeighborManipulation(Exception):
         return generate_pixs
 
     def _generate_lambda_functions(self, path_lambda_functions):
-        # TODO: make it as simple as possible for the beginning!!!
-        # TODO: should be generic as much as possible for more possibilities later on!
 
         if not os.path.exists(path_lambda_functions):
             print("File path '{}' does not exists!".fornat(path_lambda_functions))
@@ -89,9 +87,11 @@ class BitNeighborManipulation(Exception):
             # lines = fin.readlines()
             lines = list(filter(lambda x: len(x) > 0, fin.read().splitlines()))
 
+        # TODO: check every single line, if it is matching with the variable convention!
+        # TODO: add a security function, where each line will be checked up
         lambdas = [eval(line) for line in lines]
-        self.max_bit_operators = 5
-        # self.max_bit_operators = len(lambdas)
+        # self.max_bit_operators = 5
+        self.max_bit_operators = len(lambdas)
         # pdb.set_trace()
 
         return lambdas
@@ -167,12 +167,12 @@ class BitNeighborManipulation(Exception):
         # pix_bw1 = self.bit_operations[idxs_lambda]()
         # pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
         pix_bw1 = self.bit_operations[(self.it1)%self.max_bit_operators]()
-        pix_bw2 = self.bit_operations[(self.it1+1)%self.max_bit_operators]()
+        # pix_bw2 = self.bit_operations[(self.it1+1)%self.max_bit_operators]()
         # pix_bw3 = self.bit_operations[self.bit_operators_idx[(self.it1+2)%self.max_bit_operators]]()
 
         # assert np.sum(pix_prev_1 != pix_prev_2) == 0
-        # pix_bw = pix_bw1
-        pix_bw = pix_bw1^pix_bw2
+        pix_bw = pix_bw1
+        # pix_bw = pix_bw1^pix_bw2
         # pix_bw = pix_bw1^pix_bw2^pix_bw3
         # pix_bw = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
         self.it2 += 1
@@ -252,11 +252,14 @@ def create_1_byte_neighbour_pictures(height, width):
 def create_3_byte_neighbour_pictures(img_type,
     height=None, width=None, same_image=None, with_frame=None,
     image_path=None, max_iterations=-1, path_lambda_functions=None,
-    resize_params=None, ft=2):
+    resize_params=None, ft=2, num_copies_first_image=3,
+    amount_combines=1, gif_delay=5, fps_movie=20, folder_suffix=""):
     prev_folder = os.getcwd()
 
     get_pix_bws_from_pix_img = lambda pix_img: [(pix_c>>j)&0x1 for pix_c in [pix_img[:, :, i] for i in range(0, 3)] for j in range(0, 8)]
     
+    path_suffix = ("" if folder_suffix == "" else "_"+folder_suffix)
+
     if img_type == "picture":
         if image_path == None:
             sys.exit(-1)
@@ -269,7 +272,7 @@ def create_3_byte_neighbour_pictures(img_type,
         pix_img = np.array(img)
         height, width = pix_img.shape[:2]
 
-        path_pictures = "images/changing_image_{}_{}/".format(height, width)
+        path_pictures = "images/changing_image_{}_{}{}/".format(height, width, path_suffix)
         
     elif img_type == "random":
         if height == None or \
@@ -278,7 +281,7 @@ def create_3_byte_neighbour_pictures(img_type,
            with_frame == None:
             system.exit(-1)
 
-        path_pictures = "images/changing_bw_3_byte_{}_{}/".format(height, width)
+        path_pictures = "images/changing_bw_3_byte_{}_{}{}/".format(height, width, path_suffix)
     
         orig_file_path = "images/orig_image_{}_{}.png".format(height, width)
         if same_image and os.path.exists(orig_file_path):
@@ -342,7 +345,6 @@ def create_3_byte_neighbour_pictures(img_type,
     path_template = path_pictures+"rnd_{}_{}_bw_i_{{:03}}_{{:02}}.png".format(height, width)
     for i, (pix_1, pix_2) in enumerate(zip(pix_combines[:-1], pix_combines[1:])):
         Image.fromarray(pix_1).save(path_template.format(i, 0))
-        amount_combines = 1
         for j in range(1, amount_combines):
             print("i: {}, j: {}".format(i, j))
             Image.fromarray(get_pix_between(pix_1, pix_2, float(amount_combines-j)/amount_combines)).save(path_template.format(i, j))
@@ -361,9 +363,8 @@ def create_3_byte_neighbour_pictures(img_type,
                     print("continue: file_name: {}".format(file_name))
                     continue
                 print("Resize, convert and reduce quality for file: '{}'".format(file_name))
-                os.system("convert {} -filter Point -resize 256x256 +antialias {}".format(file_name, file_name))
+                os.system("convert {} -filter Point -resize 512x512 +antialias {}".format(file_name, file_name))
     
-    num_copies_first_image = 3
     for root_dir, dirs, files in os.walk("."):
         if not root_dir == ".":
             continue
@@ -387,9 +388,9 @@ def create_3_byte_neighbour_pictures(img_type,
 
     # suffix = "_{}_{}_{}_{}_{}".format(img_type, height, width, (lambda x: "-".join(list(map(str, x.bit_operators_idx[:x.max_bit_operators]))))(bit_neighbor_manipulation), random_64_bit_num)
     print("Create an animation (gif) with png's and suffix '{}'!".format(suffix))
-    os.system("convert -delay 5 -loop 0 *.png ../../{}animated{}.gif".format(path_animations, suffix))
+    os.system("convert -delay {} -loop 0 *.png ../../{}animated{}.gif".format(gif_delay, path_animations, suffix))
     print("Create an animation (mp4) with png's and suffix '{}'!".format(suffix))
-    os.system("ffmpeg -r 20 -i pic_%04d.png -vcodec mpeg4 -y ../../{}movie{}.mp4".format(path_movies, suffix))
+    os.system("ffmpeg -r {} -i pic_%04d.png -vcodec mpeg4 -y ../../{}movie{}.mp4".format(fps_movie, path_movies, suffix))
 
     os.chdir(prev_folder)
     if resize_params != None:
@@ -425,9 +426,13 @@ if __name__ == "__main__":
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
     # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
     
-    max_iterations = 70
+    max_iterations = 45
     resize_params = None
     ft = 3
+    num_copies_first_image=4
+    amount_combines=2
+    gif_delay=5
+    fps_movie=20
 
     # with open("lambda_functions/resize_params_2.pkl", "rb") as fout:
     #     dm = dill.load(fout)
@@ -436,19 +441,26 @@ if __name__ == "__main__":
     # print("resize_params: {}".format(resize_params))
     # print("max_iterations: {}".format(max_iterations))
 
-    # create_3_byte_neighbour_pictures("random",
-    #                                  height=height,
-    #                                  width=width,
-    #                                  same_image=True,
-    #                                  with_frame=True,
-    #                                  path_lambda_functions="lambda_functions/lambdas_3.txt",
-    #                                  max_iterations=max_iterations,
-    #                                  ft=ft)
+    folder_suffix = ""
+    argv = sys.argv
+    if len(argv) > 1:
+        folder_suffix = argv[1]
+
+    create_3_byte_neighbour_pictures("random",
+                                     height=height,
+                                     width=width,
+                                     same_image=True,
     
-    create_3_byte_neighbour_pictures("picture",
-                                     image_path="images/fall-autumn-red-season_resized.jpg",
+    # create_3_byte_neighbour_pictures("picture",
+    #                                  image_path="images/fall-autumn-red-season_resized.jpg",
+    #                                  resize_params=resize_params,
+
                                      with_frame=True,
-                                     path_lambda_functions="lambda_functions/lambdas_3.txt",
+                                     path_lambda_functions="lambda_functions/lambdas_5.txt",
                                      max_iterations=max_iterations,
-                                     resize_params=resize_params,
-                                     ft=ft)
+                                     ft=ft,
+                                     num_copies_first_image=num_copies_first_image,
+                                     amount_combines=amount_combines,
+                                     gif_delay=gif_delay,
+                                     fps_movie=fps_movie,
+                                     folder_suffix=folder_suffix)
