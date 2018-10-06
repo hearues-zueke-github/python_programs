@@ -1,4 +1,4 @@
-#! /usr/bin/python3.5
+#! /usr/bin/python3.6
 
 # -*- coding: utf-8 -*-
 
@@ -29,10 +29,12 @@ def generate_field_position_crosses(n):
         remove_idx = np.where(np.logical_or.reduce((coordinates==-1) | (coordinates==n), axis=1))[0]
         positions[y, x] = np.delete(coordinates, remove_idx, axis=0)
 
+    # print("positions:\n{}".format(positions))
     for y in range(0, n):
         for x in range(0, n):
-            positions[y, x] = list(map(tuple, positions[y, x].T.tolist()))
+            positions[y, x] = tuple(positions[y, x].T.tolist())
 
+    # print("positions:\n{}".format(positions))
     return positions
 
 def apply_on_field(field, positions, y_x_coords):
@@ -42,6 +44,7 @@ def apply_on_field(field, positions, y_x_coords):
 
 def apply_on_field_once(field, positions, y, x):
     coordinates = positions[y, x]
+    # print("type(coordinates): {}".format(type(coordinates)))
     field[coordinates] = (field[coordinates]+1) % modulo
 
 def mix_field(field, positions):
