@@ -253,7 +253,8 @@ def create_3_byte_neighbour_pictures(img_type,
     height=None, width=None, same_image=None, with_frame=None,
     image_path=None, max_iterations=-1, path_lambda_functions=None,
     resize_params=None, ft=2, num_copies_first_image=3,
-    amount_combines=1, gif_delay=5, fps_movie=20, folder_suffix=""):
+    amount_combines=1, gif_delay=5, fps_movie=20, folder_suffix="",
+    height_resize=None, width_resize=None):
     prev_folder = os.getcwd()
 
     get_pix_bws_from_pix_img = lambda pix_img: [(pix_c>>j)&0x1 for pix_c in [pix_img[:, :, i] for i in range(0, 3)] for j in range(0, 8)]
@@ -353,7 +354,8 @@ def create_3_byte_neighbour_pictures(img_type,
 
     os.chdir("./{}".format(path_pictures))
 
-    if img_type == "random":
+    if height_resize != None and width_resize != None:
+     if img_type == "random":
         for root_dir, dirs, files in os.walk("."):
             if not root_dir == ".":
                 continue
@@ -363,7 +365,7 @@ def create_3_byte_neighbour_pictures(img_type,
                     print("continue: file_name: {}".format(file_name))
                     continue
                 print("Resize, convert and reduce quality for file: '{}'".format(file_name))
-                os.system("convert {} -filter Point -resize 512x512 +antialias {}".format(file_name, file_name))
+                os.system("convert {} -filter Point -resize {}x{} +antialias {}".format(file_name, height_resize, width_resize, file_name))
     
     for root_dir, dirs, files in os.walk("."):
         if not root_dir == ".":
@@ -416,6 +418,9 @@ if __name__ == "__main__":
     # height = 512
     width = height
 
+    height_resize = height*3
+    width_resize = width*3
+
     # create_1_bit_neighbour_pictures(height, width)
     # create_1_byte_neighbour_pictures(height, width)
     # create_3_byte_neighbour_pictures("random", (height, width, False))
@@ -450,6 +455,8 @@ if __name__ == "__main__":
                                      height=height,
                                      width=width,
                                      same_image=True,
+                                     height_resize=height_resize,
+                                     width_resize=width_resize,
     
     # create_3_byte_neighbour_pictures("picture",
     #                                  image_path="images/fall-autumn-red-season_resized.jpg",

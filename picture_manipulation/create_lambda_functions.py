@@ -219,7 +219,7 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
 
     def get_permutated_1_0():
         arr = np.zeros((all_moves.shape[0], ), dtype=np.int)
-        and_concats = np.random.randint(2, 5)
+        and_concats = np.random.randint(2, 6)
         arr[:and_concats] = 1
         return np.random.permutation(arr)
 
@@ -245,7 +245,10 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
     print("len(moves_operations_bits): {}".format(len(moves_operations_bits)))
 
     for moves_bits_arr in moves_operations_bits:
-        moves = "|".join(["&".join(all_moves[bits_row==1]) for bits_row in moves_bits_arr])
+        def get_moves_and_lst(bits_row):
+            moves_lst = all_moves[bits_row==1]
+            return [move if np.random.randint(0, 3) != 0 else "("+move+"==0)" for move in moves_lst]
+        moves = "|".join(["&".join(get_moves_and_lst(bits_row)) for bits_row in moves_bits_arr])
         moves_operations.append(moves)
 
         print("\ni: {}".format(i))
