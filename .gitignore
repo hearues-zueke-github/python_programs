@@ -1,4 +1,5 @@
 *.pyc
 labyrinth/images
+picture_diff/images
 picture_manipulation/images
 picture_manipulation/lambda_functions

@@ -52,27 +52,16 @@ def get_linear_mixed_array(n, a_0, a_1, find_next_a_1=False):
 
 # returns a 4 byte value e.g.
 def prng(seed=None):
-    # print("seed: {}".format(seed))
     if seed == None:
         seed = np.random.randint(0, 2**32)
-        # a_0_0 = np.random.randint(0, 256)
-        # a_0_1 = np.random.randint(1, 256)
-        # a_1_0 = np.random.randint(0, 256)
-        # a_1_1 = np.random.randint(1, 256)
-        # a_0_2 = np.random.randint(0, 256)
-        # a_0_3 = np.random.randint(1, 256)
-        # a_1_2 = np.random.randint(0, 256)
-        # a_1_3 = np.random.randint(1, 256)
-    # else:
+
     def get_lines_mixed(seed):
-        max_bits = 16
+        max_bits = 32
         max_num = 2**max_bits
         mask = max_num-1
 
-        # print("seed before: 0x{:04X}".format(seed))
         while seed > max_num:
             seed = (seed>>max_bits)|(seed&mask)
-        # print("seed after:  0x{:04X}".format(seed))
 
         seed = (23+11*seed) % max_num
         a_1_3 = seed % 256
@@ -104,11 +93,6 @@ def prng(seed=None):
             a_1_3 = (seed+19*a_1_2) % 256
             if a_1_3 == 0:
                 a_1_3 = 1
-
-        # print("a_0_0: 0x{:02X}, a_1_0: 0x{:02X}".format(a_0_0, a_1_0))
-        # print("a_0_1: 0x{:02X}, a_1_1: 0x{:02X}".format(a_0_1, a_1_1))
-        # print("a_0_2: 0x{:02X}, a_1_2: 0x{:02X}".format(a_0_2, a_1_2))
-        # print("a_0_3: 0x{:02X}, a_1_3: 0x{:02X}".format(a_0_3, a_1_3))
 
         xs0 = get_linear_mixed_array(256, a_0_0, a_1_0, find_next_a_1=True)
         xs1 = get_linear_mixed_array(256, a_0_1, a_1_1, find_next_a_1=True)
@@ -185,61 +169,69 @@ def prng(seed=None):
         # xsl0_copy = xsl0.copy()
         # xsl1_copy = xsl1.copy()
 
-        for j in range(0, 3):
-        # while True:
-            for i in range(0, 256):
-            # for i in range(0, 256):
-                x0 = xsl0[i]
-                x1 = xsl1[i]
-                # x2 = xsl2[i]
-                # x3 = xsl3[i]
-                
-                # print("x: {}".format((x0, x1)))
-                
-                # print("x: {}".format((x0, x1, x2, x3)))
-                # print("x: {}".format((x0, x1, x2, x3, x4, x5, x6, x7)))
-                # yield (x0<<24)|(x1<<16)|(x2<<8)|(x3)
-                # yield ((x0<<8)&0x0F)|(x1)
-                yield (x0<<8)|(x1)
+        seed = (13+seed*17)%0x10000
+        num1 = (xsl0[0]<<16|xsl1[0])^seed
+        seed = (13+seed*17)%0x10000
+        num2 = (xsl2[0]<<16|xsl3[0])^seed
 
-            # nxs0 = xsl3[xsl2[xsl0]]
-            # nxs1 = xsl2[xsl1[xsl3]]
+        num1_orig = num1
+        num2_orig = num2
+        num1 = (13+num1*19)%0x100000000
+        num2 = (43+num2*23)%0x100000000    
+        while num1_orig != num1 or num2_orig != num2:
+            num1 = (13+num1*19)%0x100000000
+            num2 = (43+num2*23)%0x100000000
+            yield (num1^num2)&0xFFFF
+
+        # for i0 in range(0, 256):
+        #     x0 = int(xsl0[i0])
+        #     x2 = int(xsl2[i0])
+        #     for i1 in range(0, 256):
+        #         x1 = int(xsl1[i1])
+        #         x3 = int(xsl3[i1])
+        #         num = (x2<<16)|(x0<<8)|(x1)
+        #         # num = (x3<<24)|(x2<<16)|(x0<<8)|(x1)
+                
+        #         # num1 = (x3<<24)|(x2<<16)|(x0<<8)|(x1)
+        #         # num2 = (x3<<24)|(x2<<16)|(x0<<8)|(x1)
+                
+        #         # shift = i1%16
+        #         # num_shift = ((num>>shift)&(2**(16-shift)-1))|(num&((2**(16-shift)-1)<<shift))
+                
+        #         # print("shift: {}, num: 0x{:02X}, bin: {}, num_shift: 0x{:02X}, bin: {}".format(shift, num, bin(num), num_shift, bin(num_shift)))
+        #         # yield num_shift
+        #         yield num
             
-            nxs0 = xsl3[xsl2[xsl0^0x34]]+1
-            nxs1 = xsl2[xsl1[xsl3]^0x45]+2
-            nxs2 = xsl0[xsl3[xsl1]]^0x8A+3
-            nxs3 = xsl3[xsl1[xsl2^0xE2]^0x19]^0x23+4
+            # sys.exit(-2)
+            # x2 = xsl2[i]
+            # x3 = xsl3[i]
+                
+            # yield (x0<<8)|(x1)
+            # yield (x2<<16)|(x0<<8)|(x1)
+            
+            # yield (x3<<8)|(x2)
+            # yield (x2<<8)|(x0)
+            # yield (x0<<8)|(x3)
 
-            xsl0 = nxs0
-            xsl1 = nxs1
-            xsl2 = nxs2
-            xsl3 = nxs3
+        # for j in range(0, 3):
+        # # while True:
+        #     for i in range(0, 256):
+        #     # for i in range(0, 256):
+        #         x0 = xsl0[i]
+        #         x1 = xsl1[i]
+                
+        #         yield (x0<<8)|(x1)
 
-            # if np.sum(xsl0_copy!=xsl0)==0 and np.sum(xsl1_copy!=xsl1)==0:
-            # if xsl0_0 == xsl0[0] and xsl1_0 == xsl1[0]:
-            #     print("BREAK!!!")
-            #     break
-        
-        # xs0 = nxs0
-        # xs1 = nxs1
-        # xs2 = nxs2
-        # xs3 = nxs3
-        
-        # xn0 = (xs0[x2]^xs1[x1]^xs2[x5]+0x23) % 256
-        # xn1 = (xs0[x3]^xs1[x2]^xs2[x4]+0x21) % 256
-        # xn2 = (xs0[x1]^xs1[x4]^xs2[x5]+0x23) % 256
-        # xn3 = (xs0[x7]^xs1[x3]^xs2[x1]+0x22) % 256
-        # xn4 = (xs0[x3]^xs1[x1]^xs2[x4]+0x21) % 256
-        # xn5 = (xs0[x2]^xs1[x3]^xs2[x6]+0x52) % 256
-        # xn6 = (xs0[x1]^xs1[x2]^xs2[x5]+0x2F) % 256
-        # xn7 = (xs0[x7]^xs1[x6]^xs2[x4]+0x53) % 256
+        #     nxs0 = xsl3[xsl2[xsl0^0x34]]+1
+        #     nxs1 = xsl2[xsl1[xsl3]^0x45]+2
+        #     nxs2 = xsl0[xsl3[xsl1]]^0x8A+3
+        #     nxs3 = xsl3[xsl1[xsl2^0xE2]^0x19]^0x23+4
 
-        # x0, x1, x2, x3, x4, x5, x6, x7 = xn0, xn1, xn2, xn3, xn4, xn5, xn6, xn7
-        # # yield (x2<<8)|(x3)
-        # # yield (x6<<48)|(x5<<40)|(x4<<32)|(x3<<24)|(x2<<16)|(x1<<8)|(x0)
-        # print("x: {}".format((x0, x1, x2, x3, x4, x5, x6, x7)))
-        # # yield int((x6<<56)|(x7<<48)|(x5<<40)|(x4<<32)|(x3<<24)|(x2<<16)|(x1<<8)|(x0))
-        # yield (x0<<24)|(x1<<16)|(x2<<8)|(x3)
+        #     xsl0 = nxs0
+        #     xsl1 = nxs1
+        #     xsl2 = nxs2
+        #     xsl3 = nxs3
+
 
 def test_prng(seed=None):
     # if seed == None:
@@ -249,9 +241,9 @@ def test_prng(seed=None):
     # print("seed: {}".format(seed))
     nums = []
     # first_num = next(my_prng)
-    for i in range(0, 100000):
+    for i in range(0, 10000000):
         num = next(my_prng)
-        # print("  i: {}, next(my_prng): 0x{:08X}".format(i, num))
+        print("  i: {}, next(my_prng): 0x{:08X}".format(i, num))
         if num in nums:
         # if first_num == num:
             print("EQUAL TO ONE PREVIOUS GENERATED NUMBER!!!")
@@ -259,7 +251,10 @@ def test_prng(seed=None):
             break
         nums.append(num)
     print("nums.index(num): {}".format(nums.index(num)))
-    print("length of repeat: {}".format(len(nums)-nums.index(num)))
+    num_repeats = len(nums)-nums.index(num)
+    print("length of repeat: {}".format(num_repeats))
+    
+    return num_repeats
 
 if __name__ == "__main__":
     # print("Hello World!")
@@ -269,7 +264,12 @@ if __name__ == "__main__":
     # sbox_1_loop = get_new_1_loop_sbox(n, unique=True)
     # print("sbox_1_loop: {}".format(sbox_1_loop))   
 
-    test_prng()
+    num_repeats_lst = []
+    for i in range(0, 1):
+        num_repeats = test_prng()
+        num_repeats_lst.append(num_repeats)
+
+    print("np.mean(num_repeats_lst): {}".format(np.mean(num_repeats_lst)))
 
     unique_1_loops = []
 

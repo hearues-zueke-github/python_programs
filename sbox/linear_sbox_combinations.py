@@ -43,13 +43,13 @@ if __name__ == "__main__":
                     factors_f_x[factors] = f_x
                     f_x_factors[f_x_tpl] = factors
 
-                f_x_2 = f_x[idx_change]
-                f_x_tpl_2 = tuple(f_x_2.tolist())
-                factors = (factors[0]+(-1, ), )
-                if not f_x_tpl_2 in f_x_set:
-                    f_x_set.add(f_x_tpl_2)
-                    factors_f_x[factors] = f_x_2
-                    f_x_factors[f_x_tpl_2] = factors
+                # f_x_2 = f_x[idx_change]
+                # f_x_tpl_2 = tuple(f_x_2.tolist())
+                # factors = (factors[0]+(-1, ), )
+                # if not f_x_tpl_2 in f_x_set:
+                #     f_x_set.add(f_x_tpl_2)
+                #     factors_f_x[factors] = f_x_2
+                #     f_x_factors[f_x_tpl_2] = factors
 
     print("len(f_x_set): {}".format(len(f_x_set)))
     print("len(factors_f_x): {}".format(len(factors_f_x)))
@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     for _ in range(0, 5):
         print("Calc new combinations.")
-        factors_f_x_2 = get_new_combinations_random(f_x_set, factors_f_x, f_x_factors)
+        factors_f_x_2 = get_new_combinationds_random(f_x_set, factors_f_x, f_x_factors)
         print("Combine previous combinations.")
         factors_f_x = {**factors_f_x, **factors_f_x_2}
 

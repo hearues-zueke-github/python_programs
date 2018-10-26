@@ -11,6 +11,9 @@ import string
 
 import multiprocessing as mp
 import numpy as np
+np.set_printoptions(linewidth=2000)
+# np.set_printoptions(threshold=2000)
+# np.set_printoptions(threshold=np.nan)
 
 from dotmap import DotMap
 from multiprocessing import Process, Queue
