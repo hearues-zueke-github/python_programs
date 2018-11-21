@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 
 import numpy as np
@@ -9,10 +10,9 @@ import numpy as np
 from collections import namedtuple
 from dotmap import DotMap
 
-
-if __name__ == "__main__":
-    file_name = "test_graph.dot"
-
+# n ... amount of numbers
+# r ... amount of tries max
+def create_graph_exptected_tries(n=3, r=4):
     node_settings = {
         "white": 'node [margin=0 fillcolor=white fontcolor=black fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];',
         "gray":  'node [margin=0 fillcolor=gray fontcolor=blue fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];',
@@ -22,8 +22,8 @@ if __name__ == "__main__":
 
     Node = DotMap({k: None for k in ["name", "label", "color", "numbers", "tries", "left", "right"]})
 
-    n = 4
-    r = 6
+    # n = 4
+    # r = 8
 
     root = Node.copy()
     root.name="R"
@@ -100,5 +100,16 @@ if __name__ == "__main__":
 
     s += "}\n"
     
+    path_dir = "dot_files/"
+    if not os.path.exists(path_dir):
+        os.makedirs(path_dir)
+    file_name = path_dir+"expected_tries_n_{}_r_{}.dot".format(n, r)
     with open(file_name, "w") as fout:
         fout.write(s)
+
+if __name__ == "__main__":
+    for n in range(2, 8):
+        print("n: {}".format(n))
+        for r in range(7, 15):
+            print("  r: {}".format(r))
+            create_graph_exptected_tries(n=n, r=r)
