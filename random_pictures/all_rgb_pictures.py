@@ -1,5 +1,6 @@
 #! /usr/bin/python2.7
 
+import os
 import sys
 
 import numpy as np
@@ -75,12 +76,16 @@ def find_most_approx_all_rgb_picture(file_name):
         img_new.save(file_name.replace(".jpg", "_iter_{}.png".format(k)), "PNG")
 
 if __name__ == "__main__":
-    # pix_all_rgb = get_all_rgb_pix()
+    pix_all_rgb = get_all_rgb_pix()
 
-    # img = Image.fromarray(pix_all_rgb)
-    # img.save("all_rgb.png", "PNG")
-    # img_resize = img.resize((512, 512), Image.ANTIALIAS)
-    # img_resize.save("all_rgb_resize.png", "PNG")
+    path_images = "images/"
+    if not os.path.exists(path_images):
+        os.makedirs(path_images)
 
-    file_name = "SDvision_ramses_disksAMR8HR00019_redToWhite_4096x4096.jpg"
-    find_most_approx_all_rgb_picture(file_name)
+    img = Image.fromarray(pix_all_rgb)
+    img.save(path_images+"all_rgb.png", "PNG")
+    img_resize = img.resize((512, 512), Image.ANTIALIAS)
+    img_resize.save(path_images+"all_rgb_resize.png", "PNG")
+
+    # file_name = "SDvision_ramses_disksAMR8HR00019_redToWhite_4096x4096.jpg"
+    # find_most_approx_all_rgb_picture(file_name)

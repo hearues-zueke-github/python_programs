@@ -1,0 +1,54 @@
+digraph graphname {
+  ranksep = 0.5;
+  nodesep = 0.5;
+
+  ordering=out;
+
+  // root node
+  { 
+    node [margin=0 fillcolor=white fontcolor=black fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];
+    n_root [label="1,1"]
+  }
+
+  // gray nodes
+  { 
+    node [margin=0 fillcolor=gray fontcolor=blue fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];
+    L [label="2,2"]
+    RL [label="2,3"]
+    RRL [label="2,4"]
+  }
+
+  // green nodes, finish nodes
+  { 
+    node [margin=0 fillcolor="#00AA22" fontcolor=yellow fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];
+    LL [label="3,3"]
+    LRL [label="3,4"]
+    RLL [label="3,4"]
+  }
+
+  // red nodes
+  { 
+    node [margin=0 fillcolor="#FF1100" fontcolor=white fixedsize=true fontsize=12 width=0.5 shape=circle style=filled];
+    R [label="1,2"]
+    RR [label="1,3"]
+    LR [label="2,3"]
+    LRR [label="2,4"]
+    RLR [label="2,4"]
+    RRR [label="1,4"]
+  }
+
+  labelloc="t";
+  label="Propability for picking random tries: n = 3";
+ 
+  n_root -> L, R;
+
+  L -> LL, LR;
+
+  LR -> LRL, LRR;
+
+  R -> RL, RR;
+
+  RL -> RLL, RLR;
+
+  RR -> RRL, RRR;
+}
