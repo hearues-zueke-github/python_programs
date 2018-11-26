@@ -2,6 +2,7 @@
 *.dot
 *.class
 
+complex_numbers/images
 labyrinth/images
 picture_diff/images
 picture_manipulation/images

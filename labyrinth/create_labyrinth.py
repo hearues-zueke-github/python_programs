@@ -1,5 +1,6 @@
 #! /usr/bin/python3.6
 
+import json
 import os
 import sys
 
@@ -17,21 +18,26 @@ color_yellow = (255, 255, 0)
 color_cyan = (0, 255, 255)
 color_red = (255, 0, 0)
 color_blue = (0, 0, 255)
-
-used_nodes = {
-    2: [(1, 0), (0, 1)],
-    3: [(0, 1, 2), (0, 2, 1), (1, 2, 0), (1, 0, 2), (2, 1, 0), (2, 0, 1)]
-}
+color_purple = (255, 0, 255)
 
 # used_nodes = {
-#     2: [
-#     # (0, ), (1, ),
-#         (0, 1), (1, 0)],
-#     3: [
-#     # (0, ), (1, ), (2, ),
-#         (1, 0), (0, 1), (1, 2), (2, 1), (0, 2), (2, 0),
-#         (0, 1, 2), (0, 2, 1), (1, 2, 0), (1, 0, 2), (2, 1, 0), (2, 0, 1)],
+#     2: [(1, 0), (0, 1)],
+#     3: [(0, 1, 2), (0, 2, 1), (1, 2, 0), (1, 0, 2), (2, 1, 0), (2, 0, 1)]
 # }
+
+used_nodes = {
+    2: [
+    (0, ), (1, ),
+    (0, ), (1, ),
+        (0, 1), (1, 0)],
+    3: [
+    (0, ), (1, ), (2, ),
+    (0, ), (1, ), (2, ),
+    (0, ), (1, ), (2, ),
+        (1, 0), (0, 1), (1, 2), (2, 1), (0, 2), (2, 0),
+        (1, 0), (0, 1), (1, 2), (2, 1), (0, 2), (2, 0),
+        (0, 1, 2), (0, 2, 1), (1, 2, 0), (1, 0, 2), (2, 1, 0), (2, 0, 1)],
+}
 
 def get_random_node_idx(n):
     nodes_idx = used_nodes[n]
@@ -191,7 +197,7 @@ def create_labyrinth_one_path(rows, cols):
     return rest_connections, nodes
 
 
-def create_labyrinth_picture(rows, cols, nodes, show_plot=False):
+def create_labyrinth_picture(rows, cols, nodes, show_plot=False, root_folder=None):
     pix_field = np.zeros((rows*2+1, cols*2+1, 3), dtype=np.uint8)
     
     # fill all in between white pixels
@@ -222,30 +228,36 @@ def create_labyrinth_picture(rows, cols, nodes, show_plot=False):
     pix_field[(pos_y, pos_x)] = color_white
 
     img = Image.fromarray(pix_field)
-    # img.show()
+
     if not os.path.exists("images"):
         os.makedirs("images")
-    img.save("images/labyrinth_complete.png", "PNG")
+
+    folder = "images/" if root_folder == None else root_folder
+
+    img.save(folder+"labyrinth_complete.png", "PNG")
     img = img.resize((img.width*8, img.height*8))
-    img.save("images/resized_labyrinth_complete.png", "PNG")
+    img.save(folder+"resized_labyrinth_complete.png", "PNG")
 
     if show_plot:
         fig = plt.figure()
         plt.imshow(img)
 
 
-def labyrinth_picture_used_fields(field, show_plot=False):
+def create_labyrinth_picture_used_fields(field, show_plot=False, root_folder=None):
     rows, cols = field.shape
     pix_field = np.zeros((rows*2+1, cols*2+1, 3), dtype=np.uint8)
     
+    pix_field[1:-1, 1:-1] = color_white
     # fill all in between white pixels
     for y in range(0, rows):
         for x in range(0, cols):
-            is_used_field = field[y, x] == 1
+            is_used_field = field[y, x] == 0
             if is_used_field:
-                pix_field[1+y*2, 1+x*2] = color_yellow
-            else:
-                pix_field[1+y*2, 1+x*2] = color_white
+                pix_field[1+y*2, 1+x*2] = color_purple
+                # pix_field[1+y*2, 1+x*2] = color_cyan
+                # pix_field[1+y*2, 1+x*2] = color_yellow
+            # else:
+            #     pix_field[1+y*2, 1+x*2] = color_white
 
     # mark start and finish
     pix_field[0, 1] = color_blue
@@ -255,16 +267,19 @@ def labyrinth_picture_used_fields(field, show_plot=False):
 
     if not os.path.exists("images"):
         os.makedirs("images")
-    img.save("images/labyrinth_complete_used_fields.png", "PNG")
+
+    folder = "images/" if root_folder == None else root_folder
+
+    img.save(folder+"labyrinth_complete_used_fields.png", "PNG")
     img = img.resize((img.width*8, img.height*8))
-    img.save("images/resized_labyrinth_complete_used_fields.png", "PNG")
+    img.save(folder+"resized_labyrinth_complete_used_fields.png", "PNG")
 
     if show_plot:
         fig = plt.figure()
         plt.imshow(img)
 
 
-def create_labyrinth_picture_with_color(rows, cols, nodes, field, suffix_name="", show_plot=False):
+def create_labyrinth_picture_with_color(rows, cols, nodes, field, suffix_name="", show_plot=False, root_folder=None):
     pix_field = np.zeros((rows*2+1, cols*2+1, 3), dtype=np.uint8)
     
     # fill all in between white pixels
@@ -318,16 +333,18 @@ def create_labyrinth_picture_with_color(rows, cols, nodes, field, suffix_name=""
 
     suffix_name = ("" if suffix_name == "" else "_"+suffix_name)
 
-    img.save("images/labyrinth_complete{}.png".format(suffix_name), "PNG")
+    folder = "images/" if root_folder == None else root_folder
+
+    img.save(folder+"labyrinth_complete{}.png".format(suffix_name), "PNG")
     img = img.resize((img.width*8, img.height*8))
-    img.save("images/resized_labyrinth_complete{}.png".format(suffix_name), "PNG")
+    img.save(folder+"resized_labyrinth_complete{}.png".format(suffix_name), "PNG")
 
     if show_plot:
         fig = plt.figure()
         plt.imshow(img)
 
 
-def create_labyrinth(rows, cols):
+def create_labyrinth(rows, cols, root_folder=None):
     connections = create_dots_connection(rows, cols)
     field = np.zeros((rows, cols), dtype=np.uint8)
     field_different_paths = np.zeros((rows, cols), dtype=np.int)
@@ -361,8 +378,8 @@ def create_labyrinth(rows, cols):
 
         field[y, x] = 1
 
-        print("\nnode_now: {}".format(node_now))
-        print("i: {}".format(i))
+        # print("\nnode_now: {}".format(node_now))
+        # print("i: {}".format(i))
 
         is_field_set = []
         for iy, ix in to_nodes:
@@ -374,14 +391,14 @@ def create_labyrinth(rows, cols):
         field_same_paths[y, x] = j
         
         n = len(to_nodes_possible)
-        print("n: {}".format(n))
+        # print("n: {}".format(n))
         if n > 1:
             using_nodes_idx = get_random_node_idx(n)
             nodes_chosen = []
             for idx in using_nodes_idx:
                 nodes_chosen.append(to_nodes_possible[idx])
         elif n == 0:
-            print("No more possible nodes!")
+            # print("No more possible nodes!")
             return
         else:
             nodes_chosen = to_nodes_possible
@@ -391,10 +408,10 @@ def create_labyrinth(rows, cols):
 
         for k, node in enumerate(nodes_chosen, 0):
             iy, ix = node
-            if field[iy, ix] == 1:
-                continue
+            # if field[iy, ix] == 1:
+            #     continue
 
-            # field[iy, ix] = 1
+            field[iy, ix] = 1
 
             nodes.append((node_now, node))
 
@@ -406,6 +423,7 @@ def create_labyrinth(rows, cols):
             used_connections[node_now].append(node)
             used_connections[node].append(node_now)
 
+        for k, node in enumerate(nodes_chosen, 0):
             go_the_labyrinth_through(dm, node[0], node[1], i+1, j+k)
 
         # sys.exit(-1)
@@ -413,22 +431,47 @@ def create_labyrinth(rows, cols):
     # TODO: need to fix something too! Labyrinth is not created very perfect random!
     # field[0, 0] = 1
     go_the_labyrinth_through(dm, 0, 0, 0, 0)
-    create_labyrinth_picture(rows, cols, nodes)
-    labyrinth_picture_used_fields(field)
 
-    create_labyrinth_picture_with_color(rows, cols, nodes, dm.field_different_paths, suffix_name="different_paths")
-    create_labyrinth_picture_with_color(rows, cols, nodes, dm.field_same_paths, suffix_name="same_paths", show_plot=True)
+    create_labyrinth_picture(rows, cols, nodes, root_folder=root_folder)
+    create_labyrinth_picture_used_fields(field, root_folder=root_folder)
+    create_labyrinth_picture_with_color(rows, cols, nodes, dm.field_different_paths, suffix_name="different_paths", root_folder=root_folder)
+    create_labyrinth_picture_with_color(rows, cols, nodes, dm.field_same_paths, suffix_name="same_paths", show_plot=False, root_folder=root_folder)
 
-    plt.show()
+    # plt.show()
 
     return dm
 
 
-if __name__ == "__main__":
+def main(**kargs):
+    print("Started create_labyrinth!")
+    argv = sys.argv
+    path_config = "config.json"
+    if len(argv) > 1:
+        root_folder = argv[1]
+    elif "root_folder" in kargs:
+        root_folder = kargs["root_folder"]
+    # load the default settings from the config.json file!
+    elif os.path.exists(path_config):
+        with open("config.json", "r") as fin:
+            content = fin.read()
+        obj = json.loads(content)
+        root_folder = obj["root_folder"]
+    else:
+        root_folder = None
+    
+    if root_folder != None:
+        if root_folder[-1] != "/":
+            root_folder += "/"
+
     rows = 30
     cols = 45
+    
+    dm = create_labyrinth(rows, cols, root_folder=root_folder)
 
-    dm = create_labyrinth(rows, cols)
+
+if __name__ == "__main__":
+    main()
+
 
     # rest_connections, nodes = create_labyrinth(rows, cols)
     
