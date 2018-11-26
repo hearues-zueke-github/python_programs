@@ -22,8 +22,8 @@ get_two_number_array = lambda arr: np.vstack((arr[:-1], arr[1:])).T
 get_many_stacked_array = lambda arr, n, base: np.sum(np.vstack((arr[i:-n+i] for i in range(0, n))).T*base**np.arange(n-1, -1, -1), axis=-1)
 
 if __name__ == "__main__":
-    base = 9
-    num = 16**50000
+    num = 32**50000
+    base = 14
 
     all_symbols = string.digits+string.ascii_lowercase+string.ascii_uppercase
     symbol_to_int = {s: i for i, s in enumerate(all_symbols)}
