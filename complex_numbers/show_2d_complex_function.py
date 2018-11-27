@@ -61,7 +61,12 @@ if __name__ == "__main__":
 
     # func_str = "z**2-4*z+0.1*z*complex(z.imag, z.real*3)"
     # func_str = "complex(np.sin(z.imag), z.real)*z"
-    func_str = "z+np.sin(z.real+z.imag)+complex(z.imag*np.sin(0.1*z.real), z*np.sin(z.imag+1))"
+
+    func_str = "z**3"
+    # func_str = "z**3-2*z**2+3*z+complex(2, -3)"
+    # func_str = "z**3-2*z**2+3*z+complex(2, -3)"
+
+    # func_str = "z+np.sin(z.real+z.imag)+complex(z.imag*np.sin(0.1*z.real), z*np.sin(z.imag+1))"
     # func_str = "2*z**2+4*z*complex(np.sin(z.real), np.cos(z.imag)**2)"
     # func_str = "z**3-2*z**2+4*z"
     # func_str = "complex(np.sin(z.imag), z.real)*z+z*complex(z.real+z.imag*0.5, 2*np.cos(z.real))"
@@ -83,7 +88,7 @@ if __name__ == "__main__":
 
     plt.close("all")
 
-    n1 = 300
+    n1 = 800
     scale = 30
     x_offset = 15
     # x_offset = scale/2
@@ -143,10 +148,10 @@ if __name__ == "__main__":
             pix_hvs[yi, xi] = (h, a, 1.)
             pix_hvs_mod[yi, xi] = (h, a_s, 1.)
             
-            pix_hvs_angle[yi, xi] = (1., h, 1.)
-            pix_hvs_abs[yi, xi] = (1., a, 1.)
-            pix_hvs_x[yi, xi] = (1., z.real, 1.)
-            pix_hvs_y[yi, xi] = (1., z.imag, 1.)
+            pix_hvs_angle[yi, xi] = (h, 1., 1.)
+            pix_hvs_abs[yi, xi] = (a, 1., 1.)
+            pix_hvs_x[yi, xi] = (z.real, 1., 1.)
+            pix_hvs_y[yi, xi] = (z.imag, 1., 1.)
 
             # pix_hvs_angle[yi, xi] = (h, 1., 1.)
             # pix_hvs_abs[yi, xi] = (a, 1., 1.)
@@ -187,10 +192,11 @@ if __name__ == "__main__":
     normalize_v_in_hvs(pix, pix_hvs, col=1)
     normalize_v_in_hvs(pix_mod, pix_hvs_mod, col=1)
     
-    normalize_v_in_hvs(pix_angle, pix_hvs_angle, col=1)
-    normalize_v_in_hvs(pix_abs, pix_hvs_abs, col=1)
-    normalize_v_in_hvs(pix_x, pix_hvs_x, col=1)
-    normalize_v_in_hvs(pix_y, pix_hvs_y, col=1)
+    using_col = 0
+    normalize_v_in_hvs(pix_angle, pix_hvs_angle, col=using_col)
+    normalize_v_in_hvs(pix_abs, pix_hvs_abs, col=using_col)
+    normalize_v_in_hvs(pix_x, pix_hvs_x, col=using_col)
+    normalize_v_in_hvs(pix_y, pix_hvs_y, col=using_col)
     
     # print("np.min(pix_hvs[:, :, 0]): {}".format(np.min(pix_hvs[:, :, 0])))
     # print("np.max(pix_hvs[:, :, 0]): {}".format(np.max(pix_hvs[:, :, 0])))
