@@ -166,7 +166,7 @@ class BitNeighborManipulation(Exception):
         # idxs_lambda = (self.it1)%self.max_bit_operators
         # pix_bw1 = self.bit_operations[idxs_lambda]()
         # pix_bw1 = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
-        pix_bw1 = self.bit_operations[(self.it1)%self.max_bit_operators]()
+        pix_bw1 = self.bit_operations[(self.it1+self.it2)%self.max_bit_operators]()
         # pix_bw2 = self.bit_operations[(self.it1+1)%self.max_bit_operators]()
         # pix_bw3 = self.bit_operations[self.bit_operators_idx[(self.it1+2)%self.max_bit_operators]]()
 
@@ -175,6 +175,7 @@ class BitNeighborManipulation(Exception):
         # pix_bw = pix_bw1^pix_bw2
         # pix_bw = pix_bw1^pix_bw2^pix_bw3
         # pix_bw = self.bit_operations[self.bit_operators_idx[(self.it1+self.it2)%self.max_bit_operators]]()
+        # self.it1 += 1
         self.it2 += 1
         
         if self.remove_frame != None:
@@ -431,7 +432,7 @@ if __name__ == "__main__":
     # create_from_image_neighbour_pictures("images/fall-autumn-red-season.jpg")
     # ## convert fall-autumn-red-season.jpg -resize 320x213 fall-autumn-red-season_resized.jpg
     
-    max_iterations = 45
+    max_iterations = 51
     resize_params = None
     ft = 3
     num_copies_first_image=4

@@ -198,17 +198,17 @@ def create_lambda_functions_4(path_lambda_functions, tf=2):
     # globals()["moves_operations_sizes"] = moves_operations_sizes
 
 def create_lambda_functions_5(path_lambda_functions, tf=2):
-    n = np.random.randint(20, 51)
+    n = np.random.randint(10, 26)
     # create a list of all moves
-    all_moves = ["u"*i for i in range(1, tf+1)]+\
-                ["d"*i for i in range(1, tf+1)]+\
-                ["l"*i for i in range(1, tf+1)]+\
-                ["r"*i for i in range(1, tf+1)]+\
-                ["u"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
-                ["u"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
-                ["d"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
-                ["d"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+\
-                ["p"]
+    all_moves = ( ["u"*i for i in range(1, tf+1)]+
+                  ["d"*i for i in range(1, tf+1)]+
+                  ["l"*i for i in range(1, tf+1)]+
+                  ["r"*i for i in range(1, tf+1)]+
+                  ["u"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+
+                  ["u"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+
+                  ["d"*j+"l"*i for j in range(1, tf+1) for i in range(1, tf+1)]+
+                  ["d"*j+"r"*i for j in range(1, tf+1) for i in range(1, tf+1)]+
+                  ["p"] )
     all_moves = np.array(all_moves)
     print("all_moves: {}".format(all_moves))
     print("all_moves.shape: {}".format(all_moves.shape))
@@ -219,7 +219,7 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
 
     def get_permutated_1_0():
         arr = np.zeros((all_moves.shape[0], ), dtype=np.int)
-        and_concats = np.random.randint(2, 6)
+        and_concats = np.random.randint(3, 7)
         arr[:and_concats] = 1
         return np.random.permutation(arr)
 
@@ -256,6 +256,11 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
         print("moves: {}".format(moves))
 
     print("\nmoves_operations_sizes: {}".format(moves_operations_sizes))
+
+    print("\nCalculated moves (functions):")
+
+    for i, move in enumerate(moves_operations):
+        print("i: {}, move: {}".format(i, move))
 
     with open(path_lambda_functions+"lambdas_5.txt", "w") as fout:
         for moves_operation in moves_operations:
