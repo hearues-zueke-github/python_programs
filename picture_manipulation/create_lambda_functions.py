@@ -1,5 +1,7 @@
 #! /usr/bin/python3.6
 
+# -*- coding: utf-8 -*-
+
 import dill
 import os
 import pdb
