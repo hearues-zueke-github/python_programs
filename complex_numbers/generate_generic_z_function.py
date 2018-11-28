@@ -170,8 +170,22 @@ class Tree(Exception):
             operators.append(np.random.choice(self.possible_operators))
         return operators
 
+def main(**args_main):
+    path_folder = ""
+    argv = sys.argv
 
-if __name__ == "__main__":
+    if "path_folder" in args_main:
+        path_folder = args_main["path_folder"]
+    elif len(argv) > 1:
+        path_folder = argv[1]
+
+    if path_folder != "" and not os.path.exists(path_folder):
+        print("Folder '{}' does not exists!".format(path_folder))
+        return -1
+
+        if path_folder[-1] != "/":
+            path_folder += "/"
+
     max_deep = 2
     max_length_values = 4
     
@@ -181,5 +195,9 @@ if __name__ == "__main__":
 
     print("\nfinal func_str: {}".format(func_str))
 
-    with open("z_func.txt", "w") as fout:
+    with open(path_folder+"z_func.txt", "w") as fout:
         fout.write(func_str)
+
+
+if __name__ == "__main__":
+    main()

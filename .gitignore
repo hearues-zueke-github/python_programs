@@ -2,6 +2,7 @@
 *.dot
 *.class
 
+complex_numbers/data
 complex_numbers/images
 complex_numbers/z_func.txt
 
