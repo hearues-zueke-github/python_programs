@@ -9,6 +9,7 @@ import gzip
 import os
 import shutil
 import string
+import subprocess
 import sys
 import traceback
 
@@ -16,13 +17,18 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+from indexed import IndexedOrderedDict
+from collections import OrderedDict
 from dotmap import DotMap
 from PIL import Image, ImageDraw, ImageFont
 
 import generate_generic_z_function
 
+# TODO: create function with one of the founded function to get a higher resolution!
+# TODO: generate gif animation of one variable changing e.g.
+# TODO: generate better plots too!
 class GenerateComplexPictures(Exception):
-    def __init__(self, modulo=10., n1=500, scale=16, scale_y=1., x_offset=8, y_offset=8, delta=0.0001):
+    def __init__(self, modulo=10., n1=500, scale=16, scale_y=1., x_offset=8, y_offset=8, delta=0.0001, func_str=None, root_folder=None, number=None):
         self.modulo = modulo
         self.n1 = n1
         self.scale = scale
@@ -37,36 +43,66 @@ class GenerateComplexPictures(Exception):
         self.xs1 = np.arange(0, self.n1+1)/self.n1*self.scale-self.x_offset+self.delta
         self.ys1 = np.arange(0, self.n1_y+1)/self.n1_y*self.scale*self.scale_y-self.y_offset+self.delta
 
+        self.ys1 = self.ys1[::-1]
+
         self.ys1_2d = np.zeros((self.ys1.shape[0], self.xs1.shape[0]))
         self.xs1_2d = self.ys1_2d.copy()
 
         self.xs1_2d[:] = self.xs1 
         self.ys1_2d[:] = self.ys1.reshape((-1, 1))
-        self.arr_complex = np.vectorize(complex)(self.xs1_2d, self.ys1_2d)
 
+        self.arr_complex = np.vectorize(complex)(self.xs1_2d, self.ys1_2d)
 
         self.all_symbols_16 = np.array(list("0123456789ABCDEF"))
         self.all_symbols_64 = np.array(list(string.ascii_letters+string.digits+"-_"))
 
-
         self.message = self._construct_message()
         super(GenerateComplexPictures, self).__init__(self.message)
 
-        self.path_folder_images = "images/{}_{}/".format(
-            self.get_date_time_str(),
-            self.get_random_string_base_16(16)
-        )
+        if root_folder == None:
+            self.root_folder = ""
+        else:
+            self.root_folder = root_folder+("/" if root_folder[-1] != "/" else "")
+
+
+        if number != None:
+            self.number = number
+
+            self.z_func_file_name = "z_func_{}.txt".format(self.number)
+            self.path_folder_images = "images/"+self.root_folder+"z_funcs/"
+        else:
+            self.number = None
+            self.z_func_file_name = "z_func.txt"
+            self.path_folder_images = "images/{}{}_{}/".format(
+                self.root_folder,
+                self.get_date_time_str(),
+                self.get_random_string_base_16(16)
+            )
+
         if not os.path.exists(self.path_folder_images):
             os.makedirs(self.path_folder_images)
 
-        generate_generic_z_function.main(path_folder=self.path_folder_images)
 
-        with open(self.path_folder_images+"z_func.txt", "r") as fin:
-            self.func_str = fin.read()
+        if func_str != None:
+            self.func_str = func_str
+
+            with open(self.path_folder_images+self.z_func_file_name, "w") as fout:
+                fout.write(self.func_str)
+        else:
+            generate_generic_z_function.main(path_folder=self.path_folder_images, number=self.number)
+
+            with open(self.path_folder_images+self.z_func_file_name, "r") as fin:
+                self.func_str = fin.read()
+
         print("func_str: {}".format(self.func_str))
         self.func_str_complete = "lambda z: "+self.func_str
 
         self.f = self.get_f()
+
+        print("self.path_folder_images: {}".format(self.path_folder_images))
+        print("self.func_str_complete: {}".format(self.func_str_complete))
+        # sys.exit(-2)
+
 
 
     def get_random_string_base_16(self, n):
@@ -93,6 +129,7 @@ class GenerateComplexPictures(Exception):
     def get_f(self):
         modulo = self.modulo
         f_str = self.func_str_complete
+
         f = eval(f_str)
         def f_temp(z):
             n_z_orig = f(z)
@@ -117,10 +154,14 @@ class GenerateComplexPictures(Exception):
         print("Calculate arr")
         arr_angle = np.angle(arr_f)
         idx = arr_angle < 0
-        arr_angle[idx] = arr_angle[idx]+np.pi
+        arr_angle[idx] = arr_angle[idx]+np.pi*2
 
-        arr_angle_norm = arr_angle/np.max(arr_angle)
+        print("np.min(arr_angle): {}".format(np.min(arr_angle)))
+        print("np.max(arr_angle): {}".format(np.max(arr_angle)))
 
+        arr_angle_norm = arr_angle/(np.pi*2)
+        print("np.min(arr_angle_norm): {}".format(np.min(arr_angle_norm)))
+        print("np.max(arr_angle_norm): {}".format(np.max(arr_angle_norm)))
 
         print("Calculate abs")
         arr_abs = np.abs(arr_f)
@@ -132,6 +173,7 @@ class GenerateComplexPictures(Exception):
 
         print("Calculate x and y")
         f_norm_axis = lambda v: (lambda v2: v/np.max(v))(v-np.min(v))
+
         arr_x = arr_f.real
         arr_y = arr_f.imag
         arr_x_mod = arr_x*arr_scales
@@ -143,75 +185,53 @@ class GenerateComplexPictures(Exception):
         arr_y_mod_norm = f_norm_axis(arr_y_mod)
 
 
+        arrs = {
+            "angle": arr_angle_norm,
+            "abs": arr_abs_norm,
+            "abs_mod": arr_abs_mod_norm,
+            "x": arr_x_norm,
+            "x_mod": arr_x_mod_norm,
+            "y": arr_y_norm,
+            "y_mod": arr_y_mod_norm,
+        }
+
+
         print("Getting all data in pix_float array")
-        pix_float_hsv_f = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_f_mod = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_angle = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_abs = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_abs_mod = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_x = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_x_mod = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_y = np.ones((arr_complex.shape+(3, )))
-        pix_float_hsv_y_mod = np.ones((arr_complex.shape+(3, )))
+        shape = arr_complex.shape+(3, )
+        pixs1_dict = IndexedOrderedDict([
+            ("f", np.ones(shape)),
+            ("f_mod", np.ones(shape)),
+            ("angle", np.ones(shape)),
+            ("abs", np.ones(shape)),
+            ("abs_mod", np.ones(shape)),
+            ("x", np.ones(shape)),
+            ("x_mod", np.ones(shape)),
+            ("y", np.ones(shape)),
+            ("y_mod", np.ones(shape)),
+        ])
 
-        pix_float_hsv_f[:, :, 0] = arr_angle_norm
-        pix_float_hsv_f[:, :, 1] = arr_abs_norm
+        pixs1_dict["f"][:, :, 0] = arrs["angle"]
+        pixs1_dict["f"][:, :, 2] = arrs["abs"] # *1/3+2/3
+
+        pixs1_dict["f_mod"][:, :, 0] = arrs["angle"]
+        pixs1_dict["f_mod"][:, :, 2] = arrs["abs_mod"] # *1/3+2/3
         
-        pix_float_hsv_f_mod[:, :, 0] = arr_angle_norm
-        pix_float_hsv_f_mod[:, :, 1] = arr_abs_mod_norm
-
-        pix_float_hsv_angle[:, :, 0] = arr_angle_norm
-
-        pix_float_hsv_abs[:, :, 0] = arr_abs_norm
-        pix_float_hsv_abs_mod[:, :, 0] = arr_abs_mod_norm
-
-        pix_float_hsv_x[:, :, 0] = arr_x_norm
-        pix_float_hsv_x_mod[:, :, 0] = arr_x_mod_norm
-
-        pix_float_hsv_y[:, :, 0] = arr_y_norm
-        pix_float_hsv_y_mod[:, :, 0] = arr_y_mod_norm
-
+        keys = ["angle", "abs", "abs_mod", "x", "x_mod", "y", "y_mod"]
+        for key in keys:
+            pixs1_dict[key][:, :, 0] = arrs[key]
 
         hsv_to_rgb_vectorized = np.vectorize(colorsys.hsv_to_rgb)
 
         print("Convert hsv to rgb and convert to uint8")
-        pix_float_rgb_f = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_f[..., 0], pix_float_hsv_f[..., 1], pix_float_hsv_f[..., 2]))
-        pix_rgb_f = (pix_float_rgb_f*255.9).astype(np.uint8)
 
-        pix_float_rgb_f_mod = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_f_mod[..., 0], pix_float_hsv_f_mod[..., 1], pix_float_hsv_f_mod[..., 2]))
-        pix_rgb_f_mod = (pix_float_rgb_f_mod*255.9).astype(np.uint8)
+        pixs1_dict_rgb = IndexedOrderedDict()
+        for key, value in pixs1_dict.items():
+            pix_float_rgb = np.dstack(hsv_to_rgb_vectorized(value[..., 0], value[..., 1], value[..., 2]))
+            pixs1_dict_rgb[key] = (pix_float_rgb*255.9).astype(np.uint8)
 
-        pix_float_rgb_angle = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_angle[..., 0], pix_float_hsv_angle[..., 1], pix_float_hsv_angle[..., 2]))
-        pix_rgb_angle = (pix_float_rgb_angle*255.9).astype(np.uint8)
-        
-        pix_float_rgb_abs = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_abs[..., 0], pix_float_hsv_abs[..., 1], pix_float_hsv_abs[..., 2]))
-        pix_rgb_abs = (pix_float_rgb_abs*255.9).astype(np.uint8)
-        
-        pix_float_rgb_abs_mod = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_abs_mod[..., 0], pix_float_hsv_abs_mod[..., 1], pix_float_hsv_abs_mod[..., 2]))
-        pix_rgb_abs_mod = (pix_float_rgb_abs_mod*255.9).astype(np.uint8)
+        pixs1 = [v for v in pixs1_dict_rgb.values()]
 
-        pix_float_rgb_x = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_x[..., 0], pix_float_hsv_x[..., 1], pix_float_hsv_x[..., 2]))
-        pix_rgb_x = (pix_float_rgb_x*255.9).astype(np.uint8)
-
-        pix_float_rgb_x_mod = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_x_mod[..., 0], pix_float_hsv_x_mod[..., 1], pix_float_hsv_x_mod[..., 2]))
-        pix_rgb_x_mod = (pix_float_rgb_x_mod*255.9).astype(np.uint8)
-
-        pix_float_rgb_y = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_y[..., 0], pix_float_hsv_y[..., 1], pix_float_hsv_y[..., 2]))
-        pix_rgb_y = (pix_float_rgb_y*255.9).astype(np.uint8)
-
-        pix_float_rgb_y_mod = np.dstack(hsv_to_rgb_vectorized(pix_float_hsv_y_mod[..., 0], pix_float_hsv_y_mod[..., 1], pix_float_hsv_y_mod[..., 2]))
-        pix_rgb_y_mod = (pix_float_rgb_y_mod*255.9).astype(np.uint8)
-
-        pixs1 = [pix_rgb_f,
-                 pix_rgb_f_mod,
-                 pix_rgb_angle,
-                 pix_rgb_abs,
-                 pix_rgb_abs_mod,
-                 pix_rgb_x,
-                 pix_rgb_x_mod,
-                 pix_rgb_y,
-                 pix_rgb_y_mod]
-
+        imgs_orig = [Image.fromarray(pix.copy()) for pix in pixs1]
 
         print("Adding coordinates x and y if possible")
         find_x = 0.
@@ -230,7 +250,7 @@ class GenerateComplexPictures(Exception):
 
         print("Creating the side infos")
         # this is needed for the info on the left side of the graph!
-        pix2 = np.zeros((pix_rgb_f.shape[0], 300, 3), dtype=np.uint8)
+        pix2 = np.zeros((pixs1_dict_rgb["f"].shape[0], 300, 3), dtype=np.uint8)
         img2 = Image.fromarray(pix2)
         
         # get a font
@@ -283,27 +303,60 @@ class GenerateComplexPictures(Exception):
             imgs.append(Image.fromarray(pix3))
 
         suffixes = ["f", "f_mod", "angle", "abs", "abs_mod", "x", "x_mod", "y", "y_mod"]
-        for suffix, img in zip(suffixes, imgs):
-            file_name = "_{}.png".format(suffix)
-            img.save(self.path_folder_images+
-                "{}_{}".format(
-                    self.get_date_time_str(),
-                    self.get_random_string_base_16(16)
-                )+
-                file_name
-            )
+        
+        num_str = ""
+        if self.number != None:
+            num_str = "_{:03}".format(self.number)
+
+        if self.root_folder != "":
+            for suffix, img in zip(suffixes, imgs_orig):
+                folder_path_f_orig = "images/"+self.root_folder+suffix+"_orig/"
+                if not os.path.exists(folder_path_f_orig):
+                    os.makedirs(folder_path_f_orig)
+
+                img.save(folder_path_f_orig+"f{}_{}_{}.png".format(num_str,
+                            self.get_date_time_str(),
+                            self.get_random_string_base_16(16))
+                )
+
+            for suffix, img in zip(suffixes, imgs):
+                folder_path = "images/"+self.root_folder+suffix+"/"
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                img.save(folder_path+suffix+"{}_{}_{}.png".format(
+                        num_str,
+                        self.get_date_time_str(),
+                        self.get_random_string_base_16(16)
+                    )
+                )
+        else:
+            for suffix, img in zip(suffixes, imgs):
+                if self.number != None:
+                    suffix += "_{}".format(self.number)
+                file_name = "_{}.png".format(suffix)
+                img.save(self.path_folder_images+
+                    "{}_{}".format(
+                        self.get_date_time_str(),
+                        self.get_random_string_base_16(16)
+                    )+
+                    file_name
+                )
 
 
     def save_new_z_function(self):
+        func_str_complete = self.func_str_complete
+        
         path_folder_data = "data/"
         if not os.path.exists(path_folder_data):
             os.makedirs(path_folder_data)
 
         path_file_data = path_folder_data+"working_z_functions.pkl.gz"
+        path_file_data_txt = path_folder_data+"working_z_functions.txt"
 
         if not os.path.exists(path_file_data):
             data = DotMap()
-            data.func_str_lst = [self.func_str_complete]
+            data.func_str_lst = [func_str_complete]
 
             with gzip.open(path_file_data, "wb") as fout:
                 dill.dump(data, fout)
@@ -311,36 +364,153 @@ class GenerateComplexPictures(Exception):
             with gzip.open(path_file_data, "rb") as fin:
                 data = dill.load(fin)
 
-            data.func_str_lst.append(self.func_str_complete)
+            data.func_str_lst.append(func_str_complete)
             
+            with open(path_file_data_txt, "w") as fout:
+                for line in data.func_str_lst:
+                    fout.write(line+"\n")
+
             with gzip.open(path_file_data, "wb") as fout:
                 dill.dump(data, fout)
 
-        print("data.func_str_lst:\n{}".format(data.func_str_lst))
+        print("newest founded function:\n{}".format(func_str_complete))
 
-        lst = data.func_str_lst
-        print("Amount of found functions: {}".format(len(lst)))
-        for i, func_str in enumerate(lst, 1):
-            print("\ni: {}, func_str: {}".format(i, func_str)) 
+        # print("data.func_str_lst:\n{}".format(data.func_str_lst))
+        # lst = data.func_str_lst
+
+        # print("Amount of found functions: {}".format(len(lst)))
+        # for i, func_str in enumerate(lst, 1):
+        #     print("\ni: {}, func_str: {}".format(i, func_str)) 
 
 
     def _construct_message(self):
         return "IT WORKS!"
 
 
-if __name__ == "__main__":
-    try:
+def create_random_z_funcs():
+    for i in range(0, 20):
+        print("\ni: {}".format(i))
         generate_complex_pictures = GenerateComplexPictures(
-            n1=500,
-            scale=16,
-            scale_y=1.,
-            x_offset=8,
-            y_offset=8,
-            delta=0.0001
+            n1=800,
+            scale=14,
+            scale_y=0.7,
+            x_offset=7,
+            y_offset=7,
+            delta=0.0001,
+            func_str="z**2+z*4+complex(-10, 1)",
+            modulo=1.,
         )
+        try:
+        # if True:
+            generate_complex_pictures.do_calculations()
+            generate_complex_pictures.save_new_z_function()
+            # break
+        except:
+            generate_complex_pictures.delete_image_folder()
 
-        generate_complex_pictures.do_calculations()
 
-        generate_complex_pictures.save_new_z_function()
-    except:
-        generate_complex_pictures.delete_image_folder()
+def create_gif_images():
+    path_folder_data = "data/"
+    if not os.path.exists(path_folder_data):
+        os.makedirs(path_folder_data)
+
+    z_func_template = "z**(1+{}*0.1+0.1)*complex(z.real*({}+{}+1), z.imag*np.sin(z.real+{}))"
+    # z_func_template = "z*complex(2+z.real*{}*0.25, 1+z.imag*{})*complex(2+z.imag*{}*0.25, 1+z.real*{})"
+
+    z_funcs = []
+    # n = 17
+    n = 5
+    n1 = 5
+    for i in range(0, n): # TODO: can be made out of two variables too!
+        for j in range(0, n1):
+            t1 = (i+(j%n1)/n1)/n
+            t2 = j/n1
+
+            print("i: {}, t1: {:0.04f}, t2: {:0.04f}".format(i, t1, t2))
+
+            t1 *= np.pi*2
+            t2 *= np.pi*2
+
+            x1 = np.cos(t1)
+            y1 = np.sin(t1)
+            x2 = np.cos(t2)*1/n1
+            y2 = np.sin(t2)*1/n1
+
+            z_funcs.append(z_func_template.format(y2, x1, x2, y1))
+
+    x1 = 1
+    y1 = 0
+    x2 = 1
+    y2 = 0
+    z_funcs.append(z_func_template.format(y2, x1, x2, y1))
+
+    # sys.exit(-1)
+    root_folder = "aa_test4_final"
+
+    # save the z funcs into a file
+    with open(path_folder_data+root_folder+".txt", "w") as fout:
+        for z_func in z_funcs:
+            fout.write(z_func+"\n")
+
+    for number, func_str in enumerate(z_funcs):
+    # for number, func_str in enumerate(z_funcs[:0]):
+        print("\nDoing:")
+        print("func_str: {}".format(func_str))
+        try:
+            generate_complex_pictures = GenerateComplexPictures(
+                n1=300,
+                scale=10,
+                scale_y=1.,
+                x_offset=5,
+                y_offset=5,
+                delta=0.0001,
+                func_str=func_str,
+                root_folder=root_folder,
+                number=number
+                # func_str="z*complex(z.imag, z.real*1.2)"
+            )
+            generate_complex_pictures.do_calculations()
+            # generate_complex_pictures.save_new_z_function()
+        except:
+            generate_complex_pictures.delete_image_folder()
+
+
+    complete_path = "images/"+root_folder+"/"
+
+    for i, (root_dir, dirs, files) in enumerate(os.walk(complete_path)):
+        if len(dirs) == 0:
+            continue
+
+        print("\ni: {}".format(i))
+        print("root_dir: {}".format(root_dir))
+        # print("files: {}".format(files))
+        print("dirs: {}".format(dirs))
+        
+        root_dir = root_dir
+        for dir_name in dirs:
+            # if not "orig" in root_dir:
+            if not "orig" in dir_name:
+                continue
+
+            dir_path = root_dir+dir_name+"/"
+
+            print("dir_path: {}".format(dir_path))
+
+            process = subprocess.Popen(['../../../create_gif.sh'], cwd=dir_path)
+            process.wait()
+
+            print("finished with '{}'".format(dir_path))
+
+            gif_file_path = root_dir+dir_name+".gif"
+            shutil.move(dir_path+"myimage.gif", gif_file_path)
+
+            dir_name_path = "images/{}_gifs/".format(dir_name)
+            if not os.path.exists(dir_name_path):
+                os.makedirs(dir_name_path)
+
+            shutil.copy(gif_file_path, dir_name_path+"{}_{}.gif".format(dir_name, generate_complex_pictures.get_random_string_base_16(16)))
+
+
+if __name__ == "__main__":
+    # create_random_z_funcs()
+    create_gif_images()

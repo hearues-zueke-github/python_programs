@@ -195,7 +195,10 @@ def main(**args_main):
 
     print("\nfinal func_str: {}".format(func_str))
 
-    with open(path_folder+"z_func.txt", "w") as fout:
+    suffix_name = ""
+    if "number" in args_main and args_main["number"] != None:
+        suffix_name = "_{}".format(args_main["number"])
+    with open(path_folder+"z_func{}.txt".format(suffix_name), "w") as fout:
         fout.write(func_str)
 
 
