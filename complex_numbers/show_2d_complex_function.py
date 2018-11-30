@@ -314,7 +314,7 @@ class GenerateComplexPictures(Exception):
                 if not os.path.exists(folder_path_f_orig):
                     os.makedirs(folder_path_f_orig)
 
-                img.save(folder_path_f_orig+"f{}_{}_{}.png".format(num_str,
+                img.save(folder_path_f_orig+"{}{}_{}_{}.png".format(suffix, num_str,
                             self.get_date_time_str(),
                             self.get_random_string_base_16(16))
                 )
@@ -331,6 +331,26 @@ class GenerateComplexPictures(Exception):
                     )
                 )
         else:
+            for suffix, img in zip(suffixes, imgs_orig):
+                folder_path_f_orig = "images/originals/"+suffix+"_orig/"
+                if not os.path.exists(folder_path_f_orig):
+                    os.makedirs(folder_path_f_orig)
+
+                img.save(folder_path_f_orig+"{}{}_{}_{}.png".format(suffix, num_str,
+                            self.get_date_time_str(),
+                            self.get_random_string_base_16(16))
+                )
+
+            for suffix, img in zip(suffixes, imgs):
+                folder_path_f_orig = "images/plots/"+suffix+"_orig/"
+                if not os.path.exists(folder_path_f_orig):
+                    os.makedirs(folder_path_f_orig)
+
+                img.save(folder_path_f_orig+"{}{}_{}_{}.png".format(suffix, num_str,
+                            self.get_date_time_str(),
+                            self.get_random_string_base_16(16))
+                )
+
             for suffix, img in zip(suffixes, imgs):
                 if self.number != None:
                     suffix += "_{}".format(self.number)
@@ -388,22 +408,22 @@ class GenerateComplexPictures(Exception):
 
 
 def create_random_z_funcs():
-    for i in range(0, 20):
+    for i in range(0, 100):
         print("\ni: {}".format(i))
         generate_complex_pictures = GenerateComplexPictures(
-            n1=800,
-            scale=14,
-            scale_y=0.7,
-            x_offset=7,
-            y_offset=7,
+            n1=500,
+            scale=10,
+            scale_y=1,
+            x_offset=5,
+            y_offset=5,
             delta=0.0001,
-            func_str="z**2+z*4+complex(-10, 1)",
+            # func_str="z**2+z*4+complex(-10, 1)",
             modulo=1.,
         )
         try:
         # if True:
             generate_complex_pictures.do_calculations()
-            generate_complex_pictures.save_new_z_function()
+            # generate_complex_pictures.save_new_z_function()
             # break
         except:
             generate_complex_pictures.delete_image_folder()
@@ -512,5 +532,5 @@ def create_gif_images():
 
 
 if __name__ == "__main__":
-    # create_random_z_funcs()
-    create_gif_images()
+    create_random_z_funcs()
+    # create_gif_images()
