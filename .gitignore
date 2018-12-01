@@ -1,6 +1,7 @@
 *.pyc
 *.dot
 *.class
+*.ods
 
 complex_numbers/data
 complex_numbers/images

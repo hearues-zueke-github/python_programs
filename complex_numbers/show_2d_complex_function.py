@@ -24,6 +24,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 import generate_generic_z_function
 
+all_symbols_16 = np.array(list("0123456789ABCDEF"))
+def get_random_string_base_16(self, n):
+    l = np.random.randint(0, 16, (n, ))
+    return "".join(all_symbols_16[l])
+
 # TODO: create function with one of the founded function to get a higher resolution!
 # TODO: generate gif animation of one variable changing e.g.
 # TODO: generate better plots too!
@@ -568,7 +573,16 @@ def create_gif_images():
     z_funcs.append(z_func_template.format(y2, x1, x2, y1))
 
     # sys.exit(-1)
-    root_folder = "aa_test12_final"
+    nx = 480
+    ny = 270
+    modulo = 2.
+    max_len = 5.
+
+    root_folder = "aa_nx_{}_ny_{}_mod_{}_max_len_{}".format(
+        nx,
+        ny,
+        "{:0.03f}".format(modulo).replace(".", "_"),
+        "{:0.03f}".format(max_len).replace(".", "_"))
 
     # save the z funcs into a file
     with open(path_folder_data+root_folder+".txt", "w") as fout:
@@ -587,13 +601,13 @@ def create_gif_images():
                 # x_offset=5,
                 # y_offset=3.75,
                 
-                nx=480,
-                ny=270,
-                max_length=5.,
+                nx=nx,
+                ny=ny,
+                max_length=max_len,
                 x_center=0.,
                 y_center=0.,
 
-                modulo=1,
+                modulo=modulo,
 
                 delta=0.0001,
                 func_str=func_str,
