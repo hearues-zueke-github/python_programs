@@ -10,3 +10,5 @@
 
 mogrify -format jpg -quality 80 -resize x250 *.png
 convert -delay 4 -loop 0 *.jpg myimage.gif
+
+# extract pictures from gif: convert -coalesce angle_orig.gif out%05d.png

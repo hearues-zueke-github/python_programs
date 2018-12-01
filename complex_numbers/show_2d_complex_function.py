@@ -28,20 +28,80 @@ import generate_generic_z_function
 # TODO: generate gif animation of one variable changing e.g.
 # TODO: generate better plots too!
 class GenerateComplexPictures(Exception):
-    def __init__(self, modulo=10., n1=500, scale=16, scale_y=1., x_offset=8, y_offset=8, delta=0.0001, func_str=None, root_folder=None, number=None):
-        self.modulo = modulo
-        self.n1 = n1
-        self.scale = scale
-        self.scale_y = scale_y
-        
-        self.x_offset = x_offset
-        self.y_offset = y_offset
-        self.n1_y = int(self.n1*self.scale_y)
+    def __init__(self,
+                 modulo=10.,
+                 n1_x=500,
+                 scale=16,
+                 scale_y=1.,
+                 x_offset=8,
+                 y_offset=8,
 
+                 nx=None,
+                 ny=None,
+                 max_length=None,
+                 x_center=None,
+                 y_center=None,
+
+                 delta=0.0001,
+                 func_str=None,
+                 root_folder=None,
+                 number=None):
+
+        self.modulo = modulo
         self.delta = delta
 
-        self.xs1 = np.arange(0, self.n1+1)/self.n1*self.scale-self.x_offset+self.delta
-        self.ys1 = np.arange(0, self.n1_y+1)/self.n1_y*self.scale*self.scale_y-self.y_offset+self.delta
+        # TODO: need a big fix!
+        if nx!=None and ny!=None and max_length!=None and x_center!=None and y_center!=None:
+            self.nx = nx
+            self.ny = ny
+            self.max_length = max_length
+
+            scale_x = max_length
+            scale_y = max_length
+            if nx > ny:
+                scale_y = max_length*ny/nx
+            else:
+                scale_x = max_length*nx/ny
+
+            self.scale_x = scale_x
+            self.scale_y = scale_y
+            
+            self.x_center = x_center
+            self.y_center = y_center
+
+            self.xs1 = np.arange(0, self.nx)/self.nx*self.scale_x-self.scale_x/2+self.x_center+self.delta
+            self.ys1 = np.arange(0, self.ny)/self.ny*self.scale_y-self.scale_y/2+self.y_center+self.delta
+
+            self.x_min = self.x_center-self.scale_x/2
+            self.x_max = self.x_center+self.scale_x/2
+            self.y_min = self.y_center-self.scale_y/2
+            self.y_max = self.y_center+self.scale_y/2
+
+            # globals()["xs1"] = self.xs1
+            # globals()["ys1"] = self.ys1
+
+            # print("\nself.nx: {}".format(self.nx))
+            # print("self.ny: {}".format(self.ny))
+
+            # print("\nself.max_length: {}".format(self.max_length))
+            # print("self.scale_x: {}".format(self.scale_x))
+            # print("self.scale_y: {}".format(self.scale_y))
+            # print("self.x_center: {}".format(self.x_center))
+            # print("self.y_center: {}".format(self.y_center))
+
+            # print("TEST!")
+            # sys.exit(-10)
+        else:
+            self.n1_x = n1_x
+            self.scale = scale
+            self.scale_y = scale_y
+            
+            self.x_offset = x_offset
+            self.y_offset = y_offset
+            self.n1_y = int(self.n1_x*self.scale_y)
+
+            self.xs1 = np.arange(0, self.n1_x)/self.n1_x*self.scale-self.x_offset+self.delta
+            self.ys1 = np.arange(0, self.n1_y)/self.n1_y*self.scale*self.scale_y-self.y_offset+self.delta
 
         self.ys1 = self.ys1[::-1]
 
@@ -263,10 +323,12 @@ class GenerateComplexPictures(Exception):
             d.text((8, 8+24*i), func_str_part, font=fnt, fill=(255, 255, 255))
         
         font_y_next = 8+24*(i+2)
-        d.text((8, font_y_next), "x_min: {:3.02f}, x_max: {:3.02f}".format(-self.x_offset, self.scale-self.x_offset), font=fnt, fill=(255, 255, 255))        
+        d.text((8, font_y_next), "x_min: {:3.02f}, x_max: {:3.02f}".format(self.x_min, self.x_max), font=fnt, fill=(255, 255, 255))        
+        # d.text((8, font_y_next), "x_min: {:3.02f}, x_max: {:3.02f}".format(-self.x_offset, self.scale-self.x_offset), font=fnt, fill=(255, 255, 255))        
         
         font_y_next += 24
-        d.text((8, font_y_next), "y_min: {:3.02f}, y_max: {:3.02f}".format(-self.y_offset, self.scale-self.y_offset), font=fnt, fill=(255, 255, 255))        
+        d.text((8, font_y_next), "y_min: {:3.02f}, y_max: {:3.02f}".format(self.y_min, self.y_max), font=fnt, fill=(255, 255, 255))        
+        # d.text((8, font_y_next), "y_min: {:3.02f}, y_max: {:3.02f}".format(-self.y_offset, self.scale*self.scale_y-self.y_offset), font=fnt, fill=(255, 255, 255))        
         
         pix2 = np.array(img2).copy()
 
@@ -411,7 +473,7 @@ def create_random_z_funcs():
     for i in range(0, 100):
         print("\ni: {}".format(i))
         generate_complex_pictures = GenerateComplexPictures(
-            n1=500,
+            n1_x=500,
             scale=10,
             scale_y=1,
             x_offset=5,
@@ -434,38 +496,79 @@ def create_gif_images():
     if not os.path.exists(path_folder_data):
         os.makedirs(path_folder_data)
 
-    z_func_template = "z**(1+{}*0.1+0.1)*complex(z.real*({}+{}+1), z.imag*np.sin(z.real+{}))"
+    z_func_template = "complex(z.real*np.sin({}+z.imag)+z.imag*{}+np.sin(z.imag), z.real*np.cos(z.imag*{}+1)+z.real**2*{}+1)"
+    # z_func_template = "complex(z.real*{}+z.imag*{}+np.sin(z.imag), z.real*z.imag*{}+z.real**2*{}+1)"
+    # z_func_template = "complex(np.sin(z.real+{})+z.imag*z**(1+{}), np.abs(np.sin(z.imag)+z.real))*complex(z*np.sin(z.imag+{}), z.imag*np.sin(np.cos(z.real)+{}))"
+    # z_func_template = "z**(1+{}*0.1+0.1)*complex(z.real*({}+{}+1), z.imag*np.sin(z.real+{}))"
     # z_func_template = "z*complex(2+z.real*{}*0.25, 1+z.imag*{})*complex(2+z.imag*{}*0.25, 1+z.real*{})"
 
     z_funcs = []
     # n = 17
-    n = 5
-    n1 = 5
-    for i in range(0, n): # TODO: can be made out of two variables too!
-        for j in range(0, n1):
-            t1 = (i+(j%n1)/n1)/n
-            t2 = j/n1
+    n = 9
+    n1_x = 9
 
-            print("i: {}, t1: {:0.04f}, t2: {:0.04f}".format(i, t1, t2))
+    xs1 = []
+    ys1 = []
+    xs2 = []
+    ys2 = []
+
+    for i in range(0, n): # TODO: can be made out of two variables too!
+        for j in range(0, n1_x):
+            t1 = (i+(j%n1_x)/n1_x)/n
+            t2 = j/n1_x
+
+            # print("i: {}, t1: {:0.04f}, t2: {:0.04f}".format(i, t1, t2))
 
             t1 *= np.pi*2
             t2 *= np.pi*2
 
             x1 = np.cos(t1)
             y1 = np.sin(t1)
-            x2 = np.cos(t2)*1/n1
-            y2 = np.sin(t2)*1/n1
+            x2 = np.cos(t2)*1/n1_x
+            y2 = np.sin(t2)*1/n1_x
 
+            xs1.append(x1)
+            ys1.append(y1)
+            xs2.append(x2)
+            ys2.append(y2)
+
+            # print("x1: {:0.03f}, y1: {:0.03f}, x2: {:0.03f}, y2: {:0.03f}".format(x1, y1, x2, y2))
+
+            # z_funcs.append(z_func_template.format(y2, x1*0.5+0.5))#, x2, y1))
             z_funcs.append(z_func_template.format(y2, x1, x2, y1))
+            # z_funcs.append(z_func_template.format(y2, x1*0.5+0.5, x2, y1))
 
-    x1 = 1
-    y1 = 0
-    x2 = 1
-    y2 = 0
+    # x1 = 1
+    # y1 = 0
+    # x2 = 1/n1_x
+    # y2 = 0
+
+    # xs1.append(x1)
+    # ys1.append(y1)
+    # xs2.append(x2)
+    # ys2.append(y2)
+
+    # print("x1: {:0.03f}, y1: {:0.03f}, x2: {:0.03f}, y2: {:0.03f}".format(x1, y1, x2, y2))
+
+    # plt.figure()
+
+    # ts = np.arange(0, len(xs1))
+    # p1 = plt.plot(ts, xs1, "b.-")[0]
+    # p2 = plt.plot(ts, ys1, "g.-")[0]
+    # p3 = plt.plot(ts, xs2, "r.-")[0]
+    # p4 = plt.plot(ts, ys2, "k.-")[0]
+
+    # plt.legend((p1, p2, p3, p4), ("xs1", "ys1", "xs2", "ys2"))
+
+    # plt.show()
+
+    # sys.exit(-123)
+
+    # z_funcs.append(z_func_template.format(y2, x1*0.5+0.5))#, x2, y1))
     z_funcs.append(z_func_template.format(y2, x1, x2, y1))
 
     # sys.exit(-1)
-    root_folder = "aa_test4_final"
+    root_folder = "aa_test12_final"
 
     # save the z funcs into a file
     with open(path_folder_data+root_folder+".txt", "w") as fout:
@@ -478,21 +581,32 @@ def create_gif_images():
         print("func_str: {}".format(func_str))
         try:
             generate_complex_pictures = GenerateComplexPictures(
-                n1=300,
-                scale=10,
-                scale_y=1.,
-                x_offset=5,
-                y_offset=5,
+                # n1_x=640,
+                # scale=10,
+                # scale_y=0.75,
+                # x_offset=5,
+                # y_offset=3.75,
+                
+                nx=480,
+                ny=270,
+                max_length=5.,
+                x_center=0.,
+                y_center=0.,
+
+                modulo=1,
+
                 delta=0.0001,
                 func_str=func_str,
                 root_folder=root_folder,
-                number=number
+                number=number,
                 # func_str="z*complex(z.imag, z.real*1.2)"
             )
             generate_complex_pictures.do_calculations()
             # generate_complex_pictures.save_new_z_function()
         except:
             generate_complex_pictures.delete_image_folder()
+            traceback.print_last()
+            sys.exit(-1234)
 
 
     complete_path = "images/"+root_folder+"/"
@@ -532,5 +646,5 @@ def create_gif_images():
 
 
 if __name__ == "__main__":
-    create_random_z_funcs()
-    # create_gif_images()
+    # create_random_z_funcs()
+    create_gif_images()
