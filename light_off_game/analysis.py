@@ -1,4 +1,4 @@
-#! /usr/bin/python3.6
+#! /usr/bin/python3.5
 
 # -*- coding: utf-8 -*-
 
@@ -150,8 +150,25 @@ def get_all_possible_1_liner_solutions(n):
 
     return all_1_liner_with_solution
 
+# m**n
+def get_num_arr(m, n):
+    arr = np.zeros((m**n, n), dtype=np.uint8)
+
+    arr[:m, -1] = np.arange(0, m)
+    for j in range(1, n):
+        idx = m**j
+        arr_cpy = arr[:idx, -j:]
+        for i in range(1, m):
+            print("j: {}, i: {}".format(j, i))
+            arr[idx*i:idx*(i+1), -j-1] = i
+            arr[idx*i:idx*(i+1), -j:] = arr_cpy
+
+    return arr
+
 if __name__ == "__main__":
-    n = 6
+    n = 8
+
+    sys.exit(0)
 
     # test_shuffle_and_solve(n)
 

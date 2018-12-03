@@ -40,4 +40,4 @@ if __name__ == "__main__":
     print("best_idx: {}".format(best_idx))
 
     # best_idx_2 = np.sort(np.vstack((np.argmin(euclid_dist, axis=1), np.arange(0, 5))).T.reshape((-1, )).view("i8,i8"), order=["f0"]).view("i8").reshape((-1, 2)).T[1]
-
+    
