@@ -11,6 +11,47 @@ import numpy as np
 from dotmap import DotMap
 from PIL import Image
 
+def simplest_lambda_functions(path_lambda_functions):
+    function_str_lst = [
+        "((u+1)%2)|((d+1)%2)",
+        "(r)|((l==0).astype(np.uint8))",
+        # "l",
+        # "~r|ul",
+        # "d|dr&dl|ul&ur"
+    ]
+
+    with open(path_lambda_functions+"lambdas_simple.txt", "w") as fout:
+        for func_str in function_str_lst:
+            fout.write("lambda: {}\n".format(func_str))
+
+
+def simple_random_lambda_creation(path_lambda_functions):
+    params = ["u", "d", "l", "r", "ul", "ur", "dl", "dr"]
+    params += ["(({}+1)%2)".format(param) for param in params]
+
+    params = np.array(params)
+
+    len_params = len(params)
+
+    def and_part():
+        random_params = params[np.random.randint(0, len_params, (np.random.randint(2, 6), ))]
+        return "&".join(random_params)
+    
+    def or_part():
+        random_params = [and_part() for _ in range(0, np.random.randint(2, 5))]
+        return "|".join(random_params)
+
+    def func_part():
+        random_funcs = [or_part() for _ in range(0, np.random.randint(3, 15))]
+        return random_funcs
+
+    function_str_lst = func_part()
+
+    with open(path_lambda_functions+"lambdas_simple.txt", "w") as fout:
+        for func_str in function_str_lst:
+            fout.write("lambda: {}\n".format(func_str))
+
+
 def create_lambda_functions_2(path_lambda_functions):
     max_moves = 2 # e.g. uu, dd, ll, rr are possible for max_moves == 2
     n = 30
@@ -280,8 +321,10 @@ if __name__ == "__main__":
         os.makedirs(path_lambda_functions)
 
     # create lambda for shaking images
+    # simplest_lambda_functions(path_lambda_functions)
+    simple_random_lambda_creation(path_lambda_functions)
     # create_lambda_functions_2(path_lambda_functions)
     
     # create_lambda_functions_3(path_lambda_functions)
     # create_lambda_functions_4(path_lambda_functions)
-    create_lambda_functions_5(path_lambda_functions)
+    # create_lambda_functions_5(path_lambda_functions)

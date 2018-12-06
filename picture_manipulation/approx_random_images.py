@@ -14,6 +14,8 @@ import numpy as np
 from dotmap import DotMap
 from PIL import Image
 
+import create_lambda_functions
+
 def get_random_64_bit_number(n):
     s = string.ascii_lowercase+string.ascii_uppercase+string.digits+"-_"
     arr = np.array(list(s))
@@ -142,11 +144,13 @@ class BitNeighborManipulation(Exception):
         ((p_u&p_d&p_l&p_r))
         ]
 
+
     def _get_remove_frame_function(self):
         ft = self.ft
         def remove_frame(pix_bw):
             return pix_bw[ft:-ft, ft:-ft]
         return remove_frame
+
 
     def apply_neighbor_logic_1_bit(self, pix_bw):
         if self.add_frame != None:
@@ -184,6 +188,7 @@ class BitNeighborManipulation(Exception):
             return self.remove_frame(pix_bw)
         return pix_bw
 
+
     def apply_neighbor_logic(self, pix_bws):
         pix_bws_new = []
 
@@ -195,8 +200,16 @@ class BitNeighborManipulation(Exception):
         return pix_bws_new
 
 
-def create_1_bit_neighbour_pictures(height, width):
-    path_pictures = "images/changing_bw_1_bit_{}_{}/".format(height, width)
+all_symbols_16 = np.array(list("0123456789ABCDEF"))
+def get_random_string_base_16(n):
+    l = np.random.randint(0, 16, (n, ))
+    return "".join(all_symbols_16[l])
+
+
+def create_1_bit_neighbour_pictures(height, width, path_lambda_functions=None):
+    create_lambda_functions.simple_random_lambda_creation(path_lambda_functions)
+
+    path_pictures = "images/changing_bw_1_bit_{}_{}_{}/".format(height, width, get_random_string_base_16(4))
     if not os.path.exists(path_pictures):
         os.system("rm -rf {}".format(path_pictures))
     if not os.path.exists(path_pictures):
@@ -205,19 +218,39 @@ def create_1_bit_neighbour_pictures(height, width):
     pix_bw = np.random.randint(0, 2, (height, width), dtype=np.uint8)
     Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
 
+    with_frame = False
+    # with_frame = True
+    bit_neighbor_manipulation = BitNeighborManipulation(ft=2, with_frame=with_frame, path_lambda_functions=path_lambda_functions)
+
     # so long there are white pixels, repeat the elimination_process!
     it = 1
     pix_bw_prev = pix_bw.copy()
     pixs = [pix_bw.copy()]
     # repeat anything until it is complete blank / black / 0
-    while np.sum(pix_bw == 1) > 0:
+    while np.sum(pix_bw == 1) > 0 and it < 300:
         print("it: {}".format(it))
         
         # TODO: need to be fixed!
-        pix_bw = apply_neighbour_logic(pix_bw)
+        pix_bw = bit_neighbor_manipulation.apply_neighbor_logic_1_bit(pix_bw)
+        # pix_bw = apply_neighbour_logic(pix_bw)
 
         Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
+        
+        if np.any(pix_bw!=pix_bw_prev) == False:
+            break
+
+        pix_bw_prev = pix_bw.copy()
+
+    os.system("convert -delay 5 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures, path_pictures))
+
+    with open(path_pictures+"lambda_functions.txt", "w") as fout:
+        with open(path_lambda_functions, "r") as fin:
+            lines = fin.readlines()
+            for line in lines:
+                fout.write(line)
+    
+    sys.exit(0)
 
 def create_1_byte_neighbour_pictures(height, width):
     path_pictures = "images/changing_bw_1_byte_{}_{}/".format(height, width)
@@ -424,7 +457,13 @@ if __name__ == "__main__":
     height_resize = height*3
     width_resize = width*3
 
-    # create_1_bit_neighbour_pictures(height, width)
+    create_1_bit_neighbour_pictures(
+        height,
+        width,
+        path_lambda_functions="lambda_functions/lambdas_simple.txt"
+        # path_lambda_functions="lambda_functions/lambdas_simple.txt"
+    )
+
     # create_1_byte_neighbour_pictures(height, width)
     # create_3_byte_neighbour_pictures("random", (height, width, False))
 
