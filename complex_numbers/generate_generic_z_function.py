@@ -108,7 +108,7 @@ class Tree(Exception):
 
             elif v == "pow":
                 bt_1 = Tree(self.deep+1, self.max_deep, self.max_length_values, prev=self, value=v)
-                bt_2 = Tree(self.max_deep, self.max_deep, self.max_length_values, prev=self, value=v)
+                bt_2 = Tree(self.max_deep+1, self.max_deep, self.max_length_values, prev=self, value=v)
                 print("{}func pow".format(intendation))
                 func_str_1 = bt_1.generate_new_z_function()
                 func_str_2 = bt_2.generate_new_z_function()
@@ -197,7 +197,9 @@ def main(**args_main):
 
     suffix_name = ""
     if "number" in args_main and args_main["number"] != None:
-        suffix_name = "_{}".format(args_main["number"])
+        suffix_name += "_{}".format(args_main["number"])
+    if "file_extension_name" in args_main and args_main["file_extension_name"] != None:
+        suffix_name += "_{}".format(args_main["file_extension_name"])
     with open(path_folder+"z_func{}.txt".format(suffix_name), "w") as fout:
         fout.write(func_str)
 

@@ -17,6 +17,14 @@ bytes_io/some_random_data.hex
 test_programs/recursive_imports/num.bin
 java/myJar.jar
 
+random_pictures/images
+
 probability/*.png
 probability/dot_files
 probability/genetic_algor_entities_alive.pkl.gz
+
+turing_machine/__pycache__
+
+multi_dimensional_plots/images
+
+complex_numbers/interpolations
