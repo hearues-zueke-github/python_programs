@@ -3,31 +3,251 @@
 # -*- coding: utf-8 -*-
 
 import dill
+import gzip
 import os
 import pdb
+import sys
 
 import numpy as np
 
 from dotmap import DotMap
 from PIL import Image
 
+
+def create_lambda_functions_with_matrices(path_lambda_functions):
+    # With this you can create any size for the window!
+    # ft...frame thickness
+    ft = 1
+    params_arr = np.empty((ft*2+1, ft*2+1), dtype=np.object)
+
+    params_arr[ft, ft] = "p"
+    
+    for j in range(1, ft+1):
+        params_arr[ft-j, ft] = "u"*j
+        params_arr[ft+j, ft] = "d"*j
+        params_arr[ft, ft-j] = "l"*j
+        params_arr[ft, ft+j] = "r"*j
+        for i in range(1, ft+1):
+            params_arr[ft-j, ft-i] = "u"*j+"l"*i
+            params_arr[ft-j, ft+i] = "u"*j+"r"*i
+            params_arr[ft+j, ft-i] = "d"*j+"l"*i
+            params_arr[ft+j, ft+i] = "d"*j+"r"*i
+    # print("params_arr: \n{}".format(params_arr))
+
+    params_1 = params_arr.reshape((-1))
+    params_0 = np.array(["inv({})".format(param) for param in params_1])
+
+    params = np.vstack((params_1, params_0)).T
+
+    # print("params:\n{}".format(params))
+    # return
+
+    # print("params: {}".format(params))
+
+    # TODO: make matrices for 1, 2 to 9 elements!
+    # BUT! for 1 e.g.:
+    # [[0], [1], [2], [3], [4], [5], [6], [7], [8]]
+    # for 2:
+    # [[0, 1], [0, 2], ... , [0, 9], [1, 2], [1, 3], ... [7, 8]]
+    # for 3:
+    # [[0, 1, 2], [0, 1, 3], ...]
+
+    sys.path.append("../combinatorics/")
+    import different_combinations
+
+    m = 2
+    n = params.shape[0]
+    idx = np.array([0, 1])
+    for i in range(0, n):
+        idx = np.hstack((idx, [0]))+np.hstack(([0], idx))
+        # print("i: {}".format(i))
+        # print("  idx: {}".format(idx))
+    idx = np.cumsum(idx)
+    # print("idx: {}".format(idx))
+    # return
+
+    arr = different_combinations.get_all_combinations_repeat(m, n)
+    arr = np.hstack((np.sum(arr, axis=1).reshape((-1, 1)), arr))
+    arr2 = arr.astype(np.uint8).reshape((-1, )).view(",".join(["u1" for _ in range(0, n+1)]))
+    arr2 = np.sort(arr2, order=("f0", )).view(np.uint8).reshape((-1, n+1))[:, 1:]
+    # arr2 = arr2.view(np.uint8).reshape((-1, n+1))[:, :n]
+    # arr_combs = different_combinations.get_all_combinations_increment(m, n)
+    # print("m: {}".format(m))
+    # print("n: {}".format(n))
+    # print("arr:\n{}".format(arr))
+    # print("arr2:\n{}".format(arr2))
+
+    groups = np.array([arr2[i1:i2] for i1, i2 in zip(idx[1:-1], idx[2:])])
+    # print("groups:\n{}".format(groups))
+    groups_2 = [np.where(group==1)[1].reshape((-1, i)) for i, group in enumerate(groups, 1)]
+    # print("groups_2:\n{}".format(groups_2))
+
+    group_num_amount = {i: group for i, group in enumerate(groups, 1)}
+    # group_num_amount = {i: group for i, group in enumerate(groups_2, 1)}
+
+    globals()["group_num_amount"] = group_num_amount
+    # globals()["groups"] = groups
+    # globals()["groups_2"] = groups_2
+    # globals()["arr2"] = arr2
+
+    def get_random_and(params, group_num_amount, min_n=1, max_n=3):
+        # First get random num_amount
+        key = np.random.choice(np.arange(min_n, max_n+1))
+        group_num = group_num_amount[key]
+
+        # choose one row of group_num!
+        idx_choosen_param = group_num[np.random.randint(0, group_num.shape[0])]
+
+        # Now invert some of the params if needed!
+        idx_inv_param = np.random.randint(0, 2, params.shape[0])
+        idx_arr_inv_param = np.zeros(params.shape, dtype=np.int)
+        idx_arr_inv_param[np.arange(0, params.shape[0]), idx_inv_param] = 1
+        choosen_inv_params = params[idx_arr_inv_param==1]
+
+        # print("idx_inv_param:\n{}".format(idx_inv_param))
+        # print("idx_arr_inv_param:\n{}".format(idx_arr_inv_param))
+
+        # print("choosen_inv_params: {}".format(choosen_inv_params))
+        # print("idx_choosen_param: {}".format(idx_choosen_param))
+
+        and_params = choosen_inv_params[idx_choosen_param==1]
+        # and_params = choosen_inv_params[idx_choosen_param]
+        # print("  and_params: {}".format(and_params))
+        and_str = "&".join(and_params)
+        # print("and_str: {}".format(and_str))
+
+        return and_str, idx_choosen_param, idx_inv_param
+
+    def get_random_or(params, group_num_amount, min_and=1, max_and=4, min_n=1, max_n=3):
+        amount_and = np.random.randint(min_and, max_and+1)
+        # print("amount_and: {}".format(amount_and))
+        and_values = [get_random_and(params, group_num_amount, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
+
+        and_lst, idx_choosen_params, idx_inv_params = list(zip(*and_values))
+
+        or_str = "lambda: "+"|".join(and_lst)
+
+        return or_str, np.array(idx_choosen_params), np.array(idx_inv_params)
+
+    def get_random_booleans_str(params, group_num_amount, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
+        amount_or = np.random.randint(min_or, max_or+1)
+        or_lst = [get_random_or(params, group_num_amount, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n)
+        for _ in range(0, amount_or)]
+
+        return or_lst
+
+    # get_random_and(params, group_num_amount)
+    # or_str = get_random_or(params, group_num_amount)
+    function_str_values = get_random_booleans_str(params, group_num_amount,
+        min_or=1, max_or=2,
+        min_and=1, max_and=3,
+        min_n=3, max_n=9)
+    function_str_lst, idx_choosen_params_lst, idx_inv_params_lst = list(zip(*function_str_values))
+    idx_choosen_params_lst = np.array(idx_choosen_params_lst)
+    idx_inv_params_lst = np.array(idx_inv_params_lst)
+
+    # for j, (func_str, idx_choosen, idx_inv) in enumerate(zip(function_str_lst, idx_choosen_params_lst, idx_inv_params_lst), 1):
+    #     print("\n  j: {}, func_str: {}".format(j, func_str))
+    #     print("  idx_choosen:\n{}".format(idx_choosen))
+    #     print("  idx_inv:\n{}".format(idx_inv))
+
+    dm = DotMap()
+    dm.params = params
+    dm.function_str_lst = function_str_lst
+    dm.idx_choosen_params_lst = idx_choosen_params_lst
+    dm.idx_inv_params_lst = idx_inv_params_lst
+
+    with gzip.open(path_lambda_functions+"dm.pkl.gz", "wb") as fout:
+        dill.dump(dm, fout)
+
+    with open(path_lambda_functions+"lambdas.txt", "w") as fout:
+        for line in function_str_lst:
+            fout.write("{}\n".format(line))
+
+    return dm
+
+
 def simplest_lambda_functions(path_lambda_functions):
     function_str_lst = [
         "((u+1)%2)|((d+1)%2)",
-        "(r)|((l==0).astype(np.uint8))",
-        # "l",
-        # "~r|ul",
-        # "d|dr&dl|ul&ur"
+        "r|((l+1)%2)",
     ]
 
-    with open(path_lambda_functions+"lambdas_simple.txt", "w") as fout:
+    # function_str_lst = ["lambda: "+func_str for func_str in function_str_lst]
+
+    with open(path_lambda_functions, "w") as fout:
         for func_str in function_str_lst:
             fout.write("lambda: {}\n".format(func_str))
 
+    return function_str_lst
 
-def simple_random_lambda_creation(path_lambda_functions):
-    params = ["u", "d", "l", "r", "ul", "ur", "dl", "dr"]
-    params += ["(({}+1)%2)".format(param) for param in params]
+
+def conway_game_of_life_functions(path_lambda_functions):
+    params = ["u", "d", "l", "r", "ur", "ul", "dr", "dl"]
+    params_negative = ["(({}+1)%2)".format(param) for param in params]
+    # print("params:\n{}".format(params))
+    # print("params_negative:\n{}".format(params_negative))
+
+    # First create the 2 and 3 live cells as neighbor logic!
+
+    and_parts_1 = []
+    for i1 in range(0, 7):
+        for i2 in range(i1+1, 8):
+            and_part = "{}&{}".format(params[i1], params[i2])
+            for i in range(0, 8):
+                if i == i1 or i == i2:
+                    continue
+                and_part += "&{}".format(params_negative[i])
+            and_parts_1.append(and_part)
+    # print("and_parts_1: {}".format(and_parts_1))
+    two_cells_alive_neighbor_func = "|".join(and_parts_1)
+
+    and_parts_2 = []
+    for i1 in range(0, 6):
+        for i2 in range(i1+1, 7):
+            for i3 in range(i2+1, 8):
+                and_part = "{}&{}&{}".format(params[i1], params[i2], params[i3])
+                for i in range(0, 8):
+                    if i == i1 or i == i2 or i == i3:
+                        continue
+                    and_part += "&{}".format(params_negative[i])
+                and_parts_2.append(and_part)
+    # print("and_parts_2: {}".format(and_parts_2))
+    three_cells_alive_neighbor_func = "|".join(and_parts_2)
+
+    # This is only one function, but a very huge one!
+    function_str_lst = [
+        # "p&("+two_cells_alive_neighbor_func+"|"+three_cells_alive_neighbor_func+")|"+
+        # "((p+1)%2)&("+three_cells_alive_neighbor_func+")",
+        # "((lambda x: np.logical_or.reduce((np.logical_and.reduce((p==1, np.logical_or.reduce((x==2, x==3)))), np.logical_and.reduce((p==0, x==3)))) )(u+d+r+l+dr+dl+ur+ul)+0).astype(np.uint8)",
+"""
+def a():
+    x = u+d+r+l+ur+ul+dr
+    t1 = np.logical_or.reduce((x==2, x==4, x==5))
+    p1 = np.logical_and.reduce((p==1, t1))
+    p2 = np.logical_and.reduce((p==0, x==3))
+
+    return np.logical_or.reduce((p1, p2)).astype(np.uint8)
+    # return (u|inv(d)).astype(np.uint8)
+"""[1:-1],
+    ]
+
+    print("function_str_lst: {}".format(function_str_lst))
+
+    with open(path_lambda_functions, "w") as fout:
+        for func_str in function_str_lst:
+            if "def " in func_str:
+                fout.write("{}\n".format(func_str))
+            else:
+                fout.write("lambda: {}\n".format(func_str))
+
+    return function_str_lst
+
+
+def simple_random_lambda_creation(function_amount=1, path_lambda_functions_file=None):
+    params = ["p", "u", "d", "l", "r", "ul", "ur", "dl", "dr"]
+    params += ["inv({})".format(param) for param in params]
+    # print("params: {}".format(params))
 
     params = np.array(params)
 
@@ -42,14 +262,19 @@ def simple_random_lambda_creation(path_lambda_functions):
         return "|".join(random_params)
 
     def func_part():
-        random_funcs = [or_part() for _ in range(0, np.random.randint(3, 15))]
+        random_funcs = ["lambda: "+or_part() for _ in range(0, np.random.randint(1, 2))]
         return random_funcs
 
     function_str_lst = func_part()
 
-    with open(path_lambda_functions+"lambdas_simple.txt", "w") as fout:
-        for func_str in function_str_lst:
-            fout.write("lambda: {}\n".format(func_str))
+    if path_lambda_functions_file is not None:
+        with open(path_lambda_functions_file, "w") as fout:
+            for func_str in function_str_lst:
+                fout.writelines(func_str+"\n")
+            # for func_str in function_str_lst:
+            #     fout.write(func_str+"\n")
+
+    return function_str_lst
 
 
 def create_lambda_functions_2(path_lambda_functions):
@@ -320,9 +545,11 @@ if __name__ == "__main__":
     if not os.path.exists(path_lambda_functions):
         os.makedirs(path_lambda_functions)
 
+    create_lambda_functions_with_matrices(path_lambda_functions)
+
     # create lambda for shaking images
     # simplest_lambda_functions(path_lambda_functions)
-    simple_random_lambda_creation(path_lambda_functions)
+    # simple_random_lambda_creation(path_lambda_functions)
     # create_lambda_functions_2(path_lambda_functions)
     
     # create_lambda_functions_3(path_lambda_functions)
