@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import dill
+import inspect
 import os
 import pdb
 import shutil
@@ -12,17 +13,15 @@ import sys
 import numpy as np
 
 from dotmap import DotMap
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 
 import create_lambda_functions
 
-def get_random_64_bit_number(n):
-    s = string.ascii_lowercase+string.ascii_uppercase+string.digits+"-_"
-    arr = np.array(list(s))
-    return "".join(np.random.choice(arr, (n, )).tolist())
+sys.path.append("..")
+import utils_all
 
 class BitNeighborManipulation(Exception):
-    def __init__(self, ft=2, with_frame=True, path_lambda_functions=None):
+    def __init__(self, ft=2, with_frame=True, path_lambda_functions=None, lambda_str_funcs_lst=None):
         self.ft = ft
         if with_frame:
             self.add_frame = self._get_add_frame_function() # function
@@ -35,9 +34,10 @@ class BitNeighborManipulation(Exception):
         self.bit_operators_idx = [0, 1, 2, 3]
         
         self.get_pixs = self._generate_pixs_function() # function
-        self.bit_operations = self._generate_lambda_functions(path_lambda_functions) # list of lambdas
+        self.bit_operations = self._generate_lambda_functions(path_lambda_functions, lambda_str_funcs_lst) # list of lambdas
         self.it1 = 0 # for the iterator variable (1st)
         self.it2 = 0 # for the iterator variable (2nd)
+
 
     def _get_add_frame_function(self):
         ft = self.ft
@@ -45,6 +45,7 @@ class BitNeighborManipulation(Exception):
             t = np.vstack((pix_bw[-ft:], pix_bw, pix_bw[:ft]))
             return np.hstack((t[:, -ft:], t, t[:, :ft]))
         return add_frame
+
 
     def _generate_pixs_function(self):
         ft = self.ft
@@ -80,20 +81,63 @@ class BitNeighborManipulation(Exception):
 
         return generate_pixs
 
-    def _generate_lambda_functions(self, path_lambda_functions):
 
-        if not os.path.exists(path_lambda_functions):
-            print("File path '{}' does not exists!".fornat(path_lambda_functions))
-            print("Will use default lambda functions then instead!")
-            sys.exit(-1)
+    def _generate_lambda_functions(self, path_lambda_functions, lambda_str_funcs_lst):
+        if path_lambda_functions != None:
+            if not os.path.exists(path_lambda_functions):
+                print("File path '{}' does not exists!".format(path_lambda_functions))
+                print("Will use default lambda functions then instead!")
+                sys.exit(-1)
 
-        with open(path_lambda_functions, "r") as fin:
-            # lines = fin.readlines()
-            lines = list(filter(lambda x: len(x) > 0, fin.read().splitlines()))
+            with open(path_lambda_functions, "r") as fin:
+                # lines = fin.readlines()
+                lines = list(filter(lambda x: len(x) > 0, fin.read().splitlines()))
+        elif lambda_str_funcs_lst != None:
+            lines = lambda_str_funcs_lst
+        else:
+            print("ERROR! No lambda functions can be found!")
+            sys.exit(-2)
 
         # TODO: check every single line, if it is matching with the variable convention!
         # TODO: add a security function, where each line will be checked up
-        lambdas = [eval(line) for line in lines]
+        
+        def inv(l):
+            return (l+1)%2
+        globals()["inv"] = inv
+
+        def return_function(def_func_str):
+            local = {}
+            # local = {"inv": inv}
+            exec(def_func_str, globals(), local)
+            # print("local: {}".format(local))
+            # sys.exit(-4)
+            return local["a"]
+
+        # first find 'def' functions and split it up!
+        lambdas = []
+        def_func = ""
+        is_prev_def = False
+        for line in lines:
+            # print("111: line: {}".format(line))
+            if "def " in line or (len(line) >= 6 and "lambda" != line[:6]):
+                if is_prev_def == False:
+                    is_prev_def = True
+                    def_func = ""
+                def_func += line+"\n"
+            else:
+                if is_prev_def == True:
+                    is_prev_def = False
+                    lambdas.append(return_function(def_func))
+                    # lambdas.append(inspect.getsource(def_func))
+                    # lambdas.append(exec(def_func))
+                lambdas.append(eval(line))
+        if is_prev_def == True:
+            # print("def_func:\n{}".format(def_func))
+            lambdas.append(return_function(def_func))
+            # lambdas.append(inspect.getsource(def_func))
+            # lambdas.append(exec(def_func))
+
+        # lambdas = [eval(line) for line in lines]
         # self.max_bit_operators = 5
         self.max_bit_operators = len(lambdas)
         # pdb.set_trace()
@@ -200,57 +244,435 @@ class BitNeighborManipulation(Exception):
         return pix_bws_new
 
 
-all_symbols_16 = np.array(list("0123456789ABCDEF"))
-def get_random_string_base_16(n):
-    l = np.random.randint(0, 16, (n, ))
-    return "".join(all_symbols_16[l])
+def create_1_bit_neighbour_pictures(height, width, next_folder=""):
+    suffix = "{}_{}_{}_{}".format(
+        height,
+        width,
+        utils_all.get_date_time_str_full(),
+        utils_all.get_random_str_base_16(4)
+    )
 
+    font_name = "712_serif.ttf"
+    font_size = 16
+    fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
 
-def create_1_bit_neighbour_pictures(height, width, path_lambda_functions=None):
-    create_lambda_functions.simple_random_lambda_creation(path_lambda_functions)
+    char_width, char_height = fnt.getsize("a")
+    print("char_width: {}".format(char_width))
+    print("char_height: {}".format(char_height))
 
-    path_pictures = "images/changing_bw_1_bit_{}_{}_{}/".format(height, width, get_random_string_base_16(4))
-    if not os.path.exists(path_pictures):
+    path_pictures = "images/{}changing_bw_1_bit_{}/".format(next_folder, suffix)
+    if os.path.exists(path_pictures):
         os.system("rm -rf {}".format(path_pictures))
     if not os.path.exists(path_pictures):
         os.makedirs(path_pictures)
 
-    pix_bw = np.random.randint(0, 2, (height, width), dtype=np.uint8)
-    Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
+    dm = create_lambda_functions.create_lambda_functions_with_matrices(path_pictures)
+    print("path_pictures:\n{}".format(path_pictures))
+    # function_str_lst = create_lambda_functions.conway_game_of_life_functions(path_pictures)
+    # function_str_lst = create_lambda_functions.simplest_lambda_functions(path_pictures)
+    # function_str_lst = create_lambda_functions.simple_random_lambda_creation(path_lambda_functions_file=path_pictures)
 
-    with_frame = False
-    # with_frame = True
-    bit_neighbor_manipulation = BitNeighborManipulation(ft=2, with_frame=with_frame, path_lambda_functions=path_lambda_functions)
+    function_str_lst = dm.function_str_lst
+
+    lines_print = []
+    for i, line in enumerate(function_str_lst):
+        lines_print.append("i: {}, {}".format(i, line))
+
+    # char_sizes = []
+    # for c in list(string.ascii_letters+"0123456789-_#'+*/()[]{}?!"):
+    #     size = fnt.getsize(c)
+    #     print("c: {}, fnt.getsize(c): {}".format(c, size))
+    #     char_sizes.append(size)
+
+    text_sizes = []
+    max_chars = 0
+    max_width = 0
+    max_char_height = 0
+    for line in lines_print:
+        size = fnt.getsize(line)
+        char_height = size[1]
+        if max_char_height < char_height:
+            max_char_height = char_height
+
+        text_width = size[0]
+        if max_width < text_width:
+            max_width = text_width
+
+        text_sizes.append(size)
+        length = len(line)
+        if max_chars < length:
+            max_chars = length
+
+    for i, text_size in enumerate(text_sizes):
+        print("i: {}, text_size: {}".format(i, text_size))
+
+    print("max_chars: {}".format(max_chars))
+
+    # print("function_str_lst:\n\n{}".format("\n".join(function_str_lst)))
+    # sys.exit(-12342)
+
+    pix2 = np.zeros((len(lines_print)*(max_char_height+2)+2, max_width+2, 3), dtype=np.uint8)
+    pix2 += 0x40
+    img2 = Image.fromarray(pix2)
+    d = ImageDraw.Draw(img2)
+
+    for i, line in enumerate(lines_print):
+        d.text((1, 1+i*(max_char_height+2)), line, font=fnt, fill=(255, 255, 255))
+        # d.text((1, 1+i*(font_size)), line, font=fnt, fill=(255, 255, 255))
+
+    pix2_1 = np.array(img2)
+
+    if pix2_1.shape[0] < height:
+        diff = height-pix2_1.shape[0]
+        h1 = diff//2
+        h2 = h1+diff%2
+        pix2_1 = np.vstack((
+            np.zeros((h1, pix2_1.shape[1], 3), dtype=np.uint8),
+            pix2_1,
+            np.zeros((h2, pix2_1.shape[1], 3), dtype=np.uint8)
+        ))
+
+    # img2 = Image.fromarray(pix2_1)
+
+    # img2.show()
+    # return
+    print("pix2_1.shape: {}".format(pix2_1.shape))
+    
+    pix_bw = np.random.randint(0, 2, (height, width), dtype=np.uint8)
+    # print("type(pix_bw): {}".format(type(pix_bw)))
+    pix_1 = np.dstack((pix_bw, pix_bw, pix_bw)).astype(np.uint8)*255
+    
+    color_frame_image = np.array([0x40, 0x80, 0xFF], dtype=np.uint8)
+
+    def add_left_right_frame(pix, color, width):
+        field = np.zeros((pix.shape[0], width, 3), dtype=np.uint8)+color
+        return np.hstack((
+            field.copy(),
+            pix,
+            field
+        ))
+
+
+    if pix_1.shape[0] < pix2_1.shape[0]:
+        diff = pix2_1.shape[0]-pix_1.shape[0]
+        h1 = diff//2
+        h2 = h1+diff%2
+        pix_1 = np.vstack((
+            np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+            pix_1,
+            np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+        ))
+
+    width_frame = 10
+    pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
+
+    # Image.fromarray(pix_1).show()
+    # Image.fromarray(pix2_1).show()
+
+    Image.fromarray(np.hstack((pix2_1, pix_1))).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
+        
+    # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
+
+    # with_frame = False
+    with_frame = True
+    bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, path_lambda_functions=path_pictures+"lambdas.txt")
 
     # so long there are white pixels, repeat the elimination_process!
+    it_max = 30
+    # it_max = height
     it = 1
-    pix_bw_prev = pix_bw.copy()
-    pixs = [pix_bw.copy()]
+    # pix_bw_prev = pix_bw.copy()
+    # pixs = [pix_bw.copy()]
     # repeat anything until it is complete blank / black / 0
-    while np.sum(pix_bw == 1) > 0 and it < 300:
+    while it < it_max:
+    # while np.sum(pix_bw == 1) > 0 and it < it_max:
         print("it: {}".format(it))
         
         # TODO: need to be fixed!
         pix_bw = bit_neighbor_manipulation.apply_neighbor_logic_1_bit(pix_bw)
+        # print("type(pix_bw): {}".format(type(pix_bw)))
         # pix_bw = apply_neighbour_logic(pix_bw)
 
-        Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
+        pix_1 = np.dstack((pix_bw, pix_bw, pix_bw)).astype(np.uint8)*255
+
+        if pix_1.shape[0] < pix2_1.shape[0]:
+            diff = pix2_1.shape[0]-pix_1.shape[0]
+            h1 = diff//2
+            h2 = h1+diff%2
+            pix_1 = np.vstack((
+                np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+                pix_1,
+                np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+            ))
+        
+        pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
+        Image.fromarray(np.hstack((pix2_1, pix_1))).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
+        # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
         
-        if np.any(pix_bw!=pix_bw_prev) == False:
-            break
-
-        pix_bw_prev = pix_bw.copy()
+        # if np.any(pix_bw!=pix_bw_prev) == False:
+        #     break
+        # pix_bw_prev = pix_bw.copy()
 
     os.system("convert -delay 5 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures, path_pictures))
-
-    with open(path_pictures+"lambda_functions.txt", "w") as fout:
-        with open(path_lambda_functions, "r") as fin:
-            lines = fin.readlines()
-            for line in lines:
-                fout.write(line)
     
-    sys.exit(0)
+    path_gifs = "images/animations/{}".format(next_folder)
+    if not os.path.exists(path_gifs):
+        os.makedirs(path_gifs)
+
+    shutil.copy("{}/myimage.gif".format(path_pictures), path_gifs+"1bit_{}.gif".format(suffix))
+
+    for line in lines_print:
+        print("{}".format(line))
+
+    return path_pictures
+
+
+def combine_images_from_folders(paths_pictures):
+    suffix = "{}_{}".format(
+        utils_all.get_date_time_str_full(),
+        utils_all.get_random_str_base_16(4)
+    )
+
+    path_pictures_combined = "images/combined_changing_bw_1_bit_{}/".format(suffix)
+    if not os.path.exists(path_pictures_combined):
+        os.system("rm -rf {}".format(path_pictures_combined))
+    if not os.path.exists(path_pictures_combined):
+        os.makedirs(path_pictures_combined)
+
+    png_file_paths_lst = []
+    for path_pictures in paths_pictures:
+        png_file_paths = []
+        for root_dir, dirs, files in os.walk(path_pictures):
+            for file_name in files:
+                if not ".png" in file_name:
+                    continue
+                png_file_paths.append(root_dir+file_name)
+            break
+
+        png_file_paths_lst.append(sorted(png_file_paths))
+        print("png_file_paths:\n{}".format(png_file_paths))
+
+        # break
+
+    color_frame_left = np.array([0x80, 0x40, 0xE0], dtype=np.uint8)
+    color_frame_top = np.array([0x70, 0x20, 0xE8], dtype=np.uint8)
+    color_frame_bottom = np.array([0x90, 0x10, 0xF0], dtype=np.uint8)
+    frame_top_bottom = 10
+
+    for i in range(0, len(png_file_paths_lst)):
+        print("i: {}".format(i))
+        pixs =[np.array(Image.open(paths[i])) for paths in png_file_paths_lst]
+        max_width = 0
+        for pix in pixs:
+            width = pix.shape[1]
+            if max_width < width:
+                max_width = width
+        print("max_width: {}".format(max_width))
+        pixs = [pix if pix.shape[1] == max_width else 
+            np.vstack((
+                np.zeros((
+                    frame_top_bottom,
+                    max_width,
+                    pix.shape[2]
+                ), dtype=np.uint8)+color_frame_top,
+                # pix,
+                np.hstack((
+                    np.zeros((
+                        pix.shape[0],
+                        max_width-pix.shape[1],
+                        pix.shape[2]
+                    ), dtype=np.uint8)+color_frame_left,
+                    pix,
+                )),
+                np.zeros((
+                    frame_top_bottom,
+                    max_width,
+                    pix.shape[2]
+                ), dtype=np.uint8)+color_frame_bottom
+            )) for pix in pixs]
+
+        pix_comb = np.vstack(pixs)
+
+        Image.fromarray(pix_comb).save(path_pictures_combined+"comb_pic_nr_{:05}.png".format(i))
+
+    os.system("convert -delay 10 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures_combined, path_pictures_combined))
+
+    return path_pictures_combined
+
+
+def create_1_bit_neighbour_pictures_only_good_ones(height, width, amount=10):
+    def generate_folder():
+        suffix = "{}_{}_{}_{}".format(
+            height,
+            width,
+            utils_all.get_date_time_str_full(),
+            utils_all.get_random_str_base_16(4)
+        )
+        path_pictures = "images/automaton_1_lambda_function/good_1_bit_automaton_{}/".format(suffix)
+
+        if not os.path.exists(path_pictures):
+            os.system("rm -rf {}".format(path_pictures))
+        if not os.path.exists(path_pictures):
+            os.makedirs(path_pictures)
+
+        return suffix, path_pictures
+
+    font_name = "712_serif.ttf"
+    font_size = 16
+
+    fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
+
+    it_amount = 0
+    while it_amount < amount:
+        pix_bw = np.random.randint(0, 2, (height, width), dtype=np.uint8)
+        # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
+        
+        # path_lambda_functions_file = path_pictures+"lambdas.txt"
+        function_str_lst = create_lambda_functions.simple_random_lambda_creation() # path_lambda_functions_file=path_lambda_functions_file)
+
+        print("function_str_lst:\n\n{}".format("\n".join(function_str_lst)))
+        sys.exit(-12342)
+
+        pix2 = np.zeros((height, 600, 3), dtype=np.uint8)
+        img2 = Image.fromarray(pix2)
+        d = ImageDraw.Draw(img2)
+
+        for i, line in enumerate(function_str_lst):
+            d.text((8, 8+i*(font_size+2)), "i: {}, {}".format(i, line), font=fnt, fill=(255, 255, 255))
+
+        pix2_1 = np.array(img2)
+
+        # path_test_font_images = "images/font_images/"
+        # if not os.path.exists(path_test_font_images):
+        #     os.makedirs(path_test_font_images)
+
+        # font_names = [
+        #     "Graph-35-pix.ttf",
+
+        # #     "novem___.ttf",
+        # #     "monofonto.ttf",
+        # #     "Monospace.ttf",
+        # #     "712_serif.ttf",
+        # #     "BPdotsSquareBold.otf",
+        # #     "5X5-B___.TTF",
+        # #     "origa___.ttf",
+        # #     "origap__.ttf",
+        # ]
+        # for font_name in font_names:
+        #     print("font_name: {}".format(font_name))
+        #     pix2 = np.zeros((700, 1600, 3), dtype=np.uint8)
+        #     img2 = Image.fromarray(pix2)
+        #     d = ImageDraw.Draw(img2)
+
+        #     y_pos = 5
+        #     # for y in range(16, 65, 16):
+        #     # for y in range(4, 65, 1):
+        #     for y in range(8, 65, 8):
+        #         fnt = ImageFont.truetype('../fonts/{}'.format(font_name), y)
+        #         d.text((8, y_pos), "size: {}, ".format(y)+string.ascii_letters+"0123456789-_?!=()|&", font=fnt, fill=(255, 255, 255))
+
+        #         y_pos += y+1
+
+        #     pix2_new = np.array(img2)
+
+        #     img2.save(path_test_font_images+"test_font_{}.png".format(font_name))
+
+        #     pix2_remove_not_white = np.array(img2)
+        #     idx_not_white = np.all(pix2_remove_not_white != 255, axis=2)
+        #     pix2_remove_not_white[idx_not_white] = 0
+
+        #     Image.fromarray(pix2_remove_not_white).save(path_test_font_images+"test_font_{}_remove_not_white.png".format(font_name))
+
+        #     # pix2_complement = np.any(pix2 > 0, axis=2)^np.any(pix2_remove_not_white > 0, axis=2)
+        #     pix2_complement = pix2_new+0
+        #     idx_complement = ~(np.any(pix2_complement < 255, axis=2))
+        #     pix2_complement[idx_complement] = 0
+        #     idx = np.any(pix2_complement > 0, axis=2)
+        #     pix2_complement[idx] = 255
+
+
+        #     globals()["idx_complement"] = idx_complement
+
+        #     Image.fromarray(pix2_complement).save(path_test_font_images+"test_font_{}_complement.png".format(font_name))
+
+        # sys.exit(-5)
+
+        # with_frame = False
+        with_frame = True
+        bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, lambda_str_funcs_lst=function_str_lst)
+
+        # so long there are white pixels, repeat the elimination_process!
+        it_max = 2
+        it = 1
+        pix_bw_prev = pix_bw.copy()
+        pixs = [pix_bw.copy()]
+        # repeat anything until it is complete blank / black / 0
+        while np.sum(pix_bw == 1) > 0 and it < it_max:
+            # print("it: {}".format(it))
+            
+            # TODO: need to be fixed!
+            pix_bw = bit_neighbor_manipulation.apply_neighbor_logic_1_bit(pix_bw)
+            # pix_bw = apply_neighbour_logic(pix_bw)
+
+            # check if pix_bw is equal to one of previous one!
+            is_prev_equal = False
+            for pix in pixs:
+                if np.all(pix_bw==pix):
+                    print("Previous one was equal to pix_bw!!!")
+                    is_prev_equal = True
+                    break
+
+            if is_prev_equal:
+                break
+
+            # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
+            it += 1
+            
+            if np.any(pix_bw!=pix_bw_prev) == False:
+                break
+
+            pixs.append(pix_bw_prev)
+            pix_bw_prev = pix_bw.copy()
+
+        print("len(pixs): {}".format(len(pixs)))
+
+        # if np.sum(pix_bw==1) > 0:
+        if np.sum(pix_bw==1) > height:
+            print("Is not completly black image!")
+            it = it_max
+
+        if it < it_max:
+            pixs.append(pix_bw)
+            
+            print("It worked!")
+            # create the images and the gif too!
+            suffix, path_pictures = generate_folder()
+
+            with open(path_pictures+"lambdas.txt", "w") as fout:
+                for line in function_str_lst:
+                    fout.write(line+"\n")
+
+            for i, pix in enumerate(pixs):
+                pix_1 = np.dstack((pix, pix, pix)).astype(np.uint8)*255
+                Image.fromarray(np.hstack((pix2_1, pix_1))).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, i))
+
+            print("Create the gif image!")
+            os.system("convert -delay 5 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures, path_pictures))
+
+            path_gifs = "images/animations/"
+            if not os.path.exists(path_gifs):
+                os.makedirs(path_gifs)
+
+            # TODO: maybe also create a image map of each individual lambda funcstions, how the calculation was done!
+            # TODO: add the function str in each picture too!!
+            shutil.copy("{}/myimage.gif".format(path_pictures), path_gifs+"1bit_{}.gif".format(suffix))
+
+            it_amount += 1
+        else:
+            print("Mhhh, maybe too many iterations?!")
+
+
 
 def create_1_byte_neighbour_pictures(height, width):
     path_pictures = "images/changing_bw_1_byte_{}_{}/".format(height, width)
@@ -284,6 +706,7 @@ def create_1_byte_neighbour_pictures(height, width):
         pix_combine = combine_1_bit_neighbours(pix_bws)
         Image.fromarray(pix_combine).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
+
 
 def create_3_byte_neighbour_pictures(img_type,
     height=None, width=None, same_image=None, with_frame=None,
@@ -420,7 +843,7 @@ def create_3_byte_neighbour_pictures(img_type,
             os.system("mv {} pic_{:04d}.png".format(file_name, file_num))
             file_num += 1
 
-    random_64_bit_num = get_random_64_bit_number(4)
+    random_64_bit_num = utils_all.get_random_str_base_64(4)
     suffix_temp = "_{}_{{}}_{{}}_{}".format(img_type, random_64_bit_num)
     suffix = suffix_temp.format(height, width)
 
@@ -448,8 +871,9 @@ def create_3_byte_neighbour_pictures(img_type,
 
 
 if __name__ == "__main__":
-    # height = 64
-    height = 128
+    height = 64
+    # height = 128
+    # height = 256
     # height = 256
     # height = 512
     width = height
@@ -457,12 +881,23 @@ if __name__ == "__main__":
     height_resize = height*3
     width_resize = width*3
 
-    create_1_bit_neighbour_pictures(
-        height,
-        width,
-        path_lambda_functions="lambda_functions/lambdas_simple.txt"
-        # path_lambda_functions="lambda_functions/lambdas_simple.txt"
+    # create_1_bit_neighbour_pictures_only_good_ones(height, width, amount=100)
+    # sys.exit(0)
+    
+    next_folder="{}_{}/".format(
+        utils_all.get_date_time_str_full(),
+        utils_all.get_random_str_base_16(4)
     )
+
+    paths_pictures = []
+    for _ in range(0, 10):
+        path_pictures = create_1_bit_neighbour_pictures(height, width, next_folder=next_folder)
+        paths_pictures.append(path_pictures)
+
+    print("paths_pictures:\n{}".format(paths_pictures))
+
+    combine_images_from_folders(paths_pictures)
+    sys.exit(0)
 
     # create_1_byte_neighbour_pictures(height, width)
     # create_3_byte_neighbour_pictures("random", (height, width, False))

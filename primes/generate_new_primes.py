@@ -15,11 +15,6 @@ import time
 
 get_new_rnd_number = lambda arr: reduce(lambda a, b: a|b, [int(x)<<(i*8) for i, x in enumerate(arr)], 0)
 
-def func_create_new_prime(pipe_in, seeds):
-    primes = factorint(get_new_rnd_number(seeds))
-    p = sorted(list(primes.keys()))[-1]
-    pipe_in.send(p)
-
 # def create_new_arr(seed)
 
 if __name__ == "__main__":
@@ -32,21 +27,26 @@ if __name__ == "__main__":
 
     found_primes = []
 
-    for i in range(0, 2):
+    for i in range(0, 100):
         print("i: {}".format(i))
 
-        pipes_out, pipes_in = list(zip(*[Pipe() for _ in range(0, 8)]))
+        pipes_out, pipes_in = list(zip(*[Pipe() for _ in range(0, 3)]))
+
+        def func_create_new_prime(pipe_in, seeds):
+            primes = factorint(get_new_rnd_number(seeds))
+            p = sorted(list(primes.keys()))[-1]
+            pipe_in.send(p)
 
         ps = [Process(
                 target=func_create_new_prime,
-                args=(pipe_in, np.random.randint(0, 256, (100, ))))
+                args=(pipe_in, np.random.randint(0, 256, (35, ))))
             for pipe_in in pipes_in
         ]
 
         for p in ps:
             p.start()
 
-        time.sleep(2)
+        time.sleep(3)
         for p in ps:
             p.terminate()
 
@@ -62,8 +62,4 @@ if __name__ == "__main__":
         for p in ps:
             p.join()
 
-    found_primes = sorted(found_primes)
-
-    print("found_primes:".format(found_primes))
-    for i, prime in enumerate(found_primes, 1):
-        print("  i: {}, prime: {}".format(i, prime))
+    print("found_primes: {}".format(found_primes))
