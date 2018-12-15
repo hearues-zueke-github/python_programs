@@ -4,8 +4,8 @@
 
 import functools
 import sys
-sys.path.append("../../picture_manipulation")
 
+sys.path.append("../../picture_manipulation")
 import approx_random_images
 
 from copy import deepcopy
@@ -164,8 +164,20 @@ class Window(tk.Frame):
 
         # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.label_frame = tk.LabelFrame(self, text="My first label frame!", width=300, height=350)
-        self.label_frame.place(x=450, y=20)
+        self.label_frame_lambdas = tk.LabelFrame(self, text="Lambda functions", width=400, height=150)
+        self.label_frame_lambdas.place(x=450, y=20)
+        self.label_frame_lambdas.pack_propagate(False)
+
+        self.txt_box_lambdas = tk.Text(self.label_frame_lambdas)
+        self.txt_box_lambdas.pack(expand=True, fill='both')
+
+        self.scrollbar_lambdas = tk.Scrollbar(self.txt_box_lambdas, command=self.txt_box_lambdas.yview)
+        self.scrollbar_lambdas.pack(side=tk.RIGHT, fill=tk.Y)
+        self.txt_box_lambdas.config(yscrollcommand=self.scrollbar_lambdas.set)
+
+
+        self.label_frame = tk.LabelFrame(self, text="My first label frame!", width=300, height=300)
+        self.label_frame.place(x=450, y=170)
         self.label_frame.pack_propagate(False)
 
         self.txt_box = tk.Text(self.label_frame)
@@ -177,7 +189,7 @@ class Window(tk.Frame):
 
 
         self.btnFrame = tk.Frame(self, width = 100, height=80)
-        self.btnFrame.place(x=450, y=370)
+        self.btnFrame.place(x=450, y=470)
         self.btnFrame.grid_propagate(False)
         self.btnFrame.columnconfigure(0, weight=1)
         self.btnFrame.rowconfigure(0, weight=1)
@@ -223,15 +235,7 @@ class Window(tk.Frame):
     # def client_exit_btn(self):
     def create_new_image(self):
         print("Pressed 'create_new_image'!")
-        # self.lablFrames.place(x=10+np.random.randint(0, 10), y=60+np.random.randint(0, 10))
-        # print("Pressed the normal btn button!")
-        # self.pix = np.random.randint(0, 256, (40, 70, 3), dtype=np.uint8)
-        # self.img = Image.fromarray(self.pix)
-        # self.imgtk = ImageTk.PhotoImage(self.img)
 
-        # self.labl.configure(image=self.imgtk)
-        # self.labl.image = self.imgtk
-        # print("self.labl.image: {}".format(self.labl.image))
     
     def start_animation(self):
         if self.should_stop_animation and not self.is_animation_running:
@@ -241,44 +245,29 @@ class Window(tk.Frame):
             self.is_animation_running = True
             print("start animation!")
 
-            # if not hasattr(self, "all_frames"):
-            #     all_frames = []
-            #     for _ in self.labls_inner:
-            #         all_frames_row = []
-            #         for _ in self.labls_inner[0]:
-            #             frames = [ImageTk.PhotoImage(
-            #                 Image.fromarray(np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)),
-            #                 format = 'gif -index %i' %(i))
-            #                 for i in range(0, np.random.randint(2, 30))
-            #             ]
-            #             all_frames_row.append(frames)
-
-            #         all_frames.append(all_frames_row)
-
-            #     self.all_frames = all_frames
-            #     print("keyword 'all_frames' does not exist yet!")
-            # else:
-            #     print("keyword 'all_frames' ALREADY EXIST!!!")
-
-
-            # TODO: create the pixs and sort it by the length of the pixs!
-
             all_frames_1d = []
             all_datas_1d = []
             all_lens_1d = []
             for y, _ in enumerate(self.labls_inner):
-                # all_frames_row = []
-                # all_datas_row = []
                 for x, _ in enumerate(self.labls_inner[0]):
-                    # frames = [ImageTk.PhotoImage(
-                    #     Image.fromarray(np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)),
-                    #     format = 'gif -index %i' %(i))
-                    #     for i in range(0, np.random.randint(2, 30))
-                    # ]
+                    tries = 0
+                    while True:
+                        pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
+                        if len(pixs) >= 5:
+                            break
+                        
+                        tries += 1
+                        if tries > 5:
+                            break
 
-                    pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
                     print("y: {}, x: {}".format(y, x))
                     print("dm.function_str_lst:\n{}".format(dm.function_str_lst))
+
+                    arr_zero = np.zeros(pixs[0].shape, dtype=np.uint8)
+
+                    pixs = [arr_zero+np.array([0x00, 0xFF, 0x00], dtype=np.uint8)]*1+\
+                           pixs+\
+                           [arr_zero+np.array([0xFF, 0x00, 0x00], dtype=np.uint8)]*1
 
                     frames = [ImageTk.PhotoImage(
                         Image.fromarray(pix),
@@ -286,19 +275,10 @@ class Window(tk.Frame):
                         for i, pix in enumerate(pixs)
                     ]
 
-                    # all_frames_row.append(frames)
-                    # all_datas_row.append((pixs, dm))
-
                     all_frames_1d.append(frames)
                     all_datas_1d.append((pixs, dm))
-                    all_lens_1d.append(len(pixs))
+                    all_lens_1d.append(len(pixs)-2)
 
-                # all_frames.append(all_frames_row)
-                # all_datas.append(all_datas_row)
-
-                # for y in range(0, len(self.labls_inner)):
-                # for x in range(0, len(self.labls_inner[0])):
-                #     self.after(0, self.update_frame_random, x, y, 0)
 
             print("all_lens_1d: {}".format(all_lens_1d))
             arr = np.vstack((all_lens_1d, np.arange(0, len(all_lens_1d)))).T.astype(np.uint32).reshape((-1, )).view("u4,u4")
@@ -312,14 +292,6 @@ class Window(tk.Frame):
             print("lens_sorted: {}".format(lens_sorted))
             print("idxs: {}".format(idxs))
 
-
-            # all_frames_1d = np.array(all_frames_1d)
-            # all_datas_1d = np.array(all_datas_1d)
-            # all_lens_1d = np.array(all_lens_1d)
-
-            # all_frames_1d = all_frames_1d[idx]
-            # all_datas_1d = all_datas_1d[idx]
-            # all_lens_1d = all_lens_1d[idx]
 
             all_frames_1d_sorted = []
             all_datas_1d_sorted = []
@@ -351,23 +323,15 @@ class Window(tk.Frame):
             self.all_datas = all_datas
             self.all_lens = all_lens
 
-            for y in range(0, len(self.labls_inner)):
-                for x in range(0, len(self.labls_inner[0])):
+            for y, labls_inner_row in enumerate(self.labls_inner, 0):
+                for x, labl in enumerate(labls_inner_row, 0):
+                    labl.bind("<Button-1>", self.get_func_show_lambdas(y, x))
+
                     self.after(0, self.update_frame_random, x, y, 0)
 
-                    str_line = "y: {:02}, x: {:02}, amount frames: {}\n".format(y, x, self.all_lens[y][x])
+                    str_line = "y: {:02}, x: {:02}, amount frames: {:3}\n".format(y, x, self.all_lens[y][x])
                     self.txt_box.insert(tk.END, str_line)
                     self.txt_box.see(tk.END)
-
-
-    # def update_frame(self, x, y):
-    #     # print("in update_frame: label: {}".format(label))
-    #     frame = self.frames[self.frame_idx]
-    #     self.frame_idx += 1
-    #     if self.frame_idx >= len(self.frames):
-    #         self.frame_idx = 0
-    #     self.labls_inner[y][x].configure(image=frame)
-    #     self.after(100, self.update_frame, x, y)
 
 
     def update_frame_random(self, x, y, idx):
@@ -381,7 +345,7 @@ class Window(tk.Frame):
         if self.should_stop_animation:
             return
 
-        self.after(100, self.update_frame_random, x, y, idx)
+        self.after(200, self.update_frame_random, x, y, idx)
 
 
     def stop_animation(self):
@@ -392,17 +356,27 @@ class Window(tk.Frame):
             self.is_animation_running = False
             self.should_stop_animation = True
         
+
+    def get_func_show_lambdas(self, y, x):
+        pixs, dm = self.all_datas[y][x]
+        function_str_lst = dm.function_str_lst
+
+        def show_lambdas(event):
+            self.txt_box_lambdas.delete('1.0', tk.END)
+            print("show_lambdas: y: {}, x: {}, event: {}".format(y, x, event))
+            self.txt_box_lambdas.insert(tk.END, "\n".join(function_str_lst)+"\n")
+            self.txt_box_lambdas.see(tk.END)
+
+        return show_lambdas
+
 # root window created. Here, that would be the only window, but
 # you can later have windows within windows.
 root = tk.Tk()
 
-root.geometry("840x480")
+root.geometry("880x580")
 
 #creation of an instance
 app = Window(root)
-
-# root.after(0, app.update, 0)
-# root.after(0, app.update2, 0)
 
 #mainloop 
 root.mainloop()

@@ -402,7 +402,7 @@ def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_ar
         bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, lambda_str_funcs_lst=dm.function_str_lst)
 
     # so long there are white pixels, repeat the elimination_process!
-    it_max = 300
+    it_max = 30
     # it_max = height
     it = 1
     # pix_bw_prev = pix_bw.copy()
