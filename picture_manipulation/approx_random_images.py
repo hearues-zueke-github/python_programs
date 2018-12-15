@@ -17,7 +17,9 @@ from PIL import Image, ImageFont, ImageDraw
 
 import create_lambda_functions
 
-sys.path.append("..")
+path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+
+sys.path.append(path_dir_root+"/..")
 import utils_all
 
 class BitNeighborManipulation(Exception):
@@ -244,30 +246,94 @@ class BitNeighborManipulation(Exception):
         return pix_bws_new
 
 
-def create_1_bit_neighbour_pictures(height, width, next_folder=""):
-    suffix = "{}_{}_{}_{}".format(
-        height,
-        width,
-        utils_all.get_date_time_str_full(),
-        utils_all.get_random_str_base_16(4)
-    )
+def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_array=False, save_pictures=True):
+    if save_pictures:
+        suffix = "{}_{}_{}_{}".format(
+            height,
+            width,
+            utils_all.get_date_time_str_full(),
+            utils_all.get_random_str_base_16(4)
+        )
 
-    font_name = "712_serif.ttf"
-    font_size = 16
-    fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
+        font_name = "712_serif.ttf"
+        font_size = 16
+        fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
 
-    char_width, char_height = fnt.getsize("a")
-    print("char_width: {}".format(char_width))
-    print("char_height: {}".format(char_height))
+        char_width, char_height = fnt.getsize("a")
+        print("char_width: {}".format(char_width))
+        print("char_height: {}".format(char_height))
 
-    path_pictures = "images/{}changing_bw_1_bit_{}/".format(next_folder, suffix)
-    if os.path.exists(path_pictures):
-        os.system("rm -rf {}".format(path_pictures))
-    if not os.path.exists(path_pictures):
-        os.makedirs(path_pictures)
+        print("path_dir_root: {}".format(path_dir_root))
 
-    dm = create_lambda_functions.create_lambda_functions_with_matrices(path_pictures)
-    print("path_pictures:\n{}".format(path_pictures))
+        path_pictures = path_dir_root+"images/{}changing_bw_1_bit_{}/".format(next_folder, suffix)
+        # path_pictures = path_pictures.replace("/", "\\")
+        print("path_pictures: {}".format(path_pictures))
+
+        # sys.exit(-1)
+
+        if os.path.exists(path_pictures):
+            os.system("rm -rf {}".format(path_pictures))
+        if not os.path.exists(path_pictures):
+            os.makedirs(path_pictures)
+
+    # sys.exit(-2)
+        print("path_pictures:\n{}".format(path_pictures))
+
+        dm = create_lambda_functions.create_lambda_functions_with_matrices(path_lambda_functions=path_pictures, save_data=save_pictures)
+    
+        text_sizes = []
+        max_chars = 0
+        max_width = 0
+        max_char_height = 0
+        for line in lines_print:
+            size = fnt.getsize(line)
+            char_height = size[1]
+            if max_char_height < char_height:
+                max_char_height = char_height
+
+            text_width = size[0]
+            if max_width < text_width:
+                max_width = text_width
+
+            text_sizes.append(size)
+            length = len(line)
+            if max_chars < length:
+                max_chars = length
+
+        for i, text_size in enumerate(text_sizes):
+            print("i: {}, text_size: {}".format(i, text_size))
+
+        print("max_chars: {}".format(max_chars))
+
+        pix2 = np.zeros((len(lines_print)*(max_char_height+2)+2, max_width+2, 3), dtype=np.uint8)
+        pix2 += 0x40
+        img2 = Image.fromarray(pix2)
+        d = ImageDraw.Draw(img2)
+
+        for i, line in enumerate(lines_print):
+            d.text((1, 1+i*(max_char_height+2)), line, font=fnt, fill=(255, 255, 255))
+            # d.text((1, 1+i*(font_size)), line, font=fnt, fill=(255, 255, 255))
+
+        pix2_1 = np.array(img2)
+
+        if pix2_1.shape[0] < height:
+            diff = height-pix2_1.shape[0]
+            h1 = diff//2
+            h2 = h1+diff%2
+            pix2_1 = np.vstack((
+                np.zeros((h1, pix2_1.shape[1], 3), dtype=np.uint8),
+                pix2_1,
+                np.zeros((h2, pix2_1.shape[1], 3), dtype=np.uint8)
+            ))
+
+        # img2 = Image.fromarray(pix2_1)
+
+        # img2.show()
+        # return
+        print("pix2_1.shape: {}".format(pix2_1.shape))
+    else:
+        dm = create_lambda_functions.create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=save_pictures)
+
     # function_str_lst = create_lambda_functions.conway_game_of_life_functions(path_pictures)
     # function_str_lst = create_lambda_functions.simplest_lambda_functions(path_pictures)
     # function_str_lst = create_lambda_functions.simple_random_lambda_creation(path_lambda_functions_file=path_pictures)
@@ -284,59 +350,8 @@ def create_1_bit_neighbour_pictures(height, width, next_folder=""):
     #     print("c: {}, fnt.getsize(c): {}".format(c, size))
     #     char_sizes.append(size)
 
-    text_sizes = []
-    max_chars = 0
-    max_width = 0
-    max_char_height = 0
-    for line in lines_print:
-        size = fnt.getsize(line)
-        char_height = size[1]
-        if max_char_height < char_height:
-            max_char_height = char_height
-
-        text_width = size[0]
-        if max_width < text_width:
-            max_width = text_width
-
-        text_sizes.append(size)
-        length = len(line)
-        if max_chars < length:
-            max_chars = length
-
-    for i, text_size in enumerate(text_sizes):
-        print("i: {}, text_size: {}".format(i, text_size))
-
-    print("max_chars: {}".format(max_chars))
-
     # print("function_str_lst:\n\n{}".format("\n".join(function_str_lst)))
     # sys.exit(-12342)
-
-    pix2 = np.zeros((len(lines_print)*(max_char_height+2)+2, max_width+2, 3), dtype=np.uint8)
-    pix2 += 0x40
-    img2 = Image.fromarray(pix2)
-    d = ImageDraw.Draw(img2)
-
-    for i, line in enumerate(lines_print):
-        d.text((1, 1+i*(max_char_height+2)), line, font=fnt, fill=(255, 255, 255))
-        # d.text((1, 1+i*(font_size)), line, font=fnt, fill=(255, 255, 255))
-
-    pix2_1 = np.array(img2)
-
-    if pix2_1.shape[0] < height:
-        diff = height-pix2_1.shape[0]
-        h1 = diff//2
-        h2 = h1+diff%2
-        pix2_1 = np.vstack((
-            np.zeros((h1, pix2_1.shape[1], 3), dtype=np.uint8),
-            pix2_1,
-            np.zeros((h2, pix2_1.shape[1], 3), dtype=np.uint8)
-        ))
-
-    # img2 = Image.fromarray(pix2_1)
-
-    # img2.show()
-    # return
-    print("pix2_1.shape: {}".format(pix2_1.shape))
     
     pix_bw = np.random.randint(0, 2, (height, width), dtype=np.uint8)
     # print("type(pix_bw): {}".format(type(pix_bw)))
@@ -353,32 +368,41 @@ def create_1_bit_neighbour_pictures(height, width, next_folder=""):
         ))
 
 
-    if pix_1.shape[0] < pix2_1.shape[0]:
-        diff = pix2_1.shape[0]-pix_1.shape[0]
-        h1 = diff//2
-        h2 = h1+diff%2
-        pix_1 = np.vstack((
-            np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
-            pix_1,
-            np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
-        ))
+    # if pix_1.shape[0] < pix2_1.shape[0]:
+    #     diff = pix2_1.shape[0]-pix_1.shape[0]
+    #     h1 = diff//2
+    #     h2 = h1+diff%2
+    #     pix_1 = np.vstack((
+    #         np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+    #         pix_1,
+    #         np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+    #     ))
 
-    width_frame = 10
-    pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
+    # width_frame = 10
+    # pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
 
     # Image.fromarray(pix_1).show()
     # Image.fromarray(pix2_1).show()
 
-    Image.fromarray(np.hstack((pix2_1, pix_1))).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
+    pix_complete = pix_1
+
+    # pix_complete = np.hstack((pix2_1, pix_1))
+    if save_pictures:
+        Image.fromarray(pix_complete).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
         
+    pixs = [pix_complete]
     # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, 0))
 
     # with_frame = False
     with_frame = True
-    bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, path_lambda_functions=path_pictures+"lambdas.txt")
+    
+    if save_pictures:
+        bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, path_lambda_functions=path_pictures+"lambdas.txt")
+    else:
+        bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, lambda_str_funcs_lst=dm.function_str_lst)
 
     # so long there are white pixels, repeat the elimination_process!
-    it_max = 30
+    it_max = 300
     # it_max = height
     it = 1
     # pix_bw_prev = pix_bw.copy()
@@ -395,18 +419,32 @@ def create_1_bit_neighbour_pictures(height, width, next_folder=""):
 
         pix_1 = np.dstack((pix_bw, pix_bw, pix_bw)).astype(np.uint8)*255
 
-        if pix_1.shape[0] < pix2_1.shape[0]:
-            diff = pix2_1.shape[0]-pix_1.shape[0]
-            h1 = diff//2
-            h2 = h1+diff%2
-            pix_1 = np.vstack((
-                np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
-                pix_1,
-                np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
-            ))
+        # if pix_1.shape[0] < pix2_1.shape[0]:
+        #     diff = pix2_1.shape[0]-pix_1.shape[0]
+        #     h1 = diff//2
+        #     h2 = h1+diff%2
+        #     pix_1 = np.vstack((
+        #         np.zeros((h1, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+        #         pix_1,
+        #         np.zeros((h2, pix_1.shape[1], 3), dtype=np.uint8)+color_frame_image,
+        #     ))
         
-        pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
-        Image.fromarray(np.hstack((pix2_1, pix_1))).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
+        # pix_1 = add_left_right_frame(pix_1, color_frame_image, width_frame)
+        pix_complete = pix_1
+
+        is_already_available = False
+        for pix in pixs:
+            if np.all(pix==pix_complete):
+                is_already_available = True
+                break
+
+        if is_already_available:
+            break
+        pixs.append(pix_complete)
+
+        # pix_complete = np.hstack((pix2_1, pix_1))
+        if save_pictures:
+            Image.fromarray(pix_complete).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         # Image.fromarray(pix_bw*255).save(path_pictures+"rnd_{}_{}_bw_iter_{:03}.png".format(height, width, it))
         it += 1
         
@@ -414,16 +452,31 @@ def create_1_bit_neighbour_pictures(height, width, next_folder=""):
         #     break
         # pix_bw_prev = pix_bw.copy()
 
-    os.system("convert -delay 5 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures, path_pictures))
-    
-    path_gifs = "images/animations/{}".format(next_folder)
-    if not os.path.exists(path_gifs):
-        os.makedirs(path_gifs)
+    if save_pictures:
+        path_pictures = path_pictures[11:]
+        print("new path_pictures: {}".format(path_pictures))
+        command = "convert -delay 10 -loop 0 {}*.png {}myimage.gif".format(path_pictures, path_pictures)
+        # command = command.replace("/", "\\\\")
+        print("command:\n{}".format(command))
+        os.system(command)
+        # os.system("convert -delay 5 -loop 0 ./{}/*.png ./{}/myimage.gif".format(path_pictures, path_pictures))
+        
+        path_gifs = path_dir_root[11:]+"images/animations/{}".format(next_folder)
+        # path_gifs = path_gifs.replace("/", "\\\\")
+        if not os.path.exists(path_gifs):
+            os.makedirs(path_gifs)
 
-    shutil.copy("{}/myimage.gif".format(path_pictures), path_gifs+"1bit_{}.gif".format(suffix))
+        # shutil.copy("{}myimage.gif".format(path_pictures), "{}1bit_{}.gif".format(path_gifs, suffix))
+        command2 = "cp {}myimage.gif".format(path_pictures)+" {}1bit_{}.gif".format(path_gifs, suffix)
+        print("command2: {}".format(command2))
+        os.system(command2)
 
     for line in lines_print:
         print("{}".format(line))
+
+
+    if return_pix_array:
+        return pixs, dm
 
     return path_pictures
 
@@ -889,14 +942,17 @@ if __name__ == "__main__":
         utils_all.get_random_str_base_16(4)
     )
 
-    paths_pictures = []
-    for _ in range(0, 10):
-        path_pictures = create_1_bit_neighbour_pictures(height, width, next_folder=next_folder)
-        paths_pictures.append(path_pictures)
+    path_pictures = create_1_bit_neighbour_pictures(height, width, next_folder="")
+    print("path_pictures:\n{}".format(path_pictures))
 
-    print("paths_pictures:\n{}".format(paths_pictures))
+    # paths_pictures = []
+    # for _ in range(0, 10):
+    #     path_pictures = create_1_bit_neighbour_pictures(height, width, next_folder=next_folder)
+    #     paths_pictures.append(path_pictures)
+    # print("paths_pictures:\n{}".format(paths_pictures))
 
-    combine_images_from_folders(paths_pictures)
+
+    # combine_images_from_folders(paths_pictures)
     sys.exit(0)
 
     # create_1_byte_neighbour_pictures(height, width)

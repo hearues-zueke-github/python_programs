@@ -123,7 +123,7 @@ class Window(tk.Frame):
         self.img = Image.fromarray(self.pix)
         self.imgtk = ImageTk.PhotoImage(self.img)
 
-        self.labl = tk.Label(self, text="TEST!", bg="#4080FF", width=50, image=self.imgtk, borderwidth=4)
+        self.labl = tk.Label(self, text="TEST!", bg="#4080FF", image=self.imgtk, borderwidth=4)
         self.labl.place(x=30, y=40)
 
         self.labl2 = tk.Label(self, text="TEST2!", bg="#FF8040", image=self.imgtk, borderwidth=4)
@@ -131,10 +131,56 @@ class Window(tk.Frame):
 
         self.labls = [tk.Label(self, text="jup!", bg="#208090", width=50, height=30, borderwidth=0, highlightbackground="#00FF00")]
         self.labls[0].place(x=30, y=40+128+10)
-        self.labls[0].maxsize((50, 30))
+        # self.labls[0].maxsize((50, 30))
 
         self.labl2.bind("<Button-1>", self.print_text2)
         self.labl2.bind("<Button-2>", self.print_text3)
+
+        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.label_frame = tk.LabelFrame(self, text="My first label frame!", width=200, height=100)
+        self.label_frame.place(x=250, y=20)
+        # self.label_frame.geometry("200x50")
+
+        # self.label_frame.grid_rowconfigure(0, weight=1, uniform="x")
+        # self.label_frame.grid_columnconfigure(0, weight=5, uniform="x")
+        # self.label_frame.grid_columnconfigure(1, weight=1, uniform="x")
+        # self.label_frame.grid_propagate(False)
+        self.label_frame.pack_propagate(False)
+
+        self.txt_box = tk.Text(self.label_frame)
+        self.txt_box.pack(expand=True, fill='both')
+
+        self.scrollbar = tk.Scrollbar(self.txt_box, command=self.txt_box.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.txt_box.config(yscrollcommand=self.scrollbar.set)
+
+
+        self.btnFrame = tk.Frame(self, width = 100, height=80)
+        self.btnFrame.place(x=380, y=120)
+        self.btnFrame.grid_propagate(False)
+        self.btnFrame.columnconfigure(0, weight=1)
+        self.btnFrame.rowconfigure(0, weight=1)
+        self.btnFrame.rowconfigure(1, weight=1)
+
+        self.btnWrite = tk.Button(self.btnFrame, text="Write to text box") # , command=self.write_to_text_box)
+        self.btnWrite.bind("<Button-1>", self.write_to_text_box)
+        self.btnWrite.grid(row=0, column=0, sticky="news")
+
+        self.btnDelete = tk.Button(self.btnFrame, text="Delete from\ntext box") # , command=self.write_to_text_box)
+        self.btnDelete.bind("<Button-1>", self.delete_from_text_box)
+        self.btnDelete.grid(row=1, column=0, sticky="news")
+
+
+    def write_to_text_box(self, event):
+        print("event: {}".format(event))
+        self.txt_box.insert(tk.END, "TEST! {:03}\n".format(np.random.randint(0, 1000)))
+        self.txt_box.see(tk.END)
+
+
+    def delete_from_text_box(self, event):
+        print("event: {}".format(event))
+        self.txt_box.delete('1.0', tk.END)
 
     
     def print_text2(self, event):

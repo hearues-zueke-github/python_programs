@@ -13,8 +13,11 @@ import numpy as np
 from dotmap import DotMap
 from PIL import Image
 
+path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+sys.path.append(path_dir_root+"../combinatorics/")
+import different_combinations
 
-def create_lambda_functions_with_matrices(path_lambda_functions):
+def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=True):
     # With this you can create any size for the window!
     # ft...frame thickness
     ft = 1
@@ -51,9 +54,6 @@ def create_lambda_functions_with_matrices(path_lambda_functions):
     # [[0, 1], [0, 2], ... , [0, 9], [1, 2], [1, 3], ... [7, 8]]
     # for 3:
     # [[0, 1, 2], [0, 1, 3], ...]
-
-    sys.path.append("../combinatorics/")
-    import different_combinations
 
     m = 2
     n = params.shape[0]
@@ -157,12 +157,13 @@ def create_lambda_functions_with_matrices(path_lambda_functions):
     dm.idx_choosen_params_lst = idx_choosen_params_lst
     dm.idx_inv_params_lst = idx_inv_params_lst
 
-    with gzip.open(path_lambda_functions+"dm.pkl.gz", "wb") as fout:
-        dill.dump(dm, fout)
+    if save_data:
+        with gzip.open(path_lambda_functions+"dm.pkl.gz", "wb") as fout:
+            dill.dump(dm, fout)
 
-    with open(path_lambda_functions+"lambdas.txt", "w") as fout:
-        for line in function_str_lst:
-            fout.write("{}\n".format(line))
+        with open(path_lambda_functions+"lambdas.txt", "w") as fout:
+            for line in function_str_lst:
+                fout.write("{}\n".format(line))
 
     return dm
 
