@@ -2,8 +2,10 @@
 
 # -*- coding: utf-8 -*-
 
+import dill
 import functools
 import sys
+import time
 
 sys.path.append("../../picture_manipulation")
 import approx_random_images
@@ -18,6 +20,10 @@ from PIL import Image, ImageTk
 # from tkinter import *
 import tkinter as tk
 
+import multiprocessing as mp
+from multiprocessing import Process, Pipe # , Lock
+
+from threading import Lock
 
 import platform
 print("platform.system(): {}".format(platform.system()))
@@ -38,37 +44,68 @@ class Window(tk.Frame):
         #with that, we want to then run init_window, which doesn't yet exist
         self.init_window()
 
+        self.cpu_count = mp.cpu_count()
+        print("self.cpu_count: {}".format(self.cpu_count))
 
-    def update(self, ind):
-        frame = self.frames[ind]
-        ind += 1
+        # self.pipes = [Pipe() for _ in range(0, self.cpu_count)]
+        self.pipes_main_proc = [Pipe() for i in range(0, self.cpu_count)]
+        self.pipes_proc_main = [Pipe() for i in range(0, self.cpu_count)]
+        
+        self.pipes_proc_recv = [pipe[0] for pipe in self.pipes_main_proc]
+        self.pipes_main_send = [pipe[1] for pipe in self.pipes_main_proc]
+        
+        self.pipes_main_recv = [pipe[0] for pipe in self.pipes_proc_main]
+        self.pipes_proc_send = [pipe[1] for pipe in self.pipes_proc_main]
+        
+        self.lock = Lock()
 
-        if self.increment_idx:
-            ind += self.increment_idx
-            self.increment_idx = 0
-        # if ind >= len(self.frames):
-        #     ind = 0
+        self.ps = [Process(target=self.thread_func, args=(self.pipes_proc_recv[i], self.pipes_proc_send[i])) for i in range(0, self.cpu_count)]
+        for p in self.ps: p.start()
 
-        if self.decrement_idx:
-            ind -= self.decrement_idx
-            self.decrement_idx = 0
-        # if ind < 0:
-        #     ind = len(self.frames)-1
-        ind = ind % len(self.frames)
-        print("ind: {}".format(ind))
 
-        self.labl.configure(image=frame)
-        self.after(100, self.update, ind)
+    def thread_func(self, pipe_recv, pipe_send):
+        while True:
+            if not pipe_recv.poll():
+                time.sleep(0.01)
+                continue
 
-    def update2(self, ind):
-        frame = self.frames2[ind]
-        ind += 1
-        if ind >= len(self.frames2):
-            ind = 0
-        print("ind: {}".format(ind))
+            f_enc, args = pipe_recv.recv()
+            f = dill.loads(f_enc)
+            ret = f(*args)
+            pipe_send.send(ret)
+            # pipe_send.send(dill.dumps(ret))
 
-        self.labl2.configure(image=frame)
-        self.after(350, self.update2, ind)
+
+    # def update(self, ind):
+    #     frame = self.frames[ind]
+    #     ind += 1
+
+    #     if self.increment_idx:
+    #         ind += self.increment_idx
+    #         self.increment_idx = 0
+    #     # if ind >= len(self.frames):
+    #     #     ind = 0
+
+    #     if self.decrement_idx:
+    #         ind -= self.decrement_idx
+    #         self.decrement_idx = 0
+    #     # if ind < 0:
+    #     #     ind = len(self.frames)-1
+    #     ind = ind % len(self.frames)
+    #     print("ind: {}".format(ind))
+
+    #     self.labl.configure(image=frame)
+    #     self.after(100, self.update, ind)
+
+    # def update2(self, ind):
+    #     frame = self.frames2[ind]
+    #     ind += 1
+    #     if ind >= len(self.frames2):
+    #         ind = 0
+    #     print("ind: {}".format(ind))
+
+    #     self.labl2.configure(image=frame)
+    #     self.after(350, self.update2, ind)
 
 
     #Creation of init_window
@@ -114,6 +151,9 @@ class Window(tk.Frame):
         self.stopAnimationButton = tk.Button(self, text="Stop Animation!!!",command=self.stop_animation)
         self.stopAnimationButton.place(x=10, y=70)
 
+        self.sortImagesLengthButton = tk.Button(self, text="Sort Animations by length",command=self.sort_animation_by_length)
+        self.sortImagesLengthButton.place(x=100, y=40)
+
 
         self.pix = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
         self.img = Image.fromarray(self.pix)
@@ -123,8 +163,8 @@ class Window(tk.Frame):
         self.background_colors_inner = ["#4080FF", "#8040FF"]
 
         self.frame_outer_size = (70, 70)
-        self.frame_outer_y_amount = 5
-        self.frame_outer_x_amount = 6
+        self.frame_outer_y_amount = 7
+        self.frame_outer_x_amount = 8
 
         self.lablFrames = tk.Frame(self,
             width=self.frame_outer_size[0]*self.frame_outer_x_amount,
@@ -164,8 +204,10 @@ class Window(tk.Frame):
 
         # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+        self.x_pos_frame = 580
+
         self.label_frame_lambdas = tk.LabelFrame(self, text="Lambda functions", width=400, height=150)
-        self.label_frame_lambdas.place(x=450, y=20)
+        self.label_frame_lambdas.place(x=self.x_pos_frame, y=20)
         self.label_frame_lambdas.pack_propagate(False)
 
         self.txt_box_lambdas = tk.Text(self.label_frame_lambdas)
@@ -177,7 +219,7 @@ class Window(tk.Frame):
 
 
         self.label_frame = tk.LabelFrame(self, text="My first label frame!", width=300, height=300)
-        self.label_frame.place(x=450, y=170)
+        self.label_frame.place(x=self.x_pos_frame, y=170)
         self.label_frame.pack_propagate(False)
 
         self.txt_box = tk.Text(self.label_frame)
@@ -189,7 +231,7 @@ class Window(tk.Frame):
 
 
         self.btnFrame = tk.Frame(self, width = 100, height=80)
-        self.btnFrame.place(x=450, y=470)
+        self.btnFrame.place(x=self.x_pos_frame, y=470)
         self.btnFrame.grid_propagate(False)
         self.btnFrame.columnconfigure(0, weight=1)
         self.btnFrame.rowconfigure(0, weight=1)
@@ -203,7 +245,6 @@ class Window(tk.Frame):
         self.btnDelete.bind("<Button-1>", self.delete_from_text_box)
         self.btnDelete.grid(row=1, column=0, sticky="news")
 
-        # TODO: when the frame is clicked, the function text should be displayed on the right side too! (in a text box!)
 
 
     def write_to_text_box(self, event):
@@ -229,6 +270,10 @@ class Window(tk.Frame):
 
     def client_exit_menu_btn(self):
         print("Pressed the menu btn button!")
+        for p in self.ps:
+            p.terminate()
+            p.join()
+
         exit()
 
 
@@ -238,6 +283,127 @@ class Window(tk.Frame):
 
     
     def start_animation(self):
+        if self.should_stop_animation and not self.is_animation_running:
+            self.txt_box.delete('1.0', tk.END)
+
+            self.should_stop_animation = False
+            self.is_animation_running = True
+            print("start animation!")
+
+            rows = len(self.labls_inner)
+            cols = len(self.labls_inner[0])
+            all_frames = [[None for _ in range(0, cols)] for _ in range(0, rows)]
+            all_datas = [[None for _ in range(0, cols)] for _ in range(0, rows)]
+            all_lens = [[None for _ in range(0, cols)] for _ in range(0, rows)]
+
+            self.index_table = np.zeros((rows, cols), dtype=np.uint32)+np.arange(0, cols)+(np.arange(0, rows)*cols).reshape((-1, 1))
+            print("self.index_table:\n{}".format(self.index_table))
+            # sys.exit(-1)
+
+            arr_y = np.zeros((rows, cols), dtype=np.uint32)+np.arange(0, rows).reshape((-1, 1))
+            arr_x = np.zeros((rows, cols), dtype=np.uint32)+np.arange(0, cols).reshape((1, -1))
+            print("arr_y:\n{}".format(arr_y))
+            print("arr_x:\n{}".format(arr_x))
+            
+            self.arr_idx = np.dstack((arr_y, arr_x)).astype(np.uint32).view("u4,u4").reshape((-1, )) # .reshape((rows, cols))
+            print("self.arr_idx:\n{}".format(self.arr_idx))
+            
+            # arr_idx_2 = arr_idx_1.reshape((-1, 2))
+            # print("arr_idx_2:\n{}".format(arr_idx_2))
+            
+            # arr_idx = arr_idx_2.view("u4,u4")#.reshape((rows, cols))
+            # print("arr_idx:\n{}".format(arr_idx))
+            # sys.exit(-1)
+
+            self.all_frames = all_frames
+            self.all_datas = all_datas
+            self.all_lens = all_lens
+
+            def get_pixs_frames(y, x):
+                tries = 0
+                while True:
+                    pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
+                    if len(pixs) >= 5:
+                        break
+                    
+                    tries += 1
+                    if tries > 5:
+                        break
+
+                print("y: {}, x: {}".format(y, x))
+                print("dm.function_str_lst:\not{}".format(dm.function_str_lst))
+
+                arr_zero = np.zeros(pixs[0].shape, dtype=np.uint8)
+
+                pixs = [arr_zero+np.array([0x00, 0xFF, 0x00], dtype=np.uint8)]*1+\
+                       pixs+\
+                       [arr_zero+np.array([0xFF, 0x00, 0x00], dtype=np.uint8)]*1
+
+                
+
+                return y, x, pixs, dm
+
+
+            y_x_lst = []
+            for y, labls_inner_row in enumerate(self.labls_inner):
+                for x, labl in enumerate(labls_inner_row):
+                    y_x_lst.append((y, x))
+
+            print("len(y_x_lst): {}".format(len(y_x_lst)))
+            get_pixs_frames_enc = dill.dumps(get_pixs_frames)
+            # sys.exit(-1)
+
+            def func_send(idx, y, x):
+                print("idx: {}, y: {}, x: {}".format(idx, y, x))
+                self.pipes_main_send[idx].send((get_pixs_frames_enc, (y, x)))
+
+            def func_recv(idx):
+                recv = self.pipes_main_recv[idx%self.cpu_count]
+                while not recv.poll():
+                    time.sleep(0.01)
+                    print("SLEEP!")
+                print("NOICE!!!!")
+                
+                yi, xi, pixs, dm = recv.recv()
+
+                frames = [ImageTk.PhotoImage(
+                    Image.fromarray(pix),
+                    format = 'gif -index %i' %(i))
+                    for i, pix in enumerate(pixs)
+                ]
+                
+                all_frames[yi][xi] = frames
+                all_datas[yi][xi] = (pixs, dm)
+                all_lens[yi][xi] = len(pixs)-2
+
+                self.labls_inner[yi][xi].bind("<Button-1>", self.get_func_show_lambdas(idx))
+                # self.labls_inner[yi][xi].bind("<Button-1>", self.get_func_show_lambdas(yi, xi))
+                # labl.bind("<Button-1>", self.get_func_show_lambdas(y, x))
+
+                self.after(0, self.update_frame_random, yi*cols+xi, 0)
+                # self.after(0, self.update_frame_random, xi, yi, 0)
+
+                # time.sleep(0.5)
+                # print("WAIT!!!")
+
+                str_line = "yi: {:02}, xi: {:02}, amount frames: {:3}\n".format(yi, xi, self.all_lens[yi][xi])
+                self.txt_box.insert(tk.END, str_line)
+                self.txt_box.see(tk.END)
+
+            cnum = self.cpu_count
+            for idx, (y, x) in enumerate(y_x_lst[:cnum], 0):
+                    func_send(idx%cnum, y, x)
+            for idx, (y, x) in enumerate(y_x_lst[cnum:], 0):
+                    func_recv(idx)
+                    func_send(idx%cnum, y, x)
+            for idx, (y, x) in enumerate(y_x_lst[-cnum:], len(y_x_lst)-cnum):
+                    func_recv(idx)
+
+            self.all_lens = np.array(all_lens)
+            self.idxs = np.arange(0, np.multiply.reduce(self.all_lens.shape))
+
+
+    def start_animation_old(self):
         if self.should_stop_animation and not self.is_animation_running:
             self.txt_box.delete('1.0', tk.END)
 
@@ -333,11 +499,26 @@ class Window(tk.Frame):
                     self.txt_box.insert(tk.END, str_line)
                     self.txt_box.see(tk.END)
 
+            # now sort the created index table by the length!
 
-    def update_frame_random(self, x, y, idx):
+
+    def update_frame_random(self, idx_y_x, idx):
         # print("in update_frame: label: {}".format(label))
+        # print("idx_y_x: {}".format(idx_y_x))
+        # idxs = self.arr_idx[idx_y_x]
+        while self.lock.acquire(False):
+            time.sleep(0.0001)
+
+        y, x = self.arr_idx[idx_y_x]
+        # print("idxs: {}".format(idxs))
+        # y = idxs[0]
+        # x = idxs[1]
+
         frames = self.all_frames[y][x]
         frame = frames[idx]
+
+        self.lock.release()
+        
         idx += 1
         if idx >= len(frames):
             idx = 0
@@ -345,7 +526,7 @@ class Window(tk.Frame):
         if self.should_stop_animation:
             return
 
-        self.after(200, self.update_frame_random, x, y, idx)
+        self.after(200, self.update_frame_random, idx_y_x, idx)
 
 
     def stop_animation(self):
@@ -355,16 +536,76 @@ class Window(tk.Frame):
         if self.is_animation_running and not self.should_stop_animation:
             self.is_animation_running = False
             self.should_stop_animation = True
-        
 
-    def get_func_show_lambdas(self, y, x):
-        pixs, dm = self.all_datas[y][x]
-        function_str_lst = dm.function_str_lst
+        # def f(a, b):
+        #     return a, b, a+b, a-b, a*b
 
+        # for pipe_send in self.pipes_main_send:
+        #     a = np.random.randint(-10, 10)
+        #     b = np.random.randint(-10, 10)
+        #     print("a: {}, b: {}".format(a, b))
+
+        #     pipe_send.send(dill.dumps((f, (a, b))))
+
+        # for pipe_recv in self.pipes_main_recv:
+        #     ret = pipe_recv.recv()
+        #     print("ret: {}".format(ret))
+
+
+    def sort_animation_by_length(self):
+        print("self.all_lens:\n{}".format(self.all_lens))
+        print("self.arr_idx:\n{}".format(self.arr_idx))
+
+        arr = np.vstack((self.all_lens.reshape((-1, )), np.arange(0, np.multiply.reduce(self.all_lens.shape)))).T.astype(np.uint32).reshape((-1, )).view("u4,u4")
+        print("arr:\n{}".format(arr))
+        arr_sorted = np.sort(arr, order=("f0")).view("u4").reshape((-1, 2)).T
+        new_all_lens = arr_sorted[0]
+        idxs = arr_sorted[1]
+        print("new_all_lens: {}".format(new_all_lens))
+        print("idxs: {}".format(idxs))
+
+        self.txt_box.insert(tk.END, "\n")
+
+        rows, cols = self.all_lens.shape
+        all_lens = self.all_lens.copy().reshape((-1, ))[idxs].reshape((rows, cols))
+
+        while self.lock.acquire(False):
+            time.sleep(0.0001)
+
+        new_arr_idx = self.arr_idx[idxs].copy()
+        for i in range(0, new_arr_idx.shape[0]):
+            y = i // cols
+            x = i % cols
+            self.all_lens[y, x] = all_lens[y, x]
+            
+            str_line = "y: {:02}, x: {:02}, amount frames: {:3}\n".format(y, x, self.all_lens[y, x])
+            self.txt_box.insert(tk.END, str_line)
+            self.txt_box.see(tk.END)
+            
+            # if i > 0:
+            #     continue
+
+            self.arr_idx[i] = new_arr_idx[i]
+        self.lock.release()
+
+
+    # def get_func_show_lambdas(self, y, x):
+    def get_func_show_lambdas(self, idx):
         def show_lambdas(event):
+            while self.lock.acquire(False):
+                time.sleep(0.0001)
+
+            y, x = self.arr_idx[idx]
+
+            pixs, dm = self.all_datas[y][x]
+            function_str_lst = dm.function_str_lst
+
+            self.lock.release()
+
             self.txt_box_lambdas.delete('1.0', tk.END)
             print("show_lambdas: y: {}, x: {}, event: {}".format(y, x, event))
             self.txt_box_lambdas.insert(tk.END, "\n".join(function_str_lst)+"\n")
+            self.txt_box_lambdas.insert(tk.END, "\nidx: {}, y: {}, x: {}\n".format(idx, y, x))
             self.txt_box_lambdas.see(tk.END)
 
         return show_lambdas
@@ -373,7 +614,7 @@ class Window(tk.Frame):
 # you can later have windows within windows.
 root = tk.Tk()
 
-root.geometry("880x580")
+root.geometry("1000x630")
 
 #creation of an instance
 app = Window(root)

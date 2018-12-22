@@ -247,6 +247,8 @@ class BitNeighborManipulation(Exception):
 
 
 def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_array=False, save_pictures=True):
+    np.random.seed()
+
     if save_pictures:
         suffix = "{}_{}_{}_{}".format(
             height,
@@ -332,7 +334,8 @@ def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_ar
         # return
         print("pix2_1.shape: {}".format(pix2_1.shape))
     else:
-        dm = create_lambda_functions.create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=save_pictures)
+        dm = create_lambda_functions.create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=False)
+        # dm = create_lambda_functions.conway_game_of_life_functions(path_lambda_functions=None, save_data=False)
 
     # function_str_lst = create_lambda_functions.conway_game_of_life_functions(path_pictures)
     # function_str_lst = create_lambda_functions.simplest_lambda_functions(path_pictures)
@@ -402,7 +405,7 @@ def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_ar
         bit_neighbor_manipulation = BitNeighborManipulation(ft=1, with_frame=with_frame, lambda_str_funcs_lst=dm.function_str_lst)
 
     # so long there are white pixels, repeat the elimination_process!
-    it_max = 30
+    it_max = 300
     # it_max = height
     it = 1
     # pix_bw_prev = pix_bw.copy()
@@ -473,7 +476,6 @@ def create_1_bit_neighbour_pictures(height, width, next_folder="", return_pix_ar
 
     for line in lines_print:
         print("{}".format(line))
-
 
     if return_pix_array:
         return pixs, dm

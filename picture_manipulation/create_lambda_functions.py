@@ -139,8 +139,8 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
     # get_random_and(params, group_num_amount)
     # or_str = get_random_or(params, group_num_amount)
     function_str_values = get_random_booleans_str(params, group_num_amount,
-        min_or=1, max_or=2,
-        min_and=1, max_and=3,
+        min_or=1, max_or=1,
+        min_and=3, max_and=8,
         min_n=3, max_n=9)
     function_str_lst, idx_choosen_params_lst, idx_inv_params_lst = list(zip(*function_str_values))
     idx_choosen_params_lst = np.array(idx_choosen_params_lst)
@@ -156,6 +156,9 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
     dm.function_str_lst = function_str_lst
     dm.idx_choosen_params_lst = idx_choosen_params_lst
     dm.idx_inv_params_lst = idx_inv_params_lst
+
+    dm.ft = ft
+
 
     if save_data:
         with gzip.open(path_lambda_functions+"dm.pkl.gz", "wb") as fout:
@@ -183,7 +186,7 @@ def simplest_lambda_functions(path_lambda_functions):
     return function_str_lst
 
 
-def conway_game_of_life_functions(path_lambda_functions):
+def conway_game_of_life_functions(path_lambda_functions=None, save_data=True):
     params = ["u", "d", "l", "r", "ur", "ul", "dr", "dl"]
     params_negative = ["(({}+1)%2)".format(param) for param in params]
     # print("params:\n{}".format(params))
@@ -229,20 +232,29 @@ def a():
     p2 = np.logical_and.reduce((p==0, x==3))
 
     return np.logical_or.reduce((p1, p2)).astype(np.uint8)
-    # return (u|inv(d)).astype(np.uint8)
 """[1:-1],
     ]
 
     print("function_str_lst: {}".format(function_str_lst))
 
-    with open(path_lambda_functions, "w") as fout:
-        for func_str in function_str_lst:
-            if "def " in func_str:
-                fout.write("{}\n".format(func_str))
-            else:
-                fout.write("lambda: {}\n".format(func_str))
+    if save_data:
+        with open(path_lambda_functions, "w") as fout:
+            for func_str in function_str_lst:
+                if "def " in func_str:
+                    fout.write("{}\n".format(func_str))
+                else:
+                    fout.write("lambda: {}\n".format(func_str))
 
-    return function_str_lst
+    dm = DotMap()
+    dm.params = params
+    dm.function_str_lst = function_str_lst
+    dm.idx_choosen_params_lst = [np.random.randint(0, 2, (3, 3), dtype=np.uint8)] # idx_choosen_params_lst
+    dm.idx_inv_params_lst = [np.random.randint(0, 2, (3, 3), dtype=np.uint8)]
+
+    dm.ft = 1
+
+    return dm
+    # return function_str_lst
 
 
 def simple_random_lambda_creation(function_amount=1, path_lambda_functions_file=None):
