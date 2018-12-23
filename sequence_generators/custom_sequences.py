@@ -99,48 +99,27 @@ def find_first_repeat_pattern(arr):
 
 if __name__ == "__main__":
     lst = [1] # starting sequence
-    # lst_no_mod = [1]
     n = 1000-1
     m = 10 # modulo
     for i in range(len(lst)-1, n):
-        # if (i+1) % 100 == 0:
-        #     print("i: {}".format(i))
-        
         s = 0
-        s_no_mod = 0
         j = i
-        # it = i % m
         acc = 0
         multiplier = 1
         while j >= 0:
             x = lst[j]
-            # x_no_mod = lst_no_mod[j]
             s = (s+x*multiplier) % m
-            # s_no_mod = s_no_mod+x_no_mod*multiplier
-            # s = (s+x*multiplier+it) % m
             multiplier = (multiplier+1) % m
-            # it = (it+1) % m
             acc += x+1
             j -= acc
         lst.append(s % m)
-        # lst_no_mod.append(s_no_mod)
+
     print("lst:\n{}".format(lst))
-    # print("lst_no_mod:\n{}".format(lst_no_mod))
     arr = np.array(lst)
 
     with open("b_sequence.txt", "w") as fout:
         for i, x in enumerate(arr, 1):
             fout.write("{} {}\n".format(i, x))
-
-    # s = arr[0]
-    # lst2 = [s]
-    # for x in arr[1:]:
-    #     s = (s+x) % m
-    #     lst2.append(s)
-
-    # print("lst2:\n{}".format(lst2))
-    # arr = np.array(lst2)
-    # print("arr2:\n{}".format(arr2))
 
     if False:
         arr_pattern, idx = find_first_repeat_pattern(arr)

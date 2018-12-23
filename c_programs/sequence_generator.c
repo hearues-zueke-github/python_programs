@@ -30,19 +30,16 @@ int main (int argc, char* argv[]) {
   int m = 10;
   int i = 0;
   for (i = 0; i < n - 1; i++) {
-    int j = i;
     int s = 0;
+    int j = i;
+    int acc = 0;
     int multiplier = 1;
     while (j >= 0) {
       int x = arr[j];
-      int j1 = j-1;
-      if (j1 >= 0) {
-        s += arr[j1];
-      }
-      s += x * multiplier;
-      s %= m;
+      s = (s + x * multiplier) % m;
       multiplier = (multiplier + 1) % m;
-      j -= x + 1;
+      acc += x + 1;
+      j -= acc;
     }
     arr[i+1] = s;
   }
