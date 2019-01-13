@@ -67,3 +67,24 @@ def find_first_repeat_pattern(arr):
     first_pattern = arr_reverse[idx1:idx2][::-1]
 
     return first_pattern, length_arr-idx2
+
+
+def all_possibilities_changing_one_position(m, n):
+    length = 2*(m-1)*m**(n-1)
+    print("length: {}".format(length))
+
+    arr = np.zeros((length, n), dtype=np.int)
+
+    for i in range(1, n+1):
+        if i == n:
+            arr_resh = arr.reshape((2*(m-1), m**(i-1), n))
+            arr_resh[:m, :, -i] = np.arange(0, m).reshape((-1, 1))
+            arr_resh[m:m+m-2, :, -i] = np.arange(m-2, 0, -1).reshape((-1, 1))
+        else:
+            arr_resh = arr.reshape((-1, m, m**(i-1), n))
+            idxs1 = np.arange(0, arr_resh.shape[0], 2)
+            idxs2 = np.arange(1, arr_resh.shape[0], 2)
+            arr_resh[idxs1, :, :, -i] = np.arange(0, m).reshape((-1, 1))
+            arr_resh[idxs2, :, :, -i] = np.arange(m-1, -1, -1).reshape((-1, 1))
+
+    return arr

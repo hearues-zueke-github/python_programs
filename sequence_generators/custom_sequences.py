@@ -4,6 +4,7 @@
 
 import dill
 import functools
+import os
 import sys
 import time
 
@@ -103,30 +104,21 @@ def get_sequence(n):
 
 def get_sequence_better(n):
     def a(n):
-        if n in a.vals:
-            return a.vals[n]
-        if n == 1:
-            return 1
-        elif n < 1:
-            return 0
-        v = f(n-1, 0)
-        a.vals[n] = v
-        return v
+        if n in a.vals: return a.vals[n]
+        elif n == 1: return 1
+        elif n < 1: return 0
+        a.vals[n] = f(n-1, 0)
+        return a.vals[n]
     def f(n, acc):
         t = (n, acc)
-        if t in f.vals:
-            return f.vals[t]
+        if t in f.vals: return f.vals[t]
         if n >= 1:
-            a_n = a(n)
-            v = (a_n+f(n-acc-a_n-1, acc+a_n+1)) % 10
-            f.vals[t] = v
-            return v
+            f.vals[t] = (a(n)+f(n-acc-a(n)-1, acc+a(n)+1)) % 10
+            return f.vals[t]
         return 0
     a.vals = {1: 1}
     f.vals = {}
-    for i in range(1, n+1):
-        a(i)
-    return list(a.vals.values())
+    return [a(i) for i in range(1, n+1)]
 
 
 # def f_sum_increase_range(n):
@@ -196,8 +188,8 @@ def jumping_sum_index_sequence(n):
 
 
 def f_rec_mult_1(n, m=10):
-    hanoi_seq = get_hanoi_sequence(n)
-    print("hanoi_seq: {}".format(hanoi_seq))
+    # hanoi_seq = get_hanoi_sequence(n)
+    # print("hanoi_seq: {}".format(hanoi_seq))
     def next_num(n):
         s = a(n)
         next_num.vals.append(s)
@@ -226,7 +218,7 @@ def f_rec_mult_1(n, m=10):
             # print("f.vals[t]: {}".format(f.vals[t]))
             return f.vals[t]
         s = 0
-        if n >= 1 or True:
+        if n >= 1:
             # # the sums of the sums!
             # for i in range(1, n+1):
             #     a_i = a(i)
@@ -234,8 +226,10 @@ def f_rec_mult_1(n, m=10):
             a_n = a(n) # % m
             # print("n: {}, a_n: {}".format(n, a_n))
 
+            s = (f(n-acc-1, acc+1)+a_n) % m
+
             # the original one!
-            s = (f(n-acc-a_n-1, acc+a_n+1)+a_n) % m
+            # s = (f(n-acc-a_n-1, acc+a_n+1)+a_n) % m
             # m: 2, [1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0,...]
             # m: 10, [1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 9, 0, 0, 7, 3, 2, 1,...]
 
@@ -269,9 +263,290 @@ def f_rec_mult_1(n, m=10):
     next_num.vals = []
 
     vals = [next_num(j) for j in range(1, n+1)]
-    # print("vals:\n{}".format(vals))
+   # print("vals:\n{}".format(vals))
 
     return vals, next_num, a, f
+
+
+def f_rec_with_saving_2d(n, m=10, start_acc=0): #, choosen=0):
+    def next_num(y, x):
+        # next_num.t = (y, x)
+        # next_num.idx_y = y - 1
+        # next_num.idx_x = x - 1
+        # a.t_calls_dict[next_num.t] = 0
+        # f.t_calls_dict[next_num.t] = 0
+
+        # if choosen == 0:
+        # s = a(y, x)
+        # else:
+        s = an(y, x, start_acc)
+        
+        # print("y: {}, x: {}".format(y, x))
+        # print("  s: {}".format(s))
+        # input()
+        next_num.vals[(y, x)] = s
+        next_num.vals_arr[y-1, x-1] = s
+        return s
+
+    def an(y, x, acc):
+        t = (y, x, acc)
+        if t in an.vals:
+            an.vals_count[t] += 1
+            return an.vals[t]
+        elif y >= 1 and x >= 1:
+            nr = 4
+            if nr == 1:
+                # sirpinski triangle, with many previous triangles too, if acc < -2
+                # m = 2, or other maybe
+                y1 = y-1
+                x1 = x-1
+                
+                a_yx_21 = an(y1, x, 0)
+                a_yx_22 = an(y, x1, 0)
+
+                a_yx_11 = an(y1, x-acc-1, acc+1)
+                a_yx_12 = an(y-acc-1, x1, acc+1)
+
+                v = (a_yx_11+a_yx_12 + a_yx_21+a_yx_22) % m
+            elif nr == 2:
+                # upper right corner has a pattern
+                a0 = an(y-1, x-1, start_acc)
+                a1 = an(y-1, x-start_acc, start_acc+1)
+                a2 = an(y, x-1-a1, start_acc+2)
+                a3 = an(y-1-a1-a2, x, start_acc+3)
+
+                v = (a0+a1+a2+a3+start_acc) % m
+            elif nr == 3:
+                a0 = an(y-1, x, start_acc+1)
+                a1 = an(y-a0, x-1-a0, start_acc+2)
+                a2 = an(y-2, x-a1, start_acc+3)
+                a3 = an(y-1-a0-a1-a2, x-a0-start_acc, start_acc+1)
+                
+                v = (a0+a1+a2+a3) % m
+            elif nr == 4:
+                if y > x:
+                    a0 = an(y-1, x, start_acc+1)
+                else:
+                    a0 = an(y, x-1, start_acc+1)
+                a1 = an(y-1-a0, x-1-a0, start_acc+1)
+                a2 = an(y-1-start_acc, x-1-start_acc, start_acc+1)                
+                
+                v = (a0+a1+a2) % m
+
+            # a_yx = an(y1, x1, 0)
+
+            # a_yx = an(y-acc-1, x-acc-1, acc*2+1)
+            # a_yx_y = an(y-acc-1, x, acc**2+1)
+            # a_yx_x = an(y, x-acc-1, acc**2+1)
+
+            # a_yx1 = an(y-acc-1, x, acc+1)
+            # a_yx2 = an(y, x-acc-1, acc+1)
+
+            # a_yx11 = an(y-acc-1, x-a_yx2, acc+1)
+            # a_yx12 = an(y-a_yx1, x-acc-1, acc+1)
+            
+            # a_yx11 = an(y-acc-1, x-a_yx1, acc+1)
+            # a_yx12 = an(y-a_yx2, x-acc-1, acc+1)
+            # a_yx21 = an(y-acc-1, x-a_yx2, acc+1)
+            # a_yx22 = an(y-a_yx1, x-acc-1, acc+1)
+            
+            # v = (a_yx+a_yx1+a_yx2+a_yx11+a_yx12+a_yx21+a_yx22) % m
+            # v = (a_yx_y+a_yx_x+a_yx) % m
+            # v = (a_yx_y+a_yx_x+a_yx_1+a_yx_2) % m
+            # v = (a_yx+a_yx_1+a_yx_2) % m
+            # v = (a_yx_1+y_yx_2+a_yx+a_yx1+a_yx2+a_yx11+a_yx12) % m
+            
+            # v = (a_yx+an(y-1-acc-1, x-1, acc+1)+an(y-1, x-1-acc-1, acc+1)) % m
+            # v = (a_yx+an(y-acc-1, x, acc+1)+an(y, x-acc-1, acc+1)) % m
+        else:
+            return 0
+        an.vals_count[t] = 1
+        an.vals[t] = v
+        return v
+
+    def a(y, x):
+        # a.t_calls_dict[next_num.t] += 1
+        # a.t_calls_arr[next_num.idx_y, next_num.idx_x] += 1
+        t = (y, x)
+        if t in a.vals:
+            a.vals_count[t] += 1
+            return a.vals[t]
+        # elif y == x and y == 1:
+        #     return 1
+        elif y >= 1 and x >= 1:
+            v1 = f(y-1, x-1, 0) % m
+            # v2 = f(y-v1, x-1, 0) % m
+            # v3 = f(y-1, x-v2, 0) % m
+            
+            # v4 = f(x-1, y, 0) % m
+            # v5 = f(x, y-1, 0) % m
+            # v6 = f(y-1-v4, x-1-v5, 0) % m
+
+            v = (v1) % m
+            # v = (v3+v6) % m
+            
+            # v = (f(y-1, x, 0)+f(y, x-1, 0)) # % m
+            # v = (f(y-1, x, 0)+f(y-1, x-1, 0)+f(y, x-2, 0))# % m
+            # v = (f(y-1, x, 0)+2*f(y-1, x-1, 0)+f(y, x-1, 0))# % m
+        # elif y > x and x >= 1:
+        #     v = fy(y-1, x, 0)
+        # elif x > y and y >= 1:
+        #     v = fx(y, x-1, 0)
+        # elif y == x and y > 1:
+        #     v = fd(y-1, x-1, 0)
+        else:
+            return 0
+        a.vals_count[t] = 1
+        a.vals[t] = v
+        return v
+    def f(y, x, acc):
+        # f.t_calls_dict[next_num.t] += 1
+        # f.t_calls_arr[next_num.idx_y, next_num.idx_x] += 1
+        t = (y, x, acc)
+        if t in f.vals:
+            f.vals_count[t] += 1
+            return f.vals[t]
+        s = 0
+        if y >= 1 and x >= 1:
+            a_yx = a(y, x)
+            # s = (a_yx+f(y-acc-1, x, acc+1)) % m
+            # s = (a_yx+f(y, x-acc-1, acc+1)) % m
+            # s = (a_yx) % m
+            s = (a_yx+f(y-acc-1, x, acc+1)+f(y, x-acc-1, acc+1)) % m
+
+            f.vals_count[t] = 1
+            f.vals[t] = s
+        return s
+    # def fy(y, x, acc):
+    #     t = (y, x, acc)
+    #     if t in fy.vals:
+    #         fy.vals_count[t] += 1
+    #         return fy.vals[t]
+    #     s = 0
+    #     if y >= 1:
+    #     # if y > x:
+    #         a_yx = a(y, x)
+    #         s = (a_yx+fy(y-acc-a_yx-1, x, acc+a_yx+1)) % m
+
+    #         fy.vals_count[t] = 1
+    #         fy.vals[t] = s
+    #     return s
+    # def fx(y, x, acc):
+    #     t = (y, x, acc)
+    #     if t in fx.vals:
+    #         fx.vals_count[t] += 1
+    #         return fx.vals[t]
+    #     s = 0
+    #     if x >= 1:
+    #     # if x > y:
+    #         # print("fx: t: {}".format(t))
+    #         a_yx = a(y, x)
+    #         s = (a_yx+fx(y, x-acc-a_yx-1, acc+a_yx+1)) % m
+
+    #         fx.vals_count[t] = 1
+    #         fx.vals[t] = s
+    #     return s
+    # def fd(y, x, acc):
+    #     # print("y: {}, x: {}".format(y, x))
+    #     t = (y, x, acc)
+    #     if t in fd.vals:
+    #         fd.vals_count[t] += 1
+    #         return fd.vals[t]
+    #     s = 0
+    #     if y >= 1 and x >= 1:
+    #     # if y >= 1 and x >= 1:
+    #         # print("fd: t: {}".format(t))
+    #         a_yx = a(y, x)
+    #         s = (a_yx+fd(y-acc-a_yx-1, x-acc-a_yx-1, acc+a_yx+1)) % m
+    #         # s = (a_yx+fd(y-acc-a_yx-1-1, x-acc-a_yx-1, acc+a_yx+1)) % m
+
+    #         fd.vals_count[t] = 1
+    #         fd.vals[t] = s
+    #     return s
+
+    # def f():
+    #     pass
+
+    a.t_calls_dict = {}
+    a.t_calls_arr = np.zeros((n, n), dtype=np.int)
+    f.t_calls_dict = {}
+    f.t_calls_arr = np.zeros((n, n), dtype=np.int)
+
+    an.vals = {(1, 1, 0): 1}
+    an.vals_count = {(1, 1, 0): 0}
+
+    a.vals = {(1, 1): 1}
+    a.vals_count = {(1, 1): 0}
+    f.vals = {}
+    f.vals_count = {}
+    # fy.vals = {}
+    # fy.vals_count = {}
+    # fx.vals = {}
+    # fx.vals_count = {}
+    # fd.vals = {}
+    # fd.vals_count = {}
+    next_num.vals = {}
+    next_num.vals_arr = np.zeros((n, n), dtype=np.int)
+
+    # vals = [next_num(j) for j in range(1, n+1)]
+    # print("vals:\n{}".format(vals))
+
+    for i in range(1, n+1):
+        print("i: {}".format(i))
+        for j in range(1, n+1):
+            next_num(j, i)
+
+    return next_num.vals_arr, next_num, a, f
+    # return next_num.vals_arr, next_num, a, fy, fx, fd
+    # return next_num.vals, next_num, a, f
+
+
+def f_rec_mult_2(n, m=10):
+    # hanoi_seq = get_hanoi_sequence(n)
+    # print("hanoi_seq: {}".format(hanoi_seq))
+    div = 2
+    def next_num(n):
+        s = a(n)
+        next_num.vals.append(s)
+        return s
+    def a(n):
+        if n in a.vals:
+            a.vals_count[n] += 1
+            return a.vals[n]
+        if n == 1:
+            return 1
+        elif n < 1:
+            return 0
+        v = f(n-1, (n-1)//div, div)
+        a.vals_count[n] = 1
+        a.vals[n] = v
+        return v
+    def f(n, acc, div):
+        t = (n, acc, div)
+        if t in f.vals:
+            f.vals_count[t] += 1
+            return f.vals[t]
+        s = 0
+        if n >= 1:
+            s = a(n)
+
+            if acc > 0:
+                s = (s+f(n-acc, acc//div, div)) % m
+
+            f.vals_count[t] = 1
+            f.vals[t] = s
+        return s
+
+    a.vals = {1: 1}
+    a.vals_count = {1: 0}
+    f.vals = {}
+    f.vals_count = {}
+    next_num.vals = []
+
+    for j in range(1, n+1):
+        next_num(j)
+
+    return next_num.vals, next_num, a, f
 
 
 def f_jumping_modulo(n, m=10):
@@ -384,28 +659,81 @@ def get_hanoi_sequence(n):
     return lst[:n]
 
 
+def get_1d_sequence_from_2d(arr):
+    assert len(arr.shape) == 2
+    rows, cols = arr.shape[:2]
+
+    nums = []
+    for i in range(1, rows+1):
+        ys = np.arange(0, i)
+        xs = np.arange(i-1, -1, -1)
+        nums.extend(arr[ys, xs].tolist())
+
+    return nums
+
+
 if __name__ == "__main__":
-    n = 200
+    n = 300
     # lst = f_mult_1(n)
-    m = 10
+    m = 4
     # lst = f_jumping_modulo(n, m=m)
-    # lst, next_num, a, f = f_rec_mult_1(n, m=m)
+
+    # lst, next_num, a, fy, fx, fd = f_rec_with_saving_2d(n, m=m)
+    # arr3, next_num, a, f = f_rec_with_saving_2d(n, m=m, choosen=0)
+    
+
+    # lst, next_num, a, f = f_rec_mult_2(n, m=m)
     # lst_hanoi = get_hanoi_sequence(5)
     # lst = f_sum_increase_range(n)
     # lst = jumping_sum_index_sequence(n)
     
-    lst = get_sequence_better(n)
+    # lst = get_sequence_better(n)
     # lst = get_sequence(n)
 
     # print("lst:\n{}".format(",".join(list(map(str, lst)))))
-    print("n: {}, m: {}".format(n, m))
-    print("lst:\n{}".format(lst))
+    # print("n: {}, m: {}".format(n, m))
+    # print("lst:\n{}".format(lst))
+    # sys.exit(0)
+    
+    # lst_other, _, _, _ = f_rec_mult_1(n, m=m)
+    # # lst, next_num, a, f = f_rec_mult_1(n, m=m)
+    # print("lst_other:\n{}".format(lst_other))
 
-    lst_with_recursion = f_with_recursion_mult_1(n)
-    # print("lst_with_recursion:\n{}".format(",".join(list(map(str, lst_with_recursion)))))
-    print("lst_with_recursion:\n{}".format(lst_with_recursion))
+    # lst_with_recursion = f_with_recursion_mult_1(n)
+    # print("lst_with_recursion:\n{}".format(lst_with_recursion))
 
-    arr = np.array(lst)
+    # seq_1d_fied = get_1d_sequence_from_2d(arr)
+    # print("seq_1d_fied:\n{}".format(seq_1d_fied))
+
+    # arr = np.array(lst)
+
+    
+    path_custom_2d_sequences = "images/custom_2d_sequences/{}x{}_m_{}_2/".format(n, n, m)
+    if not os.path.exists(path_custom_2d_sequences):
+        os.makedirs(path_custom_2d_sequences)
+
+    resize = 2
+    start_accs = range(3, -4, -1)
+    for start_acc in start_accs:
+    # for start_acc in range(0, -31, -1):
+        arr, next_num, a, f = f_rec_with_saving_2d(n, m=m, start_acc=start_acc) #, choosen=1)
+        print("arr:\n{}".format(arr))
+
+        arr2 = (arr*(256//m)).astype(np.uint8)
+        new_size = (arr2.shape[1]*resize, arr2.shape[0]*resize)
+        img = Image.fromarray(arr2).resize(new_size)
+        file_name_suffix = str(start_acc)
+        if "-" in file_name_suffix:
+            file_name_suffix = file_name_suffix.replace("-", "neg_")
+        else:
+            file_name_suffix = "pos_"+file_name_suffix
+
+        img.save(path_custom_2d_sequences+"sequence_2d_start_acc_{}.png".format(file_name_suffix))
+
+    # Image.fromarray((((arr!=arr.T)+0)*255).astype(np.uint8)).resize(new_size).show()
+
+    sys.exit(0)
+
     # arr_mod = arr%m
     # print("arr_mod:\n{}".format(arr_mod))
     with open("b322670.txt", "w") as fout:

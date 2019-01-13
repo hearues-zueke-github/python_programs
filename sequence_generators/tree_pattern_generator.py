@@ -21,7 +21,10 @@ from multiprocessing import Process, Pipe, Lock
 
 import utils_sequence
 
-def create_tree_dict_path(n):
+sys.path.append("..")
+import utils_all
+
+def create_tree_dict_path(n, next_pos_movess):
     print("n: {}".format(n))
 
     # U ... up or like north
@@ -33,41 +36,50 @@ def create_tree_dict_path(n):
 
     points_now = [(0, 0)]
 
-    # TODO: create array for next pattern coordinates
+    def get_dict_next_pos_rel(next_pos_movess):
+        moves_pos_rel = {'R': (0, 1), 'L': (0, -1), 'U': (1, 0), 'D': (-1, 0)}
+        get_pos_rel_lst = lambda next_pos_moves: [moves_pos_rel[move] for move in next_pos_moves]
+        next_pos_rel = [(moves, get_pos_rel_lst(moves)) for moves in next_pos_movess]
 
-    next_pos_rel = [(['L', 'U', 'L'], [(0, -1), (1, 0), (0, -1)]), (['R', 'R', 'U'], [(0, 1), (0, 1), (1, 0)])]
-    # next_pos_rel = [(['L'], [(0, -1)]), (['R', 'D'], [(0, 1), (-1, 0)])]
-    dict_next_pos_rel = {'U': next_pos_rel}
+        dict_next_pos_rel = {'U': next_pos_rel}
 
-    directions = ['U', 'R', 'D', 'L']
-    directions_num = {'U': 0, 'R': 1, 'D': 2, 'L': 3}
+        directions = ['U', 'R', 'D', 'L']
+        directions_num = {'U': 0, 'R': 1, 'D': 2, 'L': 3}
 
-    for i in range(1, 4):
-        d = directions[i]
-        next_pos_rel_new = []
+        for i in range(1, 4):
+            d = directions[i]
+            next_pos_rel_new = []
 
-        for pos_rel in next_pos_rel:
-            d2 = directions[i]
-            dirs = []
-            poss = []
-            for d1, pos in zip(pos_rel[0], pos_rel[1]):
-                if d2 == 'R':
-                    poss.append((-pos[1], pos[0]))
-                elif d2 ==  'D':
-                    poss.append((-pos[0], -pos[1]))
-                elif d2 ==  'L':
-                    poss.append((pos[1], -pos[0]))
-                else:   
-                    poss.append(pos)
+            for pos_rel in next_pos_rel:
+                d2 = directions[i]
+                dirs = []
+                poss = []
+                for d1, pos in zip(pos_rel[0], pos_rel[1]):
+                    if d2 == 'R':
+                        poss.append((-pos[1], pos[0]))
+                    elif d2 ==  'D':
+                        poss.append((-pos[0], -pos[1]))
+                    elif d2 ==  'L':
+                        poss.append((pos[1], -pos[0]))
+                    else:   
+                        poss.append(pos)
 
-                d3 = directions[(directions_num[d1]+i) % 4]
-                dirs.append(d3)
+                    d3 = directions[(directions_num[d1]+i) % 4]
+                    dirs.append(d3)
 
-            next_pos_rel_new.append((dirs, poss))
-        dict_next_pos_rel[d] = next_pos_rel_new
+                next_pos_rel_new.append((dirs, poss))
+            dict_next_pos_rel[d] = next_pos_rel_new
 
-    for key, val in dict_next_pos_rel.items():
-        print("key: {}, val:\n{}".format(key, val))
+        return dict_next_pos_rel
+
+    dicts_next_pos_rel = [get_dict_next_pos_rel(next_pos_moves) for next_pos_moves in next_pos_movess]
+
+    # dict_next_pos_rel_1 = get_dict_next_pos_rel(next_pos_movess_1)
+    # dict_next_pos_rel_2 = get_dict_next_pos_rel(next_pos_movess_2)
+    # dict_next_pos_rel_3 = get_dict_next_pos_rel(next_pos_movess_3)
+
+    # dicts_next_pos_rel = [dict_next_pos_rel_1, dict_next_pos_rel_2, dict_next_pos_rel_3]
+    idx_dict_next_pos_rel = 0
 
     for it in range(0, n):
         # print("it: {}".format(it))
@@ -80,7 +92,10 @@ def create_tree_dict_path(n):
 
             d = obj_now.dir
 
-            for next_poss_rel in dict_next_pos_rel[d]:
+            dict_next_pos_rel_now = dicts_next_pos_rel[idx_dict_next_pos_rel]
+
+            is_used_dict = False
+            for next_poss_rel in dict_next_pos_rel_now[d]:
                 d1 = next_poss_rel[0][-1]
                 poss = [point_now]
                 add_points = lambda a, b: (a[0]+b[0], a[1]+b[1])
@@ -97,6 +112,7 @@ def create_tree_dict_path(n):
                 if not is_all_free:
                     continue
 
+                is_used_dict = True
                 for p1, p2, p2_rel in zip(poss[:-1], poss[1:], next_poss_rel[1]):
                     dict_path[p2] = DotMap({'dir': d1, 'point_parent': p1, 'points_abs': [], 'points_rel': []})
                     obj_p1 = dict_path[p1]
@@ -105,112 +121,14 @@ def create_tree_dict_path(n):
 
                 points_now_new.append(poss[-1])
 
-                # TODO: check if all poss are free or not, otherwise skip this one!
-
-
-                # x1 = x+1
-                # y1 = y
-                # p1 = (y1, x1)
-                # if not p1 in dict_path:
-                #     dict_path[p1] = DotMap({'dir': 'R', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-                #     obj_now.points_abs.append(p1)
-                #     obj_now.points_rel.append((0, +1))
-                #     points_now_new.append(p1)
-
-            # x2 = x-1
-            # y2 = y
-            # p2 = (y2, x2)
-            # if not p2 in dict_path:
-            #     dict_path[p2] = DotMap({'dir': 'L', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #     obj_now.points_abs.append(p2)
-            #     obj_now.points_rel.append((0, -1))
-            #     points_now_new.append(p2)
-
-            # if d == 'U':
-            #     x1 = x-1
-            #     y1 = y
-            #     p1 = (y1, x1)
-            #     if not p1 in dict_path:
-            #         dict_path[p1] = DotMap({'dir': 'L', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p1)
-            #         obj_now.points_rel.append((0, -1))
-            #         points_now_new.append(p1)
-
-            #     x2 = x+1
-            #     y2 = y
-            #     p2 = (y2, x2)
-            #     # x3 = x2
-            #     # y3 = y2-1
-            #     # p3 = (y3, x3)
-            #     if not p2 in dict_path:
-            #         dict_path[p2] = DotMap({'dir': 'R', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p2)
-            #         obj_now.points_rel.append((0, +1))
-            #         points_now_new.append(p2)
-            #         # dict_path[p3] = DotMap({'dir': 'R', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         # obj_now.points_abs.append(p2)
-            #         # obj_now.points_rel.append((0, +1))
-            #         # points_now_new.append(p3)
-            # elif d == 'D':
-            #     x1 = x+1
-            #     y1 = y
-            #     p1 = (y1, x1)
-            #     if not p1 in dict_path:
-            #         dict_path[p1] = DotMap({'dir': 'R', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p1)
-            #         obj_now.points_rel.append((0, +1))
-            #         points_now_new.append(p1)
-
-            #     x2 = x-1
-            #     y2 = y
-            #     p2 = (y2, x2)
-            #     if not p2 in dict_path:
-            #         dict_path[p2] = DotMap({'dir': 'L', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p2)
-            #         obj_now.points_rel.append((0, -1))
-            #         points_now_new.append(p2)
-            # elif d == 'R':
-            #     x1 = x
-            #     y1 = y+1
-            #     p1 = (y1, x1)
-            #     if not p1 in dict_path:
-            #         dict_path[p1] = DotMap({'dir': 'U', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p1)
-            #         obj_now.points_rel.append((+1, 0))
-            #         points_now_new.append(p1)
-
-            #     x2 = x
-            #     y2 = y-1
-            #     p2 = (y2, x2)
-            #     if not p2 in dict_path:
-            #         dict_path[p2] = DotMap({'dir': 'D', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p2)
-            #         obj_now.points_rel.append((-1, 0))
-            #         points_now_new.append(p2)
-            # elif d == 'L':
-            #     x1 = x
-            #     y1 = y-1
-            #     p1 = (y1, x1)
-            #     if not p1 in dict_path:
-            #         dict_path[p1] = DotMap({'dir': 'D', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p1)
-            #         obj_now.points_rel.append((-1, 0))
-            #         points_now_new.append(p1)
-
-            #     x2 = x
-            #     y2 = y+1
-            #     p2 = (y2, x2)
-            #     if not p2 in dict_path:
-            #         dict_path[p2] = DotMap({'dir': 'U', 'point_parent': point_now, 'points_abs': [], 'points_rel': []})
-            #         obj_now.points_abs.append(p2)
-            #         obj_now.points_rel.append((+1, 0))
-            #         points_now_new.append(p2)
+            if is_used_dict:
+                idx_dict_next_pos_rel = (idx_dict_next_pos_rel+1) % len(dicts_next_pos_rel)
 
         points_now = points_now_new
 
-    print("dict_path:")
-    for key, val in dict_path.items():
-        print("key: {}, val: {}".format(key, val))
+    # print("dict_path:")
+    # for key, val in dict_path.items():
+    #     print("key: {}, val: {}".format(key, val))
 
     return dict_path
 
@@ -378,62 +296,39 @@ def create_image_of_y_x_arr(pos_0_offset, arr_y, arr_x):
     return pix
 
 
-def create_image_bw_of_x_y_arr(n, arr_x, arr_y):
-    l = 2**n
-
-    pix = np.zeros((l-1, l-1, 3), dtype=np.uint8)
-
-    arr = (arr_x[:, :-1]-1)+(arr_x[:, 1:]-1)+(arr_y[:-1]-1)+(arr_y[1:]-1)
-    pix[arr==3] = (0xFF, 0xFF, 0xFF) # .reshape((l-1, l-1, 1))
-    return pix
-
-def create_image_gray_of_x_y_arr(n, arr_x, arr_y):
-    l = 2**n
-
-    pix = np.zeros((l-1, l-1, 3), dtype=np.uint8)
-
-    arr = (arr_x[:, :-1]-1)*2+(arr_x[:, 1:]-1)*8+(arr_y[:-1]-1)*1+(arr_y[1:]-1)*4
-    arr = arr.reshape((l-1, l-1, 1))
-    # idxs = arr<15
-    # pix[idxs] = arr[idxs]*16
-    # idxs = arr==15
-    # pix[idxs] = arr[idxs]
-    pix[:] = arr*16
-    return pix
-
-
 if __name__ == '__main__':
-    n = 20
-    # for n in range(1, 11):
-    dict_path = create_tree_dict_path(n)
-    # print("dict_path:\n{}".format(dict_path))
+    n = 100
+ne
+    next_pos_movess = [
+        # [['R', 'D', 'R', 'D', 'L'], ['L']],
+        # [['L', 'D'], ['U', 'L']],
+        
+        [['R', 'U'], ['U', 'L'], ['L']],
+        [['L', 'L'], ['U', 'R', 'D'], ['R', 'U']],
+        # [['R'], ['L', 'U']],
+        # [['L'], ['R', 'U']],
 
+        # [['R'], ['L'], ['U', 'L']],
+        # [['U', 'L'], ['R']],
+        # [['R'], ['L']],
+        # [['L'], ['R', 'D', 'R']],
+        
+        # [['L', 'L'], ['R']],
+        # [['L'], ['U'], ['R']],
+        # [['L'], ['U'], ['R', 'R', 'D']],
+        # [['L', 'U'], ['R', 'D']],
+    ]
+
+    dict_path = create_tree_dict_path(n, next_pos_movess)
     pos_0_offset, arr_y, arr_x = convert_dict_path_to_x_y_array(dict_path)
-
-    # arr_x, arr_y = create_x_y_arr(n)
     pix = create_image_of_y_x_arr(pos_0_offset, arr_y, arr_x)
-    # # pix_bw = create_image_bw_of_x_y_arr(n, arr_x, arr_y)
-    # # pix_gray = create_image_of_y_x_arr(n, arr_x, arr_y)
     
     resize_factor = 4
     img = Image.fromarray(pix).transpose(Image.FLIP_TOP_BOTTOM)
     img = img.resize((img.width*resize_factor, img.height*resize_factor))
-    img.show()
-
-    # # resize_factor_2 = 3
-    # # img_bw = Image.fromarray(pix_bw)
-    # # img_bw = img_bw.resize((img_bw.height*resize_factor_2, img_bw.width*resize_factor_2))
-
-    # # resize_factor_gray = 3
-    # # img_gray = Image.fromarray(pix_gray)
-    # # img_gray = img_gray.resize((img_gray.height*resize_factor_gray, img_gray.width*resize_factor_gray))
 
 
-    # path_img = 'images/tree_pattern_generator/'
-    # if not os.path.exists(path_img):
-    #     os.makedirs(path_img)
-    # img.save(path_img+'2d_sequence_n_{}.png'.format(n))
-    # # img_bw.save(path_img+'2d_sequence_bw_n_{}.png'.format(n))
-    # # img_gray.save(path_img+'2d_sequence_gray_n_{}.png'.format(n))
-
-    # print("finished with n: {}".format(n))
+    path_img = 'images/tree_pattern_generator/'
+    if not os.path.exists(path_img):
+        os.makedirs(path_img)
+    img.save(path_img+'2d_sequence_n_{}_{}.png'.format(n, utils_all.get_date_time_str_full()))

@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import dill
+import os
 import sys
 
 import numpy as np
@@ -51,6 +52,31 @@ def get_all_combinations_increment(m, n):
         for i, (i1, i2) in enumerate(zip(idx_row[:-1], idx_row[1:]), 1):
             arr[i1:i2, -col-1] = i
             arr[i1:i2, -col:] = arr[idx_row_prev[i-1]:idx_row_prev[-1], -col:]
+
+    return arr
+
+
+# n ... amount of states
+def get_permutation_table(n, same_pos=True):
+    if n == 1:
+        return np.array([[1]], dtype=np.uint8)
+    arr = np.array([[0, 1], [1, 0]], dtype=np.uint8)
+    
+    p = 2
+    for i in range(3, n+1):
+        arr_new = np.zeros((p*i, i), dtype=np.uint8)
+
+        for j in range(0, i):
+            arr_new[p*j:p*(j+1), 0] = (j-1) % i
+            arr_new[p*j:p*(j+1), 1:] = (arr+j) % i
+
+        p *= i
+        arr = arr_new
+
+    arr = np.sort(arr.reshape((-1, )).view(','.join(['u1']*n))).view('u1').reshape((-1, n))
+
+    if not same_pos:
+        arr = arr[~np.any(arr == np.arange(0, n), axis=1)]
 
     return arr
 
