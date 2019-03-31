@@ -298,7 +298,7 @@ def create_image_of_y_x_arr(pos_0_offset, arr_y, arr_x):
 
 if __name__ == '__main__':
     n = 100
-ne
+
     next_pos_movess = [
         # [['R', 'D', 'R', 'D', 'L'], ['L']],
         # [['L', 'D'], ['U', 'L']],
