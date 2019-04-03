@@ -17,10 +17,9 @@ path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/
 sys.path.append(path_dir_root+"../combinatorics/")
 import different_combinations
 
-def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=True):
+def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz", file_name_txt="lambdas.txt", save_data=True, ft=1, max_n=5):
     # With this you can create any size for the window!
     # ft...frame thickness
-    ft = 1
     params_arr = np.empty((ft*2+1, ft*2+1), dtype=np.object)
 
     params_arr[ft, ft] = "p"
@@ -35,19 +34,16 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
             params_arr[ft-j, ft+i] = "u"*j+"r"*i
             params_arr[ft+j, ft-i] = "d"*j+"l"*i
             params_arr[ft+j, ft+i] = "d"*j+"r"*i
-    # print("params_arr: \n{}".format(params_arr))
+    print("params_arr: \n{}".format(params_arr))
 
     params_1 = params_arr.reshape((-1))
     params_0 = np.array(["inv({})".format(param) for param in params_1])
 
     params = np.vstack((params_1, params_0)).T
 
-    # print("params:\n{}".format(params))
-    # return
+    globals()['params'] = params
 
-    # print("params: {}".format(params))
-
-    # TODO: make matrices for 1, 2 to 9 elements!
+    # TODO: make matrices for 1, 2... to 9 elements!
     # BUT! for 1 e.g.:
     # [[0], [1], [2], [3], [4], [5], [6], [7], [8]]
     # for 2:
@@ -60,35 +56,26 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
     idx = np.array([0, 1])
     for i in range(0, n):
         idx = np.hstack((idx, [0]))+np.hstack(([0], idx))
-        # print("i: {}".format(i))
-        # print("  idx: {}".format(idx))
     idx = np.cumsum(idx)
-    # print("idx: {}".format(idx))
-    # return
 
     arr = different_combinations.get_all_combinations_repeat(m, n)
     arr = np.hstack((np.sum(arr, axis=1).reshape((-1, 1)), arr))
     arr2 = arr.astype(np.uint8).reshape((-1, )).view(",".join(["u1" for _ in range(0, n+1)]))
     arr2 = np.sort(arr2, order=("f0", )).view(np.uint8).reshape((-1, n+1))[:, 1:]
-    # arr2 = arr2.view(np.uint8).reshape((-1, n+1))[:, :n]
-    # arr_combs = different_combinations.get_all_combinations_increment(m, n)
-    # print("m: {}".format(m))
-    # print("n: {}".format(n))
-    # print("arr:\n{}".format(arr))
-    # print("arr2:\n{}".format(arr2))
+
+    globals()['arr'] = arr
+    globals()['arr2'] = arr2
 
     groups = np.array([arr2[i1:i2] for i1, i2 in zip(idx[1:-1], idx[2:])])
-    # print("groups:\n{}".format(groups))
-    groups_2 = [np.where(group==1)[1].reshape((-1, i)) for i, group in enumerate(groups, 1)]
-    # print("groups_2:\n{}".format(groups_2))
+    # groups_2 = [np.where(group==1)[1].reshape((-1, i)) for i, group in enumerate(groups, 1)]
 
     group_num_amount = {i: group for i, group in enumerate(groups, 1)}
-    # group_num_amount = {i: group for i, group in enumerate(groups_2, 1)}
 
-    globals()["group_num_amount"] = group_num_amount
-    # globals()["groups"] = groups
+    globals()["groups"] = groups
     # globals()["groups_2"] = groups_2
-    # globals()["arr2"] = arr2
+    globals()["group_num_amount"] = group_num_amount
+
+    sys.exit()
 
     def get_random_and(params, group_num_amount, min_n=1, max_n=3):
         # First get random num_amount
@@ -103,12 +90,6 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
         idx_arr_inv_param = np.zeros(params.shape, dtype=np.int)
         idx_arr_inv_param[np.arange(0, params.shape[0]), idx_inv_param] = 1
         choosen_inv_params = params[idx_arr_inv_param==1]
-
-        # print("idx_inv_param:\n{}".format(idx_inv_param))
-        # print("idx_arr_inv_param:\n{}".format(idx_arr_inv_param))
-
-        # print("choosen_inv_params: {}".format(choosen_inv_params))
-        # print("idx_choosen_param: {}".format(idx_choosen_param))
 
         and_params = choosen_inv_params[idx_choosen_param==1]
         # and_params = choosen_inv_params[idx_choosen_param]
@@ -161,17 +142,17 @@ def create_lambda_functions_with_matrices(path_lambda_functions=None, save_data=
 
 
     if save_data:
-        with gzip.open(path_lambda_functions+"dm.pkl.gz", "wb") as fout:
+        with gzip.open(path_dir+file_name_dm, "wb") as fout:
             dill.dump(dm, fout)
 
-        with open(path_lambda_functions+"lambdas.txt", "w") as fout:
+        with open(path_dir+file_name_txt, "w") as fout:
             for line in function_str_lst:
                 fout.write("{}\n".format(line))
 
     return dm
 
 
-def simplest_lambda_functions(path_lambda_functions):
+def simplest_lambda_functions(path_dir):
     function_str_lst = [
         "((u+1)%2)|((d+1)%2)",
         "r|((l+1)%2)",
@@ -179,14 +160,14 @@ def simplest_lambda_functions(path_lambda_functions):
 
     # function_str_lst = ["lambda: "+func_str for func_str in function_str_lst]
 
-    with open(path_lambda_functions, "w") as fout:
+    with open(path_dir, "w") as fout:
         for func_str in function_str_lst:
             fout.write("lambda: {}\n".format(func_str))
 
     return function_str_lst
 
 
-def conway_game_of_life_functions(path_lambda_functions=None, save_data=True):
+def conway_game_of_life_functions(path_dir=None, save_data=True):
     params = ["u", "d", "l", "r", "ur", "ul", "dr", "dl"]
     params_negative = ["(({}+1)%2)".format(param) for param in params]
     # print("params:\n{}".format(params))
@@ -238,7 +219,7 @@ def a():
     print("function_str_lst: {}".format(function_str_lst))
 
     if save_data:
-        with open(path_lambda_functions, "w") as fout:
+        with open(path_dir, "w") as fout:
             for func_str in function_str_lst:
                 if "def " in func_str:
                     fout.write("{}\n".format(func_str))
@@ -290,7 +271,7 @@ def simple_random_lambda_creation(function_amount=1, path_lambda_functions_file=
     return function_str_lst
 
 
-def create_lambda_functions_2(path_lambda_functions):
+def create_lambda_functions_2(path_dir):
     max_moves = 2 # e.g. uu, dd, ll, rr are possible for max_moves == 2
     n = 30
     m = 45
@@ -353,7 +334,7 @@ def create_lambda_functions_2(path_lambda_functions):
 
     print("len(used_moves): {}".format(len(used_moves)))
 
-    with open(path_lambda_functions+"lambdas_2.txt", "w") as fout:
+    with open(path_dir+"lambdas_2.txt", "w") as fout:
         for use_move in used_moves:
             fout.write("lambda: {}\n".format(use_move))
 
@@ -394,11 +375,11 @@ def create_lambda_functions_2(path_lambda_functions):
     dm.resize_params = [moved_u, moved_d, moved_l, moved_r]
     dm.max_iterations = len(used_moves)
 
-    with open(path_lambda_functions+"resize_params_2.pkl", "wb") as fout:
+    with open(path_dir+"resize_params_2.pkl", "wb") as fout:
         dill.dump(dm, fout)
 
 
-def create_lambda_functions_3(path_lambda_functions, tf=2):
+def create_lambda_functions_3(path_dir, tf=2):
     n = np.random.randint(5, 31)
     moves_operations = []
     def get_rnd_move():
@@ -421,12 +402,12 @@ def create_lambda_functions_3(path_lambda_functions, tf=2):
         moves = get_or_concat()
         moves_operations.append(moves)
 
-    with open(path_lambda_functions+"lambdas_3.txt", "w") as fout:
+    with open(path_dir+"lambdas_3.txt", "w") as fout:
         for moves_operation in moves_operations:
             print("moves_operation: {}".format(moves_operation))
             fout.write("lambda: {}\n".format(moves_operation))
 
-def create_lambda_functions_4(path_lambda_functions, tf=2):
+def create_lambda_functions_4(path_dir, tf=2):
     n = np.random.randint(20, 51)
     # create a list of all moves
     all_moves = ["u"*i for i in range(1, tf+1)]+\
@@ -469,7 +450,7 @@ def create_lambda_functions_4(path_lambda_functions, tf=2):
 
     print("\nmoves_operations_sizes: {}".format(moves_operations_sizes))
 
-    with open(path_lambda_functions+"lambdas_4.txt", "w") as fout:
+    with open(path_dir+"lambdas_4.txt", "w") as fout:
         for moves_operation in moves_operations:
             # print("moves_operation: {}".format(moves_operation))
             fout.write("lambda: {}\n".format(moves_operation))
@@ -478,7 +459,7 @@ def create_lambda_functions_4(path_lambda_functions, tf=2):
     # globals()["moves_operations_bits"] = moves_operations_bits
     # globals()["moves_operations_sizes"] = moves_operations_sizes
 
-def create_lambda_functions_5(path_lambda_functions, tf=2):
+def create_lambda_functions_5(path_dir, tf=2):
     n = np.random.randint(10, 26)
     # create a list of all moves
     all_moves = ( ["u"*i for i in range(1, tf+1)]+
@@ -543,7 +524,7 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
     for i, move in enumerate(moves_operations):
         print("i: {}, move: {}".format(i, move))
 
-    with open(path_lambda_functions+"lambdas_5.txt", "w") as fout:
+    with open(path_dir+"lambdas_5.txt", "w") as fout:
         for moves_operation in moves_operations:
             # print("moves_operation: {}".format(moves_operation))
             fout.write("lambda: {}\n".format(moves_operation))
@@ -553,18 +534,68 @@ def create_lambda_functions_5(path_lambda_functions, tf=2):
     # globals()["moves_operations_sizes"] = moves_operations_sizes
 
 if __name__ == "__main__":
-    path_lambda_functions = "lambda_functions/"
+    argv = sys.argv
+    value_str = ""
+    if len(argv) > 1:
+        value_str = argv[1]
+    print("value_str: {}".format(value_str))
+    value_str_split = value_str.split(",")
+    var_val_lst = list(map(lambda x: x.split("="), value_str_split))
+    print("var_val_lst:\n{}".format(var_val_lst))
 
-    if not os.path.exists(path_lambda_functions):
-        os.makedirs(path_lambda_functions)
+    ft = 1
+    max_n = 5
+    path_dir = "lambda_functions/"
+    save_data = True
 
-    create_lambda_functions_with_matrices(path_lambda_functions)
+    using_vars_type = {'ft': int, 'max_n': int, 'path_dir': str, 'save_data': bool}
+
+    print("Values for variables before input:")
+    print(" - ft: {}".format(ft))
+    print(" - max_n: {}".format(max_n))
+    print(" - path_dir: {}".format(path_dir))
+    print(" - save_data: {}".format(save_data))
+
+    # Do the check and convert the variable for the given input!
+    for var, val in var_val_lst:
+        if var in using_vars_type:
+            try:
+                type_var = using_vars_type[var]
+                val_converted = type_var(val)
+                if type_var == int:
+                    exec("{var} = {val}".format(var=var, val=val_converted), globals())
+                elif type_var == str:                    
+                    exec("{var} = '{val}'".format(var=var, val=val_converted), globals())
+                elif type_var == bool:                    
+                    if val == "0" or val == "False" or val == "false":
+                        save_data = False
+                    elif val == "1" or val == "True" or val == "true":
+                        save_data = True
+                    else:
+                        raise
+                    # exec("{var} = bool('{val}')".format(var=var, val=val_converted), globals())
+                print("var: {}, val: {}, type_var: {}, val_converted: {}".format(
+                    var, val, type_var, val_converted))
+            except:
+                print("For var '{var}' could not convert to type '{type_var}' of val '{val}'!".format(
+                    var=var, type_var=type_var, val=val))
+
+    print("Values for variables after input:")
+    print(" - ft: {}".format(ft))
+    print(" - max_n: {}".format(max_n))
+    print(" - path_dir: {}".format(path_dir))
+    print(" - save_data: {}".format(save_data))
+
+    if not os.path.exists(path_dir):
+        os.makedirs(path_dir)
+
+    create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft, max_n=max_n)
 
     # create lambda for shaking images
-    # simplest_lambda_functions(path_lambda_functions)
-    # simple_random_lambda_creation(path_lambda_functions)
-    # create_lambda_functions_2(path_lambda_functions)
+    # simplest_lambda_functions(path_dir)
+    # simple_random_lambda_creation(path_dir)
+    # create_lambda_functions_2(path_dir)
     
-    # create_lambda_functions_3(path_lambda_functions)
-    # create_lambda_functions_4(path_lambda_functions)
-    # create_lambda_functions_5(path_lambda_functions)
+    # create_lambda_functions_3(path_dir)
+    # create_lambda_functions_4(path_dir)
+    # create_lambda_functions_5(path_dir)
