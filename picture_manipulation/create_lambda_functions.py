@@ -17,7 +17,11 @@ path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/
 sys.path.append(path_dir_root+"../combinatorics/")
 import different_combinations
 
-def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz", file_name_txt="lambdas.txt", save_data=True, ft=1, max_n=5):
+def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz", file_name_txt="lambdas.txt", save_data=True,
+    ft=1,
+    min_or=1, max_or=3,
+    min_and=3, max_and=5,
+    min_n=3, max_n=6):
     # With this you can create any size for the window!
     # ft...frame thickness
     params_arr = np.empty((ft*2+1, ft*2+1), dtype=np.object)
@@ -75,7 +79,7 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
     # globals()["groups_2"] = groups_2
     globals()["group_num_amount"] = group_num_amount
 
-    sys.exit()
+    # sys.exit()
 
     def get_random_and(params, group_num_amount, min_n=1, max_n=3):
         # First get random num_amount
@@ -120,9 +124,9 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
     # get_random_and(params, group_num_amount)
     # or_str = get_random_or(params, group_num_amount)
     function_str_values = get_random_booleans_str(params, group_num_amount,
-        min_or=1, max_or=1,
-        min_and=3, max_and=8,
-        min_n=3, max_n=9)
+        min_or=min_or, max_or=max_or,
+        min_and=min_and, max_and=max_and,
+        min_n=min_n, max_n=max_n)
     function_str_lst, idx_choosen_params_lst, idx_inv_params_lst = list(zip(*function_str_values))
     idx_choosen_params_lst = np.array(idx_choosen_params_lst)
     idx_inv_params_lst = np.array(idx_inv_params_lst)
@@ -133,15 +137,23 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
     #     print("  idx_inv:\n{}".format(idx_inv))
 
     dm = DotMap()
+
+    dm.func_params = DotMap({})
     dm.params = params
     dm.function_str_lst = function_str_lst
     dm.idx_choosen_params_lst = idx_choosen_params_lst
     dm.idx_inv_params_lst = idx_inv_params_lst
-
     dm.ft = ft
 
-
+    print("2nd save_data: {}".format(save_data))
     if save_data:
+        if path_dir == None:
+            path_dir = "./"
+        if path_dir[-1] != "/":
+            path_dir += "/"
+        if not os.path.exists(path_dir):
+            os.makedirs(path_dir)
+
         with gzip.open(path_dir+file_name_dm, "wb") as fout:
             dill.dump(dm, fout)
 
@@ -537,23 +549,52 @@ if __name__ == "__main__":
     argv = sys.argv
     value_str = ""
     if len(argv) > 1:
-        value_str = argv[1]
+        value_str = "".join(argv[1:]).lstrip(",").rstrip(",")
     print("value_str: {}".format(value_str))
     value_str_split = value_str.split(",")
+    # print("value_str_split: {}".format(value_str_split))
+    value_str_split = list(filter(lambda x: x.count("=") == 1, value_str_split))
+    # print("value_str_split: {}".format(value_str_split))
     var_val_lst = list(map(lambda x: x.split("="), value_str_split))
     print("var_val_lst:\n{}".format(var_val_lst))
 
     ft = 1
     max_n = 5
     path_dir = "lambda_functions/"
+    file_name_dm = "dm.pkl.gz"
+    file_name_txt = "lambdas.txt"
     save_data = True
+    min_or=4
+    max_or=4
+    min_and=3
+    max_and=3
+    min_n=2
+    max_n=2
 
-    using_vars_type = {'ft': int, 'max_n': int, 'path_dir': str, 'save_data': bool}
+    using_vars_type = {
+        'ft': int,
+        'max_n': int,
+        'path_dir': str,
+        'save_data': bool,
+        'min_and' : int,
+        'max_and' : int,
+        'min_or' : int,
+        'max_or' : int,
+        'min_n' : int,
+        'max_n' : int,
+    }
 
     print("Values for variables before input:")
     print(" - ft: {}".format(ft))
+    print(" - min_and: {}".format(min_and))
+    print(" - max_and: {}".format(max_and))
+    print(" - min_or: {}".format(min_or))
+    print(" - max_or: {}".format(max_or))
+    print(" - min_n: {}".format(min_n))
     print(" - max_n: {}".format(max_n))
     print(" - path_dir: {}".format(path_dir))
+    print(" - file_name_dm: {}".format(file_name_dm))
+    print(" - file_name_txt: {}".format(file_name_txt))
     print(" - save_data: {}".format(save_data))
 
     # Do the check and convert the variable for the given input!
@@ -582,14 +623,26 @@ if __name__ == "__main__":
 
     print("Values for variables after input:")
     print(" - ft: {}".format(ft))
+    print(" - min_and: {}".format(min_and))
+    print(" - max_and: {}".format(max_and))
+    print(" - min_or: {}".format(min_or))
+    print(" - max_or: {}".format(max_or))
+    print(" - min_n: {}".format(min_n))
     print(" - max_n: {}".format(max_n))
     print(" - path_dir: {}".format(path_dir))
+    print(" - path_dir: {}".format(path_dir))
+    print(" - path_dir: {}".format(path_dir))
+    print(" - file_name_dm: {}".format(file_name_dm))
+    print(" - file_name_txt: {}".format(file_name_txt))
     print(" - save_data: {}".format(save_data))
 
     if not os.path.exists(path_dir):
         os.makedirs(path_dir)
 
-    create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft, max_n=max_n)
+    create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft,
+        min_or=min_or, max_or=max_or,
+        min_and=min_and, max_and=max_and,
+        min_n=min_n, max_n=max_n)
 
     # create lambda for shaking images
     # simplest_lambda_functions(path_dir)
