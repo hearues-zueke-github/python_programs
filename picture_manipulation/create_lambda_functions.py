@@ -16,13 +16,44 @@ from PIL import Image
 path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 sys.path.append(path_dir_root+"../combinatorics/")
 import different_combinations
+# from ..combinatorics import different_combinations
 
-def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz", file_name_txt="lambdas.txt", save_data=True,
-    ft=1,
-    min_or=1, max_or=3,
-    min_and=3, max_and=5,
-    min_n=3, max_n=6):
-    # With this you can create any size for the window!
+def write_dm_obj_txt(dm):
+    print("Now in def 'write_dm_obj_txt'")
+    
+    assert dm.path_dir
+    assert dm.save_data
+    assert dm.function_str_lst
+    assert dm.file_name_dm
+    assert dm.file_name_txt
+
+    path_dir = dm.path_dir
+    save_data = dm.save_data
+    function_str_lst = dm.function_str_lst
+    file_name_dm = dm.file_name_dm
+    file_name_txt = dm.file_name_txt
+
+    print("file_name_dm: {}".format(file_name_dm))
+    print("file_name_txt: {}".format(file_name_txt))
+
+    if path_dir == None:
+        path_dir = "./"
+    if path_dir[-1] != "/":
+        path_dir += "/"
+
+    if save_data:
+        if not os.path.exists(path_dir):
+            os.makedirs(path_dir)
+
+        with gzip.open(path_dir+file_name_dm, "wb") as fout:
+            dill.dump(dm, fout)
+
+        with open(path_dir+file_name_txt, "w") as fout:
+            for line in function_str_lst:
+                fout.write("{}\n".format(line))
+
+
+def get_params_arr(ft):
     # ft...frame thickness
     params_arr = np.empty((ft*2+1, ft*2+1), dtype=np.object)
 
@@ -38,10 +69,27 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
             params_arr[ft-j, ft+i] = "u"*j+"r"*i
             params_arr[ft+j, ft-i] = "d"*j+"l"*i
             params_arr[ft+j, ft+i] = "d"*j+"r"*i
-    print("params_arr: \n{}".format(params_arr))
+
+    return params_arr
+
+
+def create_lambda_functions_with_matrices(
+    path_dir=None,
+    save_data=False,
+    file_name_dm="dm.pkl.gz",
+    file_name_txt="lambdas.txt",
+    ft=1,
+    min_or=1, max_or=3,
+    min_and=3, max_and=5,
+    min_n=3, max_n=6):
+    # With this you can create any size for the window!
+    print("Now in def 'create_lambda_functions_with_matrices'")
+    
+    params_arr = get_params_arr(ft)
+    # print("params_arr: \n{}".format(params_arr))
 
     params_1 = params_arr.reshape((-1))
-    params_0 = np.array(["inv({})".format(param) for param in params_1])
+    params_0 = np.array(["i({})".format(param) for param in params_1])
 
     params = np.vstack((params_1, params_0)).T
 
@@ -55,39 +103,47 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
     # for 3:
     # [[0, 1, 2], [0, 1, 3], ...]
 
-    m = 2
-    n = params.shape[0]
-    idx = np.array([0, 1])
-    for i in range(0, n):
-        idx = np.hstack((idx, [0]))+np.hstack(([0], idx))
-    idx = np.cumsum(idx)
+    # TODO: maybe can be removed!
+    # m = 2
+    # n = params.shape[0]
+    # idx = np.array([0, 1]) # do the pascal triangle!
+    # for i in range(0, n):
+    #     idx = np.hstack((idx, [0]))+np.hstack(([0], idx))
+    # idx = np.cumsum(idx) # get all absolute idx from-to for the arr
 
-    arr = different_combinations.get_all_combinations_repeat(m, n)
-    arr = np.hstack((np.sum(arr, axis=1).reshape((-1, 1)), arr))
-    arr2 = arr.astype(np.uint8).reshape((-1, )).view(",".join(["u1" for _ in range(0, n+1)]))
-    arr2 = np.sort(arr2, order=("f0", )).view(np.uint8).reshape((-1, n+1))[:, 1:]
+    # arr = different_combinations.get_all_combinations_repeat(m, n)
+    # arr = np.hstack((np.sum(arr, axis=1).reshape((-1, 1)), arr))
+    # arr2 = arr.astype(np.uint8).reshape((-1, )).view(",".join(["u1" for _ in range(0, n+1)]))
+    # arr2 = np.sort(arr2, order=("f0", )).view(np.uint8).reshape((-1, n+1))[:, 1:]
 
-    globals()['arr'] = arr
-    globals()['arr2'] = arr2
+    # groups = np.array([arr2[i1:i2] for i1, i2 in zip(idx[1:-1], idx[2:])])
+    # group_num_amount = {i: group for i, group in enumerate(groups, 1)}
 
-    groups = np.array([arr2[i1:i2] for i1, i2 in zip(idx[1:-1], idx[2:])])
-    # groups_2 = [np.where(group==1)[1].reshape((-1, i)) for i, group in enumerate(groups, 1)]
-
-    group_num_amount = {i: group for i, group in enumerate(groups, 1)}
-
-    globals()["groups"] = groups
-    # globals()["groups_2"] = groups_2
-    globals()["group_num_amount"] = group_num_amount
+    # globals()["groups"] = groups
+    # globals()["group_num_amount"] = group_num_amount
 
     # sys.exit()
 
-    def get_random_and(params, group_num_amount, min_n=1, max_n=3):
+    def get_random_and(params, min_n=1, max_n=3):
         # First get random num_amount
         key = np.random.choice(np.arange(min_n, max_n+1))
-        group_num = group_num_amount[key]
-
+        
         # choose one row of group_num!
-        idx_choosen_param = group_num[np.random.randint(0, group_num.shape[0])]
+        # group_num = group_num_amount[key]
+        # idx_choosen_param = group_num[np.random.randint(0, group_num.shape[0])] 
+
+        # print("key: {}".format(key))
+        # print("group_num: {}".format(group_num))
+        # print("idx_choosen_param: {}".format(idx_choosen_param))
+        # globals()['idx_choosen_param'] = idx_choosen_param
+
+        group_num = np.zeros((params.shape[0], ), dtype=np.uint8)
+        group_num[:key] = 1
+        idx_choosen_param = np.random.permutation(group_num)
+        # print("key: {}".format(key))
+        # print("group_num: {}".format(group_num))
+        # print("idx_choosen_param: {}".format(idx_choosen_param))
+        # sys.exit(-1)
 
         # Now invert some of the params if needed!
         idx_inv_param = np.random.randint(0, 2, params.shape[0])
@@ -103,10 +159,10 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
 
         return and_str, idx_choosen_param, idx_inv_param
 
-    def get_random_or(params, group_num_amount, min_and=1, max_and=4, min_n=1, max_n=3):
+    def get_random_or(params, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_and = np.random.randint(min_and, max_and+1)
         # print("amount_and: {}".format(amount_and))
-        and_values = [get_random_and(params, group_num_amount, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
+        and_values = [get_random_and(params, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
 
         and_lst, idx_choosen_params, idx_inv_params = list(zip(*and_values))
 
@@ -114,16 +170,16 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
 
         return or_str, np.array(idx_choosen_params), np.array(idx_inv_params)
 
-    def get_random_booleans_str(params, group_num_amount, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
+    def get_random_booleans_str(params, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_or = np.random.randint(min_or, max_or+1)
-        or_lst = [get_random_or(params, group_num_amount, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n)
+        or_lst = [get_random_or(params, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n)
         for _ in range(0, amount_or)]
 
         return or_lst
 
     # get_random_and(params, group_num_amount)
     # or_str = get_random_or(params, group_num_amount)
-    function_str_values = get_random_booleans_str(params, group_num_amount,
+    function_str_values = get_random_booleans_str(params,
         min_or=min_or, max_or=max_or,
         min_and=min_and, max_and=max_and,
         min_n=min_n, max_n=max_n)
@@ -138,28 +194,49 @@ def create_lambda_functions_with_matrices(path_dir=None, file_name_dm="dm.pkl.gz
 
     dm = DotMap()
 
-    dm.func_params = DotMap({})
-    dm.params = params
+    func_params = DotMap({
+        # 'path_dir': path_dir,
+        # 'file_name_dm': file_name_dm,
+        # 'file_name_txt': file_name_txt,
+        # 'save_data': save_data,
+        # 'ft': ft,
+        'min_or': min_or,
+        'max_or': max_or,
+        'min_and': min_and,
+        'max_and': max_and,
+        'min_n': min_n,
+        'max_n': max_n,
+    })
+
+    dm.path_dir = path_dir
+    dm.save_data = save_data
+    dm.file_name_dm = file_name_dm
+    dm.file_name_txt = file_name_txt
+    dm.used_method = "create_lambda_functions_with_matrices"
     dm.function_str_lst = function_str_lst
+    dm.func_params = func_params
+    dm.params = params
     dm.idx_choosen_params_lst = idx_choosen_params_lst
     dm.idx_inv_params_lst = idx_inv_params_lst
     dm.ft = ft
 
     print("2nd save_data: {}".format(save_data))
-    if save_data:
-        if path_dir == None:
-            path_dir = "./"
-        if path_dir[-1] != "/":
-            path_dir += "/"
-        if not os.path.exists(path_dir):
-            os.makedirs(path_dir)
+    # if save_data:
+    #     if path_dir == None:
+    #         path_dir = "./"
+    #     if path_dir[-1] != "/":
+    #         path_dir += "/"
+    #     if not os.path.exists(path_dir):
+    #         os.makedirs(path_dir)
 
-        with gzip.open(path_dir+file_name_dm, "wb") as fout:
-            dill.dump(dm, fout)
+    #     with gzip.open(path_dir+file_name_dm, "wb") as fout:
+    #         dill.dump(dm, fout)
 
-        with open(path_dir+file_name_txt, "w") as fout:
-            for line in function_str_lst:
-                fout.write("{}\n".format(line))
+    #     with open(path_dir+file_name_txt, "w") as fout:
+    #         for line in function_str_lst:
+    #             fout.write("{}\n".format(line))
+
+    # write_dm_obj_txt(dm)
 
     return dm
 
@@ -630,19 +707,19 @@ if __name__ == "__main__":
     print(" - min_n: {}".format(min_n))
     print(" - max_n: {}".format(max_n))
     print(" - path_dir: {}".format(path_dir))
-    print(" - path_dir: {}".format(path_dir))
-    print(" - path_dir: {}".format(path_dir))
     print(" - file_name_dm: {}".format(file_name_dm))
     print(" - file_name_txt: {}".format(file_name_txt))
     print(" - save_data: {}".format(save_data))
 
-    if not os.path.exists(path_dir):
-        os.makedirs(path_dir)
+    # if not os.path.exists(path_dir):
+    #     os.makedirs(path_dir)
 
-    create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft,
+    dm = create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft,
         min_or=min_or, max_or=max_or,
         min_and=min_and, max_and=max_and,
-        min_n=min_n, max_n=max_n)
+        min_n=min_n, max_n=max_n, save_data=save_data)
+
+    write_dm_obj_txt(dm)
 
     # create lambda for shaking images
     # simplest_lambda_functions(path_dir)

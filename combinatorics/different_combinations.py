@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 # n ... amount of states
 def get_all_combinations_repeat(m, n):
     amount = m**n
-    arr = np.zeros((amount, n), dtype=np.int)
+    arr = np.zeros((amount, n), dtype=np.uint8)
+    # arr = np.zeros((amount, n), dtype=np.int)
 
     arr[:m, n-1] = np.arange(0, m)
 

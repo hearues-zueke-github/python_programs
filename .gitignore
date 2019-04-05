@@ -50,3 +50,5 @@ puzzle_solver/figures
 .idea
 
 math_numbers/objs
+
+venv
