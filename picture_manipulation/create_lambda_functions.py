@@ -20,16 +20,17 @@ import different_combinations
 
 def write_dm_obj_txt(dm):
     print("Now in def 'write_dm_obj_txt'")
-    
+
+    print("dm.functions_str_lst: {}".format(dm.functions_str_lst))
     assert dm.path_dir
     assert dm.save_data
-    assert dm.function_str_lst
+    assert dm.functions_str_lst
     assert dm.file_name_dm
     assert dm.file_name_txt
 
     path_dir = dm.path_dir
     save_data = dm.save_data
-    function_str_lst = dm.function_str_lst
+    functions_str_lst = dm.functions_str_lst
     file_name_dm = dm.file_name_dm
     file_name_txt = dm.file_name_txt
 
@@ -49,7 +50,7 @@ def write_dm_obj_txt(dm):
             dill.dump(dm, fout)
 
         with open(path_dir+file_name_txt, "w") as fout:
-            for line in function_str_lst:
+            for line in functions_str_lst:
                 fout.write("{}\n".format(line))
 
 
@@ -73,96 +74,71 @@ def get_params_arr(ft):
     return params_arr
 
 
-def create_lambda_functions_with_matrices(
-    path_dir=None,
-    save_data=False,
-    file_name_dm="dm.pkl.gz",
-    file_name_txt="lambdas.txt",
-    ft=1,
-    min_or=1, max_or=3,
-    min_and=3, max_and=5,
-    min_n=3, max_n=6):
-    # With this you can create any size for the window!
+def create_lambda_functions_with_matrices(dm_params):
     print("Now in def 'create_lambda_functions_with_matrices'")
+
+    assert not ( isinstance(dm_params, DotMap) and
+                 isinstance(dm_params, list) and
+                 isinstance(dm_params, dict) )
+
+    if isinstance(dm_params, list):
+        dm_params = dict(dm_params)
+    if isinstance(dm_params, dict):
+        dm_params = DotMap(dm_params)
+
+    assert dm_params.ft
+    assert dm_params.path_dir
+    assert dm_params.save_data
+    assert dm_params.file_name_dm
+    assert dm_params.file_name_txt
+    assert dm_params.min_or
+    assert dm_params.max_or
+    assert dm_params.min_and
+    assert dm_params.max_and
+    assert dm_params.min_n
+    assert dm_params.max_n  
+
+    ft = dm_params.ft
+    path_dir = dm_params.path_dir
+    save_data = dm_params.save_data
+    file_name_dm = dm_params.file_name_dm
+    file_name_txt = dm_params.file_name_txt
+    min_or = dm_params.min_or
+    max_or = dm_params.max_or
+    min_and = dm_params.min_and
+    max_and = dm_params.max_and
+    min_n = dm_params.min_n
+    max_n = dm_params.max_n  
     
     params_arr = get_params_arr(ft)
-    # print("params_arr: \n{}".format(params_arr))
 
     params_1 = params_arr.reshape((-1))
     params_0 = np.array(["i({})".format(param) for param in params_1])
 
     params = np.vstack((params_1, params_0)).T
 
-    globals()['params'] = params
-
-    # TODO: make matrices for 1, 2... to 9 elements!
-    # BUT! for 1 e.g.:
-    # [[0], [1], [2], [3], [4], [5], [6], [7], [8]]
-    # for 2:
-    # [[0, 1], [0, 2], ... , [0, 9], [1, 2], [1, 3], ... [7, 8]]
-    # for 3:
-    # [[0, 1, 2], [0, 1, 3], ...]
-
-    # TODO: maybe can be removed!
-    # m = 2
-    # n = params.shape[0]
-    # idx = np.array([0, 1]) # do the pascal triangle!
-    # for i in range(0, n):
-    #     idx = np.hstack((idx, [0]))+np.hstack(([0], idx))
-    # idx = np.cumsum(idx) # get all absolute idx from-to for the arr
-
-    # arr = different_combinations.get_all_combinations_repeat(m, n)
-    # arr = np.hstack((np.sum(arr, axis=1).reshape((-1, 1)), arr))
-    # arr2 = arr.astype(np.uint8).reshape((-1, )).view(",".join(["u1" for _ in range(0, n+1)]))
-    # arr2 = np.sort(arr2, order=("f0", )).view(np.uint8).reshape((-1, n+1))[:, 1:]
-
-    # groups = np.array([arr2[i1:i2] for i1, i2 in zip(idx[1:-1], idx[2:])])
-    # group_num_amount = {i: group for i, group in enumerate(groups, 1)}
-
-    # globals()["groups"] = groups
-    # globals()["group_num_amount"] = group_num_amount
-
-    # sys.exit()
-
-    def get_random_and(params, min_n=1, max_n=3):
-        # First get random num_amount
+    def get_random_conjuctions(params, min_n=1, max_n=3):
+        # First get used variables for the conjuction
         key = np.random.choice(np.arange(min_n, max_n+1))
-        
-        # choose one row of group_num!
-        # group_num = group_num_amount[key]
-        # idx_choosen_param = group_num[np.random.randint(0, group_num.shape[0])] 
-
-        # print("key: {}".format(key))
-        # print("group_num: {}".format(group_num))
-        # print("idx_choosen_param: {}".format(idx_choosen_param))
-        # globals()['idx_choosen_param'] = idx_choosen_param
-
         group_num = np.zeros((params.shape[0], ), dtype=np.uint8)
         group_num[:key] = 1
         idx_choosen_param = np.random.permutation(group_num)
-        # print("key: {}".format(key))
-        # print("group_num: {}".format(group_num))
-        # print("idx_choosen_param: {}".format(idx_choosen_param))
-        # sys.exit(-1)
 
-        # Now invert some of the params if needed!
+        # Now invert some of the params by random
         idx_inv_param = np.random.randint(0, 2, params.shape[0])
         idx_arr_inv_param = np.zeros(params.shape, dtype=np.int)
         idx_arr_inv_param[np.arange(0, params.shape[0]), idx_inv_param] = 1
         choosen_inv_params = params[idx_arr_inv_param==1]
 
         and_params = choosen_inv_params[idx_choosen_param==1]
-        # and_params = choosen_inv_params[idx_choosen_param]
-        # print("  and_params: {}".format(and_params))
         and_str = "&".join(and_params)
-        # print("and_str: {}".format(and_str))
 
         return and_str, idx_choosen_param, idx_inv_param
 
-    def get_random_or(params, min_and=1, max_and=4, min_n=1, max_n=3):
+
+    def get_random_disjunctions(params, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_and = np.random.randint(min_and, max_and+1)
-        # print("amount_and: {}".format(amount_and))
-        and_values = [get_random_and(params, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
+        and_values = [get_random_conjuctions(params, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
 
         and_lst, idx_choosen_params, idx_inv_params = list(zip(*and_values))
 
@@ -170,75 +146,30 @@ def create_lambda_functions_with_matrices(
 
         return or_str, np.array(idx_choosen_params), np.array(idx_inv_params)
 
-    def get_random_booleans_str(params, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
+
+    def get_random_lambdas(params, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_or = np.random.randint(min_or, max_or+1)
-        or_lst = [get_random_or(params, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n)
-        for _ in range(0, amount_or)]
+        or_lst = [get_random_disjunctions(params, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n) for _ in range(0, amount_or)]
 
         return or_lst
 
-    # get_random_and(params, group_num_amount)
-    # or_str = get_random_or(params, group_num_amount)
-    function_str_values = get_random_booleans_str(params,
-        min_or=min_or, max_or=max_or,
-        min_and=min_and, max_and=max_and,
-        min_n=min_n, max_n=max_n)
-    function_str_lst, idx_choosen_params_lst, idx_inv_params_lst = list(zip(*function_str_values))
+
+    # short description:
+    # min/max values ... where the random values can be (including both)
+    # _or ... amount for lambdas
+    # _and ... amount for disjunctions
+    # _n ... amount for conjuctions
+    function_str_values = get_random_lambdas(params, min_or=min_or, max_or=max_or, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n)
+    functions_str_lst, idx_choosen_params_lst, idx_inv_params_lst = list(zip(*function_str_values))
     idx_choosen_params_lst = np.array(idx_choosen_params_lst)
     idx_inv_params_lst = np.array(idx_inv_params_lst)
 
-    # for j, (func_str, idx_choosen, idx_inv) in enumerate(zip(function_str_lst, idx_choosen_params_lst, idx_inv_params_lst), 1):
-    #     print("\n  j: {}, func_str: {}".format(j, func_str))
-    #     print("  idx_choosen:\n{}".format(idx_choosen))
-    #     print("  idx_inv:\n{}".format(idx_inv))
+    
+    dm_params.functions_str_lst = functions_str_lst
+    dm_params.idx_choosen_params_lst = idx_choosen_params_lst
+    dm_params.idx_inv_params_lst = idx_inv_params_lst
 
-    dm = DotMap()
-
-    func_params = DotMap({
-        # 'path_dir': path_dir,
-        # 'file_name_dm': file_name_dm,
-        # 'file_name_txt': file_name_txt,
-        # 'save_data': save_data,
-        # 'ft': ft,
-        'min_or': min_or,
-        'max_or': max_or,
-        'min_and': min_and,
-        'max_and': max_and,
-        'min_n': min_n,
-        'max_n': max_n,
-    })
-
-    dm.path_dir = path_dir
-    dm.save_data = save_data
-    dm.file_name_dm = file_name_dm
-    dm.file_name_txt = file_name_txt
-    dm.used_method = "create_lambda_functions_with_matrices"
-    dm.function_str_lst = function_str_lst
-    dm.func_params = func_params
-    dm.params = params
-    dm.idx_choosen_params_lst = idx_choosen_params_lst
-    dm.idx_inv_params_lst = idx_inv_params_lst
-    dm.ft = ft
-
-    print("2nd save_data: {}".format(save_data))
-    # if save_data:
-    #     if path_dir == None:
-    #         path_dir = "./"
-    #     if path_dir[-1] != "/":
-    #         path_dir += "/"
-    #     if not os.path.exists(path_dir):
-    #         os.makedirs(path_dir)
-
-    #     with gzip.open(path_dir+file_name_dm, "wb") as fout:
-    #         dill.dump(dm, fout)
-
-    #     with open(path_dir+file_name_txt, "w") as fout:
-    #         for line in function_str_lst:
-    #             fout.write("{}\n".format(line))
-
-    # write_dm_obj_txt(dm)
-
-    return dm
+    return dm_params
 
 
 def simplest_lambda_functions(path_dir):
@@ -621,6 +552,7 @@ def create_lambda_functions_5(path_dir, tf=2):
     # globals()["mdoves_operations"] = moves_operations
     # globals()["moves_operations_bits"] = moves_operations_bits
     # globals()["moves_operations_sizes"] = moves_operations_sizes
+
 
 if __name__ == "__main__":
     argv = sys.argv
