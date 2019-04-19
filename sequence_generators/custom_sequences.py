@@ -222,7 +222,7 @@ def jumping_sum_index_sequence(n):
     return lst[1:]
 
 
-def f_rec_with_g_func(n, g, m=10):
+def f_rec_1d_with_g_func(n, g, m=10):
     # hanoi_seq = get_hanoi_sequence(n)
     # print("hanoi_seq: {}".format(hanoi_seq))
     def next_num(n):
@@ -307,6 +307,48 @@ def f_rec_with_g_func(n, g, m=10):
    # print("vals:\n{}".format(vals))
 
     return vals, next_num, a, f
+
+
+def f_rec_2d_with_g_func(nx, ny, get_g, start_acc=0, start_acc2=0, m=10):
+    def a_(x, y):
+        # if y % 10 == 0:
+        #     print("a_: y: {}".format(y))
+        v = a(x, y)
+        return v
+    def a(x, y):
+        t = (x, y)
+        if t in a.vals:
+            a.vals_count[t] += 1
+            return a.vals[t]
+        elif x < 1 or y < 1:
+            return 0
+        v = f(x, y, start_acc, start_acc2)
+        a.vals[t] = v
+        a.vals_count[t] = 1
+        return v
+    def f(x, y, acc, acc2):
+        t = (x, y, acc, acc2)
+        if t in f.vals:
+            f.vals_count[t] += 1
+            return f.vals[t]
+        s = 0
+        if x >= 1 and y >= 1:
+            s = g(x, y, acc, acc2)
+
+        f.vals_count[t] = 1
+        f.vals[t] = s
+        return s
+    a.vals = {(1, 1): 1}
+    a.vals_count = {(1, 1): 0}
+    f.vals = {}
+    f.vals_count = {}
+    g = get_g(m)
+    g.a = a
+    g.f = f
+
+    vals = [[a_(x, y) for x in range(1, nx+1)] for y in range(1, ny+1)]
+
+    return vals, a, f
 
 
 def f_rec_other_funcs(n, m=10, used_function=1):
@@ -1032,70 +1074,15 @@ def do_generic_1d_sequence(n, m, funcs_amount=1):
     return fa_lst
 
 
-if __name__ == "__main__":
-    n = 100
-    m = 128
+def get_homogen_distributed_colors(n, m):
+    q = n//(m-1)
+    p = n%(m-1)
+    # simplest color distribution!
+    colors = np.cumsum(np.hstack(((0, ), np.array([q+1]*p+[q]*(m-1-p))))).astype(np.uint8)
+    return colors
 
-#     def get_g(m):
-#         def g(n, acc, acc2):
-#             a = g.a
-#             f = g.f
 
-#             a_n = a(n)
-            
-#             '''
-#             interesting functions:
-#               # 1:
-#                 s1 = (f(n-acc-acc2-1, acc+1+g.c1, acc2)+a_n) % m
-#                 s2 = (f(n-acc-acc2-1, acc, acc2+1+g.c2)+a_n) % m
-#                 s3 = (f(n-acc-acc2*2-1, acc+1, acc2+1)+a_n) % m
-#                 s = (s1+s2+s3) % m
-#             '''
-
-#             # s1 = (f(n-acc-a_n-1, acc+1+a_n, acc2+1)+a_n) % m
-#             # s2 = (f(n-acc2-1, acc+1, acc2+1+g.c2)+a_n) % m
-#             # s3 = (f(n-s2-g.c1-acc-acc2-1, acc+1+g.c1, acc2+1)+a_n) % m
-#             # s = (s1+s2+s3+acc) % m
-
-#             # s1 = (f(n-acc-acc2-1, acc+1+g.c1, acc2+1+g.c2)+a_n) % m
-#             # s2 = (f(n-acc-acc2-s1-a_n-1, acc+1, acc2+acc+1)+a_n) % m
-#             # s = (s1+s2+acc) % m
-
-#             s1 = (f(n-acc-1, acc+1+g.c1, acc2)+a_n) % m
-#             s2 = (f(n-acc-1-s1, acc+1+g.c2, acc2+1)+acc) % m
-#             s3 = (f(n-acc2-1-s2, acc+1, acc2+acc)+acc2) % m
-
-#             s = (s1+s2+s3) % m
-
-#             return s
-
-#         func_g_str = """
-# def get_g(m):
-#     def g(n, acc, acc2):
-#         a = g.a
-#         f = g.f
-
-#         a_n = a(n)
-        
-#         s1 = (f(n-acc-1, acc+1, acc2)+a_n) % m
-#         s2 = (f(n-acc2-1, acc+1, acc2+1+g.c1+g.c2)+acc) % m
-#         # s3 = (f(n-acc2-1-s2, acc+1, acc2+acc)+acc2) % m
-
-#         s = (s1+s2) % m
-#         # s = (s1+s2+s3) % m
-
-#         return s
-#     return g
-# """
-
-#         scope_dict = dict()
-#         exec(func_g_str, scope_dict)
-#         print("scope_dict['g']: {}".format(scope_dict['g']))
-#         return func_g_str, scope_dict['g']
-
-    
-    # g = get_g(m)
-
+def create_1d_as_2d_images(n, m):
     func_g_str = """
 def get_g(m):
     def g(n, acc, acc2):
@@ -1103,13 +1090,15 @@ def get_g(m):
         f = g.f
 
         a_n = a(n)
-        
-        s1 = (f(n-acc-1, acc+1, acc2)+a_n) % m
-        s2 = (f(n-acc2-1, acc+1+g.c1, acc2+1+g.c1+g.c2)+acc) % m
-        s3 = (f(n-acc2-1-s1, acc+1+s1, acc2+s2)+acc2) % m
+        a_n1 = a(n-acc-1)
+        a_n2 = a(n-acc2-1)
 
-        # s = (s1+s2) % m
-        s = (s1+s2+s3) % m
+        s1 = (f(n-acc-1, acc+1, acc2+1)+a_n) % m
+        s2 = (f(n-acc2-1, acc+1, acc2+1)+a_n1) % m
+        s3 = (f(n-acc-1-s1, acc+1+s1, acc2+1+g.c2)+a_n2) % m
+        s4 = (f(n-1-g.c1, acc+1+s2, acc2+1+s3)+a_n) % m
+
+        s = (s1+s2+s3+s4) % m
 
         return s
     return g
@@ -1134,23 +1123,19 @@ def get_g(m):
     with open(path_images_rec_seq+'func_g.txt', 'w') as fout:
         fout.write(func_g_str)
 
-    q = 255//(m-1)
-    p = 255%(m-1)
-    # simplest color distribution!
-    colors = np.cumsum(np.hstack(((0, ), np.array([q+1]*p+[q]*(m-1-p))))).astype(np.uint8)
+    colors = get_homogen_distributed_colors(255, m)
     print("colors:\n{}".format(colors))
     # sys.exit()
     # colors = np.sort(np.random.randint(0, 256, (m, )).astype(np.uint8))
 
     arr_vals = np.zeros((75, n), dtype=np.int)
-    for c1 in range(0, 200):
+    for c1 in range(0, 100):
         g1 = get_g(m)
         g1.c1 = c1
         for c2 in range(0, arr_vals.shape[0]):
             print("c1: {}, c2: {}".format(c1, c2))
-            # print("c2: {}".format(c2))
             g1.c2 = c2
-            vals, next_num, a, f = f_rec_with_g_func(n, g1, m=m)
+            vals, next_num, a, f = f_rec_1d_with_g_func(n, g1, m=m)
             vals = np.array(vals)
             arr_vals[c2] = vals
 
@@ -1167,7 +1152,206 @@ def get_g(m):
     os.system("convert -delay 8 -loop 0 *.png animated.gif")
 
     os.chdir(cwd)
-    # vals, next_num, a, f = f_rec_1d_pos_neg(n, m)
+
+
+if __name__ == "__main__":
+    n = 100
+    m = 256
+
+    # create_1d_as_2d_images(n, m)
+
+    func_g_str = """
+def get_g_r(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-1)
+        a3 = a(x-1, y-1)
+        a4 = a(x-2, y-3)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc, y-1-acc2, acc+1, acc2+1)+a3) % m
+        f4 = (f(x-1-acc-acc2, y-1-a1, acc+1+a1, acc2+1+a2)+a4) % m
+
+        s = (f1+f2*2+f3*3+f4*4) % m
+
+        return s
+    # g.c1 = get_g.c1
+    return g
+def get_g_g(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-2)
+        a3 = a(x-1, y-1)
+        a4 = a(x-2, y-3)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc, y-1-acc2, acc+1, acc2+1)+a3) % m
+        f4 = (f(x-1-acc-acc2, y-1-a1, acc+1+a1, acc2+1+a2)+a4) % m
+
+        s = (f1+f2*2+f3*3+f4*4) % m
+
+        return s
+    # g.c1 = get_g.c1
+    return g
+def get_g_b(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-1)
+        a3 = a(x-2, y-1)
+        a4 = a(x-2, y-4)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc, y-1-acc2, acc+1, acc2+1)+a3) % m
+        f4 = (f(x-1-acc-acc2, y-1-a1, acc+1+a1, acc2+1+a2)+a4) % m
+
+        s = (f1+f2*2+f3*3+f4*4) % m
+
+        return s
+    # g.c1 = get_g.c1
+    return g
+"""
+    func_g_str = """
+def get_g_r(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-1)
+        a3 = a(x-1, y-1)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc2, y-1-acc, acc+2, acc2+1)+f1+f2) % m
+
+        s = f3
+
+        return s
+    return g
+def get_g_g(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-1)
+        a3 = a(x-1, y-1)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc2, y-1-acc, acc+2, acc2+1)+f1+f2) % m
+
+        s = f3
+
+        return s
+    return g
+def get_g_b(m):
+    def g(x, y, acc, acc2):
+        a = g.a
+        f = g.f
+
+        a1 = a(x-1, y)
+        a2 = a(x, y-1)
+        a3 = a(x-1, y-1)
+
+        f1 = (f(x-1-acc, y, acc+1, acc2)+a1) % m
+        f2 = (f(x, y-1-acc2, acc, acc2+1)+a2) % m
+        f3 = (f(x-1-acc2, y-1-acc, acc+2, acc2+1)+f1+f2) % m
+
+        s = f3
+
+        return s
+    return g
+"""
+
+    scope_dict = dict()
+    exec(func_g_str, scope_dict)
+    get_g_r = scope_dict['get_g_r']
+    get_g_g = scope_dict['get_g_g']
+    get_g_b = scope_dict['get_g_b']
+
+    path_images_rec_seq_temp = "images/recursive_sequence_2d_test_m_{m}_nr_{{i:02}}/".format(m=m)
+    i = 0
+    while True:
+        path_images_rec_seq = path_images_rec_seq_temp.format(i=i)
+        print("path_images_rec_seq: {}".format(path_images_rec_seq))
+        if not os.path.exists(path_images_rec_seq):
+            os.makedirs(path_images_rec_seq)
+            break
+        i += 1
+
+    with open(path_images_rec_seq+'func_g.txt', 'w') as fout:
+        fout.write(func_g_str)
+
+    colors = get_homogen_distributed_colors(255, m)
+    nx = 50
+    ny = 35
+
+    n_max = 0
+    acc1 = 0
+    acc2 = 0
+    is_acc1 = False
+    for c1 in range(0, 500):
+        print("c1: {}, acc1: {}, acc2: {}".format(c1, acc1, acc2))
+        # print("c1: {}".format(c1))
+        # get_g.c1 = c1
+        vals_r, a_r, f_r = f_rec_2d_with_g_func(nx, ny, get_g_r, start_acc=acc1, start_acc2=acc2, m=m)
+        vals_g, a_g, f_g = f_rec_2d_with_g_func(nx, ny, get_g_g, start_acc=acc1+1, start_acc2=acc2, m=m)
+        vals_b, a_b, f_b = f_rec_2d_with_g_func(nx, ny, get_g_b, start_acc=acc1, start_acc2=acc2+1, m=m)
+        # vals, a, f = f_rec_2d_with_g_func(nx, ny, get_g, start_acc=c1, start_acc2=0, m=m)
+        arr_r = np.array(vals_r, dtype=np.uint8)
+        arr_g = np.array(vals_g, dtype=np.uint8)
+        arr_b = np.array(vals_b, dtype=np.uint8)
+        pix_r = colors[arr_r]
+        pix_g = colors[arr_g]
+        pix_b = colors[arr_b]
+        pix = np.dstack((pix_r, pix_g, pix_b))
+        img = Image.fromarray(pix)
+        img.save(path_images_rec_seq+"recursive_sequence_2d_test_c1_{:03}.png".format(c1))
+
+        # del vals
+        # del a
+        # del f
+        # del arr
+        # del pix
+        # del img
+
+        if is_acc1:
+            acc1 += 1
+            acc2 -= 1
+            if acc1 > n_max:
+                n_max += 1
+                acc1 = n_max
+                acc2 = 0
+                is_acc1 = False
+        else:
+            acc1 -= 1
+            acc2 += 1
+            if acc2 > n_max:
+                n_max += 1
+                acc1 = 0
+                acc2 = n_max
+                is_acc1 = True
+
+    cwd = os.getcwd()
+    os.chdir("./"+path_images_rec_seq)
+    print("Creating the gif!")
+    os.system("convert -delay 8 -loop 0 *.png animated.gif")
+
+    os.chdir(cwd)
+
     sys.exit(-1)
 
 
