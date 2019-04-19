@@ -11,6 +11,7 @@ bytes_io/some_random_data.hex
 
 complex_numbers/data
 complex_numbers/images
+complex_numbers/interpolations
 complex_numbers/objs
 complex_numbers/z_func.txt
 
@@ -41,12 +42,9 @@ turing_machine/__pycache__
 
 multi_dimensional_plots/images
 
-complex_numbers/interpolations/*
 
 sequence_generators/images
 sequence_generators/other
-
-venv
 
 puzzle_solver/figures
 

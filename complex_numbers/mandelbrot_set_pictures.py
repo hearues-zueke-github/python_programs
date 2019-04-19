@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 import decimal
-decimal.getcontext().prec = 20
+decimal.getcontext().prec = 5
 
 from decimal import Decimal as Dec
 
@@ -23,34 +23,48 @@ from ComplexDec import ComplexDec
 if __name__ == "__main__":
     # c1 = ComplexDec(2, 3)
     # c2 = ComplexDec(8, -2)
-    max_iterations = 950
+    # max_iterations = 100
     
-    dir_objs = ROOT_PATH+"objs/"
-    if not os.path.exists(dir_objs):
-        os.makedirs(dir_objs)
+    div_factor = 1.
+    
+    def get_colors(max_iterations):
+        dir_objs = ROOT_PATH+"objs/"
+        if not os.path.exists(dir_objs):
+            os.makedirs(dir_objs)
 
-    max_colors = max_iterations//2+1
-    file_colors = dir_objs+"colors.pkl.gz"
-    if not os.path.exists(file_colors):
-        colors = np.random.randint(0, 256, (max_colors, 3), dtype=np.uint8)
-        colors[0] = (0x00, 0x00, 0x00)
-        with gzip.open(file_colors, "wb") as file:
-            dill.dump(colors, file)
-    else:
-        with gzip.open(file_colors, "rb") as file:
-            colors = dill.load(file)
-
-        if colors.shape[0] < max_colors:
-            print("Need to extend colors!")
-            colors_next = np.random.randint(0, 256, (max_colors-colors.shape[0], 3), dtype=np.uint8)
-            colors = np.vstack((colors, colors_next))
-
+        
+        max_colors = int(max_iterations/div_factor)+1
+        file_colors = dir_objs+"colors.pkl.gz"
+        if not os.path.exists(file_colors):
+            # colors = np.random.randint(0, 256, (1000, 3), dtype=np.uint8)
+            colors = np.random.randint(0, 256, (max_colors, 3), dtype=np.uint8)
+            colors[0] = (0x00, 0x00, 0x00)
             with gzip.open(file_colors, "wb") as file:
                 dill.dump(colors, file)
+        else:
+            with gzip.open(file_colors, "rb") as file:
+                colors = dill.load(file)
 
+            if colors.shape[0] < max_colors:
+                print("Need to extend colors!")
+                colors_next = np.random.randint(0, 256, (max_colors-colors.shape[0], 3), dtype=np.uint8)
+                colors = np.vstack((colors, colors_next))
+
+                with gzip.open(file_colors, "wb") as file:
+                    dill.dump(colors, file)
+
+        # c = colors[1:][::-1].copy()
+        # colors[1:] = c
+
+        print("max_colors: {}".format(max_colors))
+        print("colors.shape: {}".format(colors.shape))
+
+        return colors
     # colors = np.array([(lambda x: [x, x, x])(int(i*((0xFF-0x10)/(max_iterations-1))+0x10)) for i in range(0, max_iterations)], dtype=np.uint8)
 
-    def get_mandelbrot_set_picture(width_half, height_half, x0, y0):
+    limit = 2
+
+    def get_mandelbrot_set_picture(width_half, height_half, x0, y0, max_iterations):
         x1 = x0-width_half
         x2 = x0+width_half
         y1 = y0-height_half
@@ -60,8 +74,8 @@ if __name__ == "__main__":
         diff_y = y2-y1
 
 
-        w_resolution = 200
-        h_resolution = 200
+        w_resolution = 500
+        h_resolution = 500
 
         dx = diff_x/w_resolution
         dy = diff_y/h_resolution
@@ -73,7 +87,7 @@ if __name__ == "__main__":
         pix = np.empty((h_resolution, w_resolution, 3), dtype=np.uint8)
 
         for j in range(0, h_resolution):
-            if j % 100 == 0:
+            if j % 20 == 0:
                 print("j: {}".format(j))
             y = y2-dy*j
             for i in range(0, w_resolution):
@@ -85,7 +99,7 @@ if __name__ == "__main__":
                 for it in range(0, max_iterations):
                     z = z*z+c
                     # if z.abs() > 2:
-                    if abs(z) > 2:
+                    if abs(z) > limit:
                         break
                 arr[j, i] = it
 
@@ -95,7 +109,11 @@ if __name__ == "__main__":
         print("max_val: {}".format(max_val))
 
         arr_reverse = np.abs(arr-np.max(arr))
-        arr_reverse = (arr_reverse/2).astype(np.int)
+        arr_reverse = (arr_reverse/div_factor).astype(np.int)
+        
+        colors = get_colors(max_iterations)[:np.max(arr_reverse)+1]
+        c = colors[1:][::-1].copy()
+        colors[1:] = c
         pix = colors[arr_reverse]
 
         return pix
@@ -112,16 +130,46 @@ if __name__ == "__main__":
     y0 = Dec(0)
 
     params = [
-        (Dec(2), Dec(2), Dec(-0.4), Dec(0)),
-        (Dec(1.5), Dec(1.5), Dec(-0.3), Dec(0.5)),
-        (Dec(1.0), Dec(1.0), Dec(-0.2), Dec(0.7)),
-        (Dec(0.5), Dec(0.5), Dec(-0.0), Dec(0.8)),
-        (Dec(0.2), Dec(0.2), Dec(0.1), Dec(0.85)),
+        (Dec(2), Dec(2), Dec(-0.4), Dec(0), 100),
+        (Dec(1.5), Dec(1.5), Dec(-0.3), Dec(0.5), 150),
+        (Dec(1.0), Dec(1.0), Dec(-0.2), Dec(0.7), 200),
+        (Dec(0.5), Dec(0.5), Dec(-0.0), Dec(0.8), 250),
+        (Dec(0.2), Dec(0.2), Dec(0.1), Dec(0.85), 300),
+        (Dec('0.1'), Dec('0.1'), Dec('0.03'), Dec('0.88'), 350),
+        (Dec('0.05'), Dec('0.05'), Dec('0.03'), Dec('0.88'), 400),
+        (Dec('0.025'), Dec('0.025'), Dec('0.0155'), Dec('0.85'), 450),
+        (Dec('0.0125'), Dec('0.0125'), Dec('0.0155'), Dec('0.85'), 500),
+        (Dec('0.006125'), Dec('0.006125'), Dec('0.0154'), Dec('0.849'), 550),
+        (Dec('0.006125')/2, Dec('0.006125')/2, Dec('0.0154'), Dec('0.849'), 600),
+        (Dec('0.006125')/4, Dec('0.006125')/4, Dec('0.0154'), Dec('0.849'), 650),
+        (Dec('0.006125')/8, Dec('0.006125')/8, Dec('0.0154'), Dec('0.849'), 700),
     ]
 
-    for it, (width_half, height_half, x0, y0) in enumerate(params, 0):
+    hex_letters = np.array(list('0123456789ABCDEF'))
+    hash_length = 4
+    rand_hash = "".join(np.random.choice(hex_letters, hash_length))
+    interpolations_amount = 2
+    alpha_perc = Dec(1) / interpolations_amount
+    for it, (prm1, prm2) in enumerate(zip(params[:-1], params[1:]), 0):
         print("it: {}".format(it))
-        pix = get_mandelbrot_set_picture(width_half, height_half, x0, y0)
 
-        img = Image.fromarray(pix)
-        img.save(dir_imgs+"mandelbrot_img_{:03}.png".format(it))
+        width_half1, height_half1, x01, y01, max_iters1 = prm1
+        width_half2, height_half2, x02, y02, max_iters2 = prm2
+        
+        qw = (width_half2/width_half1)**(1/Dec(interpolations_amount))
+        qh = (height_half2/height_half1)**(1/Dec(interpolations_amount))
+        dx = (x02-x01)/Dec(interpolations_amount)
+        dy = (y02-y01)/Dec(interpolations_amount)
+        dmax_iters = (max_iters2-max_iters1)/Dec(interpolations_amount)
+        for it_inter in range(1, interpolations_amount+1):
+            width_half = width_half1*qw**it_inter
+            height_half = height_half1*qh**it_inter
+            x0 = x01+dx*it_inter
+            y0 = y01+dy*it_inter
+            max_iters = int(max_iters1+dmax_iters*it_inter)
+
+            pix = get_mandelbrot_set_picture(width_half, height_half, x0, y0, max_iters)
+
+            img = Image.fromarray(pix)
+            # img.show()
+            img.save(dir_imgs+"mandelbrot_img_{}_lim_{:06.03f}_it_{:03}_inter{:02}.png".format(rand_hash, limit, it, it_inter))
