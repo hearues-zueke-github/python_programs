@@ -1,7 +1,7 @@
 import numpy as np
 
 import decimal
-decimal.getcontext().prec = 10
+decimal.getcontext().prec = 100
 
 from decimal import Decimal as Dec
 

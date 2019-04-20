@@ -6,13 +6,14 @@ import dill
 import gzip
 import os
 import sys
+import time
 
 import numpy as np
 
 from PIL import Image
 
 import decimal
-decimal.getcontext().prec = 5
+decimal.getcontext().prec = 100
 
 from decimal import Decimal as Dec
 
@@ -64,7 +65,15 @@ if __name__ == "__main__":
 
     limit = 2
 
+    w_resolution = 120
+    h_resolution = 100
+
     def get_mandelbrot_set_picture(width_half, height_half, x0, y0, max_iterations):
+        print("max_iterations: {}".format(max_iterations))
+
+        print("width_half*2: {}".format(width_half*2))
+        print("height_half*2: {}".format(height_half*2))
+
         x1 = x0-width_half
         x2 = x0+width_half
         y1 = y0-height_half
@@ -73,15 +82,13 @@ if __name__ == "__main__":
         diff_x = x2-x1
         diff_y = y2-y1
 
-
-        w_resolution = 500
-        h_resolution = 500
-
         dx = diff_x/w_resolution
         dy = diff_y/h_resolution
 
         print("x1: {}, y1: {}".format(x1, y1))
         print("x2: {}, y2: {}".format(x2, y2))
+        print("dx: {}".format(dx))
+        print("dy: {}".format(dy))
 
         arr = np.empty((h_resolution, w_resolution), dtype=np.int)
         pix = np.empty((h_resolution, w_resolution, 3), dtype=np.uint8)
@@ -89,17 +96,17 @@ if __name__ == "__main__":
         for j in range(0, h_resolution):
             if j % 20 == 0:
                 print("j: {}".format(j))
-            y = y2-dy*j
+            y = y2-dy*(j+1)
             for i in range(0, w_resolution):
                 x = x1+dx*i
-                # c = ComplexDec(x, y)
-                # z = ComplexDec(0, 0)
-                c = complex(x, y)
-                z = complex(0, 0)
+                c = ComplexDec(x, y)
+                z = ComplexDec(0, 0)
+                # c = complex(x, y)
+                # z = complex(0, 0)
                 for it in range(0, max_iterations):
                     z = z*z+c
                     # if z.abs() > 2:
-                    if abs(z) > limit:
+                    if z.abs() > limit:
                         break
                 arr[j, i] = it
 
@@ -107,6 +114,8 @@ if __name__ == "__main__":
         max_val = np.max(arr)
         print("min_val: {}".format(min_val))
         print("max_val: {}".format(max_val))
+
+        # print("arr:\n{}".format(arr))
 
         arr_reverse = np.abs(arr-np.max(arr))
         arr_reverse = (arr_reverse/div_factor).astype(np.int)
@@ -130,19 +139,22 @@ if __name__ == "__main__":
     y0 = Dec(0)
 
     params = [
-        (Dec(2), Dec(2), Dec(-0.4), Dec(0), 100),
-        (Dec(1.5), Dec(1.5), Dec(-0.3), Dec(0.5), 150),
-        (Dec(1.0), Dec(1.0), Dec(-0.2), Dec(0.7), 200),
-        (Dec(0.5), Dec(0.5), Dec(-0.0), Dec(0.8), 250),
-        (Dec(0.2), Dec(0.2), Dec(0.1), Dec(0.85), 300),
-        (Dec('0.1'), Dec('0.1'), Dec('0.03'), Dec('0.88'), 350),
-        (Dec('0.05'), Dec('0.05'), Dec('0.03'), Dec('0.88'), 400),
-        (Dec('0.025'), Dec('0.025'), Dec('0.0155'), Dec('0.85'), 450),
-        (Dec('0.0125'), Dec('0.0125'), Dec('0.0155'), Dec('0.85'), 500),
-        (Dec('0.006125'), Dec('0.006125'), Dec('0.0154'), Dec('0.849'), 550),
-        (Dec('0.006125')/2, Dec('0.006125')/2, Dec('0.0154'), Dec('0.849'), 600),
-        (Dec('0.006125')/4, Dec('0.006125')/4, Dec('0.0154'), Dec('0.849'), 650),
-        (Dec('0.006125')/8, Dec('0.006125')/8, Dec('0.0154'), Dec('0.849'), 700),
+        # (Dec(2), Dec(2), Dec(-0.4), Dec(0), 100),
+        # (Dec(1.5), Dec(1.5), Dec(-0.3), Dec(0.5), 150),
+        # (Dec(1.0), Dec(1.0), Dec(-0.2), Dec(0.7), 200),
+        # (Dec(0.5), Dec(0.5), Dec(-0.0), Dec(0.8), 250),
+        # (Dec(0.2), Dec(0.2), Dec(0.1), Dec(0.85), 300),
+        # (Dec('0.1'), Dec('0.1'), Dec('0.03'), Dec('0.88'), 350),
+        # (Dec('0.05'), Dec('0.05'), Dec('0.03'), Dec('0.88'), 400),
+        # (Dec('0.025'), Dec('0.025'), Dec('0.0155'), Dec('0.85'), 450),
+        # (Dec('0.0125'), Dec('0.0125'), Dec('0.0155'), Dec('0.85'), 500),
+        # (Dec('0.006125'), Dec('0.006125'), Dec('0.0154'), Dec('0.849'), 550),
+        # (Dec('0.006125')/2, Dec('0.006125')/2, Dec('0.0154'), Dec('0.849'), 600),
+        # (Dec('0.006125')/4, Dec('0.006125')/4, Dec('0.0154'), Dec('0.849'), 650),
+        # (Dec('0.006125')/8, Dec('0.006125')/8, Dec('0.0154'), Dec('0.849'), 700),
+
+        (Dec('0.00625'), Dec('0.00625'), Dec('0.0154'), Dec('0.849'), 100),
+        (Dec('0.00625'), Dec('0.00625'), Dec('0.0154'), Dec('0.849'), 100),
     ]
 
     hex_letters = np.array(list('0123456789ABCDEF'))
@@ -168,7 +180,12 @@ if __name__ == "__main__":
             y0 = y01+dy*it_inter
             max_iters = int(max_iters1+dmax_iters*it_inter)
 
+            start_time = time.time()
             pix = get_mandelbrot_set_picture(width_half, height_half, x0, y0, max_iters)
+            end_time = time.time()
+
+            print("end_time-start_time: {}".format(end_time-start_time))
+            sys.exit(-1)
 
             img = Image.fromarray(pix)
             # img.show()
