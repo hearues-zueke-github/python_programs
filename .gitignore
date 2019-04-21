@@ -3,16 +3,24 @@
 *.class
 *.ods
 
+bytes_io/*.bak
+
 complex_numbers/data
 complex_numbers/images
 complex_numbers/z_func.txt
+
+cpp_programs/*.o
 
 labyrinth/images
 labyrinth/config.json
 
 picture_diff/images
+picture_manipulation/*.png
 picture_manipulation/images
 picture_manipulation/lambda_functions
+
+puzzle_solver/*.png
+
 bytes_io/some_random_data.hex
 test_programs/recursive_imports/num.bin
 java/myJar.jar
