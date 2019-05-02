@@ -4,6 +4,7 @@
 
 import dill
 import gzip
+import mmap
 import os
 import re
 import sys
@@ -13,6 +14,7 @@ import itertools
 import multiprocessing
 
 from multiprocessing import Process, Pipe
+# from multiprocessing import shared_memory # in python3.8 available!
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -725,14 +727,6 @@ def find_best_fitting_mosaic_images_for_image():
     # img_rgb_new.save(choosen_img_path.replace(".png", "_approx_nr_1.png"))
 
 def create_from_image_mosaic_image(source_path, pixses_dict):
-    # root_path_dir, dir_names, file_names = next(os.walk(mosaic_pixs_dir))
-
-    # print("source_path: {}".format(source_path))
-    # print("mosaic_pixs_dir: {}".format(mosaic_pixs_dir))
-    # print("len(file_names): {}".format(len(file_names)))
-
-    # img_ = Image.open(root_path_dir+file_names[0])
-    # pix_ = np.array(img_)
     pix_ = next(iter(pixses_dict.values()))
     shape_ = pix_.shape
     h1 = shape_[0]
@@ -749,22 +743,6 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
                 pixses_rgb[i] = pix
                 pixses_hsv[i] = matplotlib.colors.rgb_to_hsv(pix)
 
-            # for i, file_name in enumerate(file_names[:5000], 0):
-            # # for i, file_name in enumerate(file_names[:5000], 0):
-            #     pixses_rgb[i] = pix_
-            #     pixses_hsv[i] = matplotlib.colors.rgb_to_hsv(pix_)
-
-                # img_ = Image.open(root_path_dir+file_name)
-                # pix_ = np.array(img_)
-                # try:
-                #     if len(pix_.shape) == 2:
-                #         pix_ = np.tile(pix_.reshape((-1, )), 3).reshape((3, -1)).T.reshape((h1, w1, 3))
-                #     pixses_rgb[i] = pix_
-                #     pixses_hsv[i] = matplotlib.colors.rgb_to_hsv(pix_)
-                # except:
-                #     print("A problem with the file '{}' in '{}'!".format(file_name, root_path_dir))
-                #     sys.exit(-1)
-
             datas = {
                 'pixses_rgb': pixses_rgb,
                 # 'pixses_hsv': pixses_hsv,
@@ -779,52 +757,26 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
         return datas
 
 
-    def get_argsort_table(pixses_src_rgb, pixses_rgb): #, pixses_hsv): #, choosen_indexes):
+    def get_argsort_table(pixses_src_rgb, indexes_part, pixses_rgb, prefix=""): #, pixses_hsv): #, choosen_indexes):
         n = pixses_rgb.shape[0]
 
         pix_src_f = pix_src.astype(np.double)
         pixses_rgb_f = pixses_rgb.astype(np.double)
         # pixses_hsv_f = pixses_hsv.astype(np.double)
 
-        # pix_cpy = pix_dst.copy()
-        # pix_cpy = pix_src.copy()
+        # h, w = pix_src.shape[:2]
+        # h1, w1 = pixses_rgb[0].shape[:2]
 
-        h, w = pix_src.shape[:2]
-        h1, w1 = pixses_rgb[0].shape[:2]
+        # print("{}h: {}, w: {}".format(prefix, h, w))
+        # print("{}h1: {}, w1: {}".format(prefix, h1, w1))
+        h1, w1 = 45, 60
 
-        print("h: {}, w: {}".format(h, w))
-        print("h1: {}, w1: {}".format(h1, w1))
-
-        # for it in range(0, max_iterations):
-        # y_iters = h//h1
-        
-        # x_min = params['x_min']
-        # x_max = params['x_max']
-        # y_min = params['y_min']
-        # y_max = params['y_max']
-
-        # argsort_table = np.empty((choosen_indexes.shape[0], n), dtype=np.uint32)
         argsort_table = np.empty((pixses_src_rgb.shape[0], n), dtype=np.uint32)
-        # argsort_table = np.empty((y_max-y_min, x_max-x_min, n), dtype=np.uint32)
 
-        # for idx, (y, x) in enumerate(choosen_indexes, 0):
-        for idx, pix_ in enumerate(pixses_src_rgb, 0):
-        # for y in range(y_min, y_max):
-        #   for x in range(x_min, x_max):
-            # print("it: {}".format(it))
-            print("idx: {}, y: {}, x: {}".format(idx, y, x))
+        for idx, (pix_, (y, x)) in enumerate(zip(pixses_src_rgb, indexes_part), 0):
+            print("{}idx: {}, y: {}, x: {}".format(prefix, idx, y, x))
 
-            # x1 = int(np.random.randint(0, w-w1))
-            # y1 = int(np.random.randint(0, h-h1))
-
-            # x1 = w1*x
-            # y1 = h1*y
-
-            # pix_ = pix_src[y1:y1+h1, x1:x1+w1].astype(np.double)
             pix_ = pix_.astype(np.double)
-
-            # img_ = Image.fromarray(pix_)
-            # img_.resize((img_.width*5, img_.height*5)).show()
 
             # find best fitting pixses_rgb first!
             n_parts = 3
@@ -834,18 +786,9 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
                 pixses_rgb_f_part = pixses_rgb_f[n_part_len*i_part:n_part_len*(i_part+1)]
                 sums_part = np.sum(np.abs(pix_.reshape((1, )+pix_.shape)-pixses_rgb_f_part).reshape((pixses_rgb_f_part.shape[0], -1)), axis=-1)
                 sums = np.hstack((sums, sums_part))
-            # sums = np.sum(np.abs(pix_.reshape((1, )+pix_.shape)-pixses_rgb_f).reshape((n, -1)), axis=-1)
             arg_sort = np.argsort(sums)
             argsort_table[idx] = arg_sort
-            # argsort_table[y-y_min, x-x_min] = arg_sort
-            print(" - arg_sort[:10]: {}".format(arg_sort[:10]))
-            # idx_min = np.argmin(sums)
-
-            # pix_choosen = pixses_rgb[idx_min]
-            # pix_cpy[y1:y1+h1, x1:x1+w1] = pix_choosen
-
-            # print(" - sums: {}".format(sums))
-            # print(" - idx_min: {}".format(idx_min))
+            print("{} - arg_sort[:10]: {}".format(prefix, arg_sort[:10]))
 
         return argsort_table
 
@@ -905,7 +848,7 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     print("indexes.shape: {}".format(indexes.shape))
 
     # choosen_idx = np.random.permutation(np.arange(0, indexes.shape[0]))[:]
-    choosen_idx = np.random.permutation(np.arange(0, indexes.shape[0]))[:50]
+    choosen_idx = np.random.permutation(np.arange(0, indexes.shape[0])) # [:1000]
     print("choosen_idx: {}".format(choosen_idx))
 
     choosen_indexes = indexes[choosen_idx]
@@ -928,34 +871,97 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
 
     # TODO: split choosen_indexes and pixses_src_rgb into core amount, after calc of argsort_table, combine all argsort_tables together!
 
-    pixses_rgb_smaller = pixses_rgb[np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*3]]
+    # pixses_rgb_smaller = pixses_rgb # [np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*10]]
+    idx_random = np.random.permutation(np.arange(0, pixses_rgb.shape[0]))
+    # idx_random = np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:18000]
+    pixses_rgb_smaller = pixses_rgb[idx_random]
+
+    idxs_y = np.zeros((45, 60), dtype=np.int64)+np.arange(0, 45).reshape((-1, 1)).astype(np.int64)
+    idxs_x = np.zeros((45, 60), dtype=np.int64)+np.arange(0, 60).reshape((1, -1)).astype(np.int64)
+
+    idxs = np.dstack((idxs_y, idxs_x))
+    print("idxs.shape: {}".format(idxs.shape))
+
+    idxs_parts = ( idxs
+        .reshape((45//5, 5, 60, 2))
+        .transpose(0, 2, 1, 3)
+        .reshape((45//5*60//5, 5, 5, 2))
+        .transpose(0, 2, 1, 3)
+    )
+
+    idxs_1d_y, idxs_1d_x = idxs_parts.reshape((-1, 2)).T
+
+    def get_feature_matrix(pixses):    
+        m_row_sum_feature = np.sum(pixses, axis=1).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+        m_col_sum_feature = np.sum(pixses, axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+        m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, 5*5, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+
+        m_feature = np.hstack((m_row_sum_feature, m_col_sum_feature, m_5x5_feature))
+
+        return m_feature
+
+    print("Calculating 'm_rgb_features'!")
+    m_rgb_features = get_feature_matrix(pixses_rgb_smaller)
+    print("Calculating 'm_src_features'!")
+    m_src_features = get_feature_matrix(pixses_src_rgb)
+
+    # f = open("/tmp/pixses_rgb_smaller.bytes", "wb")
+    # pixses_rgb_1d = pixses_rgb_smaller.reshape((-1, ))
+    # f.write(pixses_rgb_1d)
+    # f.close()
+
+
+    # shm = shared_memory.SharedMemory(create=True, size=pixses_rgb_smaller.nbytes)
+    # pxs_rgb_sml_shm = np.ndarray(pixses_rgb_smaller.shape, dtype=pixses_rgb_smaller.dtype, buffer=shm.buf)
+    # pxs_rgb_sml_shm[:] = pixses_rgb_smaller
+
+    print("pixses_rgb_smaller.nbytes: {}".format(pixses_rgb_smaller.nbytes))
+    
+    print("pixses_src_rgb.shape: {}".format(pixses_src_rgb.shape))
+    print("pixses_rgb_smaller.shape: {}".format(pixses_rgb_smaller.shape))
+    
+    # print("Saving data to temp obj!")
+    # with gzip.open("/tmp/temp_obj.pkl.gz", "wb") as f:
+    #     dill.dump({'pixses_src_rgb': pixses_src_rgb, 'pixses_rgb_smaller': pixses_rgb_smaller}, f)
+
+    # sys.exit(-1)
+
+    # index
+    # pixses_rgb_smaller = pixses_rgb[np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*3]]
+
+    cpu_amount = 8
 
     n_src = pixses_src_rgb.shape[0]
     idx_parts = np.arange(0, cpu_amount+1)*(n_src//cpu_amount+1)
 
     print("idx_parts: {}".format(idx_parts))
 
-    def process(receiver, sender):
+    def process(proc_num, receiver, sender):
         pixses_src_rgb_part = receiver.recv()
+        indexes_part = receiver.recv()
         pixses_rgb = receiver.recv()
-        argsort_table = get_argsort_table(pixses_src_rgb_part, pixses_rgb)
+        argsort_table = get_argsort_table(pixses_src_rgb_part, indexes_part, pixses_rgb, prefix="{}: ".format(proc_num))
         sender.send(argsort_table)
 
-
-    pixses_src_rgb_parts = [pixses_src_rgb[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
+    # pixses_src_rgb_parts = [pixses_src_rgb[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
+    m_src_features_parts = [m_src_features[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
+    indexes_parts = [choosen_indexes[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
     pipes_proc_main = [Pipe() for _ in range(cpu_amount)]
     pipes_main_proc = [Pipe() for _ in range(cpu_amount)]
     receivers_proc, senders_main = list(zip(*pipes_proc_main))
     receivers_main, senders_proc = list(zip(*pipes_main_proc))
 
-    procs = [Process(f=process, args=(receiver, sender)) for receiver, sender in zip(receivers_proc, senders_proc)]
+    procs = [Process(target=process, args=(proc_num, receiver, sender)) for proc_num, (receiver, sender) in enumerate(zip(receivers_proc, senders_proc))]
     for proc in procs:
         proc.start()
 
-    for pixses_src_rgb_part, sender in zip(pixses_src_rgb_parts, senders_main):
+    for idx, (m_src_features_part, indexes_part, sender) in enumerate(zip(m_src_features_parts, indexes_parts, senders_main), 0):
+    # for idx, (pixses_src_rgb_part, indexes_part, sender) in enumerate(zip(pixses_src_rgb_parts, indexes_parts, senders_main), 0):
         print("send to proc: idx: {}".format(idx))
-        sender.send(pixses_src_rgb_part)
-        sender.send(pixses_rgb_smaller)
+        sender.send(m_src_features_part)
+        sender.send(indexes_part)
+        sender.send(m_rgb_features)
+        # sender.send(pixses_rgb_smaller)
 
     argsort_table = np.zeros((0, pixses_rgb_smaller.shape[0]), dtype=np.uint32)
     for idx, receiver in enumerate(receivers_main, 0):
@@ -967,28 +973,33 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
         proc.join()
 
     # argsort_table = get_argsort_table(pixses_src_rgb, pixses_rgb) #, pixses_hsv) #, choosen_indexes)
+    # argsort_table = get_argsort_table(pixses_src_rgb, pixses_rgb_smaller) #, pixses_hsv) #, choosen_indexes)
     # # argsort_table = get_argsort_table(pix_src, pixses_rgb[:4000], pixses_hsv, choosen_indexes)
 
 
     used_idx = {}
     for i, (y, x) in enumerate(choosen_indexes, 0):
     # for j, y in enumerate(range(y_min, y_max), 0):
-    #     for i, x in enumerate(range(x_min, x_max), 0):
-            arg_sort = argsort_table[i]
-            # arg_sort = argsort_table[j, i]
+    #   for i, x in enumerate(range(x_min, x_max), 0):
+        arg_sort = argsort_table[i]
+        # arg_sort = argsort_table[j, i]
 
-            for idx in arg_sort:
-                if not idx in used_idx:
-                    used_idx[idx] = 0
-                    break
+        # idx = arg_sort[0]
+        for i, idx in enumerate(arg_sort, 0):
+            if not idx in used_idx:
+                used_idx[idx] = 0
+                break
+            # if i >= 5:
+            #     break
 
-            print("idx: {}".format(idx))
+        print("i: {}, idx: {}".format(i, idx))
 
-            x1 = w1*x
-            y1 = h1*y
+        x1 = w1*x
+        y1 = h1*y
 
-            pix_choosen = pixses_rgb[idx]
-            pix_dst[y1:y1+h1, x1:x1+w1] = pix_choosen
+        pix_choosen = pixses_rgb_smaller[idx]
+        # pix_choosen = pixses_rgb[idx]
+        pix_dst[y1:y1+h1, x1:x1+w1] = pix_choosen
 
 
     img_dst = Image.fromarray(pix_dst)
@@ -1082,7 +1093,7 @@ if __name__ == "__main__":
         pix_src = pix_src[:, :, :3]
         img_src = Image.fromarray(pix_src)
 
-    resize_factor = 1
+    resize_factor = 2
     source_path = source_path_orig.replace(".jpg", "_changed_size_{}.png".format(resize_factor))
 
     if not os.path.exists(source_path):
