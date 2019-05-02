@@ -86,6 +86,7 @@ def f2(n):
 
     return sqnc
 
+
 def get_sequence(n):
     def a(n):
         if n > 1:
@@ -221,7 +222,7 @@ def jumping_sum_index_sequence(n):
     return lst[1:]
 
 
-def f_rec_mult_1(n, m=10):
+def f_rec_1d_with_g_func(n, g, m=10):
     # hanoi_seq = get_hanoi_sequence(n)
     # print("hanoi_seq: {}".format(hanoi_seq))
     def next_num(n):
@@ -241,12 +242,12 @@ def f_rec_mult_1(n, m=10):
             return 0
         # v = (f(n-1, 0)+n) # % m
         # print("v: {}".format(v))
-        v = f(n-1, 0)
+        v = f(n-1, 0, 0)
         a.vals_count[n] = 1
         a.vals[n] = v
         return v
-    def f(n, acc):
-        t = (n, acc)
+    def f(n, acc, acc2):
+        t = (n, acc, acc2)
         if t in f.vals:
             f.vals_count[t] += 1
             # print("f.vals[t]: {}".format(f.vals[t]))
@@ -257,12 +258,16 @@ def f_rec_mult_1(n, m=10):
             # for i in range(1, n+1):
             #     a_i = a(i)
             #     s = (s+f(i-acc-a_i-1, acc+a_i+1)+a_i) % m
-            a_n = a(n) # % m
+            if g:
+                s = g(n, acc, acc2)
+            else:
+                a_n = a(n) # % m
             # print("n: {}, a_n: {}".format(n, a_n))
 
-            s = (f(n-acc-1, acc+1)+a_n) % m
+                s = (f(n-acc-1, acc+1)+a_n) % m
 
             # the original one!
+                # s = (f(n-acc-a_n-1, acc+a_n+1)+a_n) % m
             # s = (f(n-acc-a_n-1, acc+a_n+1)+a_n) % m
             # m: 2, [1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0,...]
             # m: 10, [1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 9, 0, 0, 7, 3, 2, 1,...]
@@ -289,6 +294,8 @@ def f_rec_mult_1(n, m=10):
             f.vals[t] = s
         return s
 
+    g.a = a
+    g.f = f
 
     a.vals = {1: 1}
     a.vals_count = {1: 0}
@@ -612,6 +619,67 @@ def f_rec_mult_2(n, m=10):
     return next_num.vals, next_num, a, f
 
 
+def f_rec_1d_pos_neg(n, m=10):
+    # hanoi_seq = get_hanoi_sequence(n)
+    # print("hanoi_seq: {}".format(hanoi_seq))
+    # div = 2
+    def next_num(n):
+        s = a(n)
+        if n < 0:
+            next_num.vals_i_neg.append(s)
+        else:
+            next_num.vals_i_pos.append(s)
+        return s
+    def a(n):
+        if n in a.vals:
+            a.vals_count[n] += 1
+            return a.vals[n]
+        if n == -1 or n == 0 or n == 1:
+            return 1
+        # elif n < 1:
+        #     return 0
+        v = f(n, 0)
+        a.vals_count[n] = 1
+        a.vals[n] = v
+        return v
+    def f(n, acc):
+        t = (n, acc)
+        if t in f.vals:
+            f.vals_count[t] += 1
+            return f.vals[t]
+        # s = 0
+        # if n >= 1:
+        #     s = a(n)
+
+            # if acc > 0:
+
+        if n >= -1 and n <= 1:
+            return a(n)
+
+        if n < -1:
+            s = (acc+f(n+acc+1+a(-acc), acc+1)+a(-acc)) % m
+        else:
+            s = (acc+f(n-acc-1-a(acc), acc+1)+a(acc)) % m
+
+        f.vals_count[t] = 1
+        f.vals[t] = s
+        return s
+
+    a.vals = {-1: 1, 0: 1, 1: 1}
+    a.vals_count = {-1: 0, 0: 0, 1: 0}
+    f.vals = {}
+    f.vals_count = {}
+    next_num.vals_i_pos = []
+    next_num.vals_i_neg = []
+
+    next_num(0)
+    for j in range(1, n+1):
+        next_num(j)
+        next_num(-j)
+
+    return next_num.vals, next_num, a, f
+
+
 def f_jumping_modulo(n, m=10):
     idxs = list(range(1, n*m+1))
     # vals_mod = np.arange(0, n) % m
@@ -918,13 +986,13 @@ if __name__ == "__main__":
     create_2d_images(n, m, suffix_dir_name='5', nr=1)
     sys.exit(0)
 
-    # arr_mod = arr%m
-    # print("arr_mod:\n{}".format(arr_mod))
-    with open("b322670.txt", "w") as fout:
-    # with open("b322670_f_with_recursion_mult_1.txt", "w") as fout:
-    # with open("b_sequence.txt", "w") as fout:
-        for i, x in enumerate(arr, 1):
-            fout.write("{} {}\n".format(i, x))
+    # # arr_mod = arr%m
+    # # print("arr_mod:\n{}".format(arr_mod))
+    # with open("b322670.txt", "w") as fout:
+    # # with open("b322670_f_with_recursion_mult_1.txt", "w") as fout:
+    # # with open("b_sequence.txt", "w") as fout:
+    #     for i, x in enumerate(arr, 1):
+    #         fout.write("{} {}\n".format(i, x))
 
     if True:
         arr_pattern, idx = utils_sequence.find_first_repeat_pattern(arr)

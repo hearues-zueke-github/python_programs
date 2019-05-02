@@ -17,3 +17,8 @@ def get_date_time_str_full():
     dt = datetime.datetime.now()
     dt_params = (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond)
     return "Y{:04}_m{:02}_d{:02}_H{:02}_M{:02}_S{:02}_f{:06}".format(*dt_params)
+
+def get_date_time_str_full_short():
+    dt = datetime.datetime.now()
+    dt_params = (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond)
+    return "{:04}_{:02}_{:02}_{:02}_{:02}_{:02}_{:06}".format(*dt_params)

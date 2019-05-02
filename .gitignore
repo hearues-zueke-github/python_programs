@@ -1,25 +1,41 @@
+.idea
+
 *.pyc
 *.dot
 *.class
 *.ods
 
+bytes_io/*.bak
+bytes_io/some_random_data.hex
 complex_numbers/data
 complex_numbers/images
+complex_numbers/interpolations
+complex_numbers/objs
 complex_numbers/z_func.txt
+complex_numbers/*.o
 
+cpp_programs/*.o
 c_programs/huge_number_test
 
 labyrinth/images
 labyrinth/config.json
 
+math_numbers/objs
+
 picture_diff/images
+picture_manipulation/*.png
 picture_manipulation/images
 picture_manipulation/lambda_functions
+puzzle_solver/*.png
 bytes_io/some_random_data.hex
+picture_manipulation/lambdas.txt
 test_programs/recursive_imports/num.bin
+
 java/myJar.jar
 
 random_pictures/images
+
+puzzle_solver/figures/*
 
 probability/*.png
 probability/dot_files
@@ -29,4 +45,14 @@ turing_machine/__pycache__
 
 multi_dimensional_plots/images
 
-complex_numbers/interpolations
+
+sequence_generators/images
+sequence_generators/other
+
+puzzle_solver/figures
+
+.idea
+
+math_numbers/objs
+
+venv
