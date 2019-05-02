@@ -121,6 +121,40 @@ def get_sequence_better(n):
     return [a(i) for i in range(1, n+1)]
 
 
+def get_sequence_A322670(n):
+    def a(n):
+        if n in a.vals: return a.vals[n]
+        # elif n == 1: return 1
+        # elif n < 1: return 0
+        # a.vals[n] = f2(n, 0)
+        a.vals[n] = f(n-1, 0)
+        return a.vals[n]
+    a.vals = {1: 1}
+    
+    def f(n, acc):
+        t = (n, acc)
+        if t in f.vals: return f.vals[t]
+        if n >= 1:
+            f.vals[t] = (a(n)+f(n-acc-a(n)-1, acc+a(n)+1)) % 10
+            return f.vals[t]
+        return 0
+    f.vals = {(1, 0): 1}
+    
+    # def f2(n, acc):
+    #     t = (n, acc)
+    #     print("f2: {}, t: {}".format(f2, t))
+    #     if t in f2.vals: return f2.vals[t]
+    #     if n >= 1:
+    #         f2.vals[t] = (f2(n-1, 0)+f2(n-1-acc-f2(n-1, 0)-1, acc+f2(n-1, 0)+1)) % 10
+    #         return f2.vals[t]
+    #     return 0
+    # f2.vals = {(1, 0): 1}
+
+    # print("f: {}".format(f))
+    # print("f2: {}".format(f2))
+    return [a(i) for i in range(1, n+1)]
+
+
 # def f_sum_increase_range(n):
 #     lst = [1]
 #     # idx = 3
@@ -268,7 +302,7 @@ def f_rec_mult_1(n, m=10):
     return vals, next_num, a, f
 
 
-def f_rec_with_saving_2d(n, m=10, start_acc=0): #, choosen=0):
+def f_rec_with_saving_2d(n, m=10, start_acc=0, nr=1): #, choosen=0):
     def next_num(y, x):
         # next_num.t = (y, x)
         # next_num.idx_y = y - 1
@@ -294,7 +328,6 @@ def f_rec_with_saving_2d(n, m=10, start_acc=0): #, choosen=0):
             an.vals_count[t] += 1
             return an.vals[t]
         elif y >= 1 and x >= 1:
-            nr = 4
             if nr == 1:
                 # sirpinski triangle, with many previous triangles too, if acc < -2
                 # m = 2, or other maybe
@@ -310,28 +343,57 @@ def f_rec_with_saving_2d(n, m=10, start_acc=0): #, choosen=0):
                 v = (a_yx_11+a_yx_12 + a_yx_21+a_yx_22) % m
             elif nr == 2:
                 # upper right corner has a pattern
-                a0 = an(y-1, x-1, start_acc)
-                a1 = an(y-1, x-start_acc, start_acc+1)
-                a2 = an(y, x-1-a1, start_acc+2)
-                a3 = an(y-1-a1-a2, x, start_acc+3)
+                a0 = an(y-1, x-1, acc)
+                a1 = an(y-1, x-acc, acc+1)
+                a2 = an(y, x-1-a1, acc+2)
+                a3 = an(y-1-a1-a2, x, acc+3)
 
-                v = (a0+a1+a2+a3+start_acc) % m
+                v = (a0+a1+a2+a3+acc) % m
             elif nr == 3:
-                a0 = an(y-1, x, start_acc+1)
-                a1 = an(y-a0, x-1-a0, start_acc+2)
-                a2 = an(y-2, x-a1, start_acc+3)
-                a3 = an(y-1-a0-a1-a2, x-a0-start_acc, start_acc+1)
+                a0 = an(y-1, x, acc+1)
+                a1 = an(y-a0, x-1-a0, acc+2)
+                a2 = an(y-2, x-a1, acc+3)
+                a3 = an(y-1-a0-a1-a2, x-a0-acc, acc+1)
                 
                 v = (a0+a1+a2+a3) % m
             elif nr == 4:
                 if y > x:
-                    a0 = an(y-1, x, start_acc+1)
+                    a0 = an(y-1, x-acc, acc+1)
                 else:
-                    a0 = an(y, x-1, start_acc+1)
-                a1 = an(y-1-a0, x-1-a0, start_acc+1)
-                a2 = an(y-1-start_acc, x-1-start_acc, start_acc+1)                
+                    a0 = an(y-1-acc, x-1, acc+1)
+                a1 = an(y-1-a0, x-1-a0, acc+1)
+                a2 = an(y-1-acc, x-1-acc, acc+1)                
                 
                 v = (a0+a1+a2) % m
+            elif nr == 5:
+                a0 = an(y, x-acc, acc+1)
+                a1 = an(y-acc, x, acc+1)
+                a2 = an(y-1, x, acc)
+                a3 = an(y, x-1, acc)
+
+                v = (a0+a1+a2+a3) % m
+            elif nr == 6:
+                if y % 2 == 0 and x % 2 == 0:
+                    a00 = an(y-1, x-1, acc+1)
+                    a01 = an(y-2, x-2, acc+1)
+                    a02 = an(y-3, x-3, acc+1)
+                else:
+                    a00 = 0
+                    a01 = 0
+                    a02 = 0
+                a0 = an(y-1, x, acc+1)
+                a1 = an(y, x-1, acc+1)
+                a2 = an(y-1, x-1, acc+1)
+
+                a3 = an(y-acc, x-acc, acc+1)
+
+                # a3 = an(y-a0-acc, x, acc+1)
+                # a4 = an(y, x-a1-acc, acc+1)
+                # a5 = an(y-a0-acc, x-a1-acc, acc+1)
+                # a6 = an(y-a1-acc, x-a0-acc, acc+1)
+
+                v = (a00+a01+a02+a0+a1+a2+a3+1) % m
+                # v = (a00+a01+a02+a0+a1+a2+a3+a4+a5+a6+1) % m
 
             # a_yx = an(y1, x1, 0)
 
@@ -363,6 +425,7 @@ def f_rec_with_saving_2d(n, m=10, start_acc=0): #, choosen=0):
         an.vals_count[t] = 1
         an.vals[t] = v
         return v
+
 
     def a(y, x):
         # a.t_calls_dict[next_num.t] += 1
@@ -672,11 +735,156 @@ def get_1d_sequence_from_2d(arr):
     return nums
 
 
+def create_2d_images(n, m, suffix_dir_name='', nr=1):
+    path_custom_2d_sequences = "images/custom_2d_sequences/{}x{}_m_{}{}/".format(n, n, m, '' if suffix_dir_name == '' else '_{}'.format(suffix_dir_name))
+    if not os.path.exists(path_custom_2d_sequences):
+        os.makedirs(path_custom_2d_sequences)
+
+    resize = 2
+    start_accs = range(3, -4, -1)
+    for start_acc in start_accs:
+    # for start_acc in range(0, -31, -1):
+        arr, next_num, a, f = f_rec_with_saving_2d(n, m=m, start_acc=start_acc, nr=nr) #, choosen=1)
+        print("arr:\n{}".format(arr))
+
+        arr2 = (arr*(256//m)).astype(np.uint8)
+        new_size = (arr2.shape[1]*resize, arr2.shape[0]*resize)
+        img = Image.fromarray(arr2).resize(new_size)
+        file_name_suffix = str(start_acc)
+        if "-" in file_name_suffix:
+            file_name_suffix = file_name_suffix.replace("-", "neg_")
+        else:
+            file_name_suffix = "pos_"+file_name_suffix
+
+        img.save(path_custom_2d_sequences+"sequence_2d_start_acc_{}.png".format(file_name_suffix))
+
+
+def do_1_2d_sequence(suffix_dir_name='', nr=1, start_acc=0):
+    path_custom_2d_sequences = "images/custom_2d_sequences/{}x{}_m_{}{}/".format(n, n, m, '' if suffix_dir_name == '' else '_{}'.format(suffix_dir_name))
+    if not os.path.exists(path_custom_2d_sequences):
+        os.makedirs(path_custom_2d_sequences)
+
+    resize = 2
+    arr, next_num, a, f = f_rec_with_saving_2d(n, m=m, start_acc=start_acc, nr=nr) #, choosen=1)
+    print("arr:\n{}".format(arr))
+
+    arr2 = (arr*(256//m)).astype(np.uint8)
+    new_size = (arr2.shape[1]*resize, arr2.shape[0]*resize)
+    img = Image.fromarray(arr2).resize(new_size)
+    file_name_suffix = str(start_acc)
+    if "-" in file_name_suffix:
+        file_name_suffix = file_name_suffix.replace("-", "neg_")
+    else:
+        file_name_suffix = "pos_"+file_name_suffix
+
+    img.save(path_custom_2d_sequences+"sequence_2d_start_acc_{}.png".format(file_name_suffix))
+
+
+def do_generic_1d_sequence(n, m, funcs_amount=1):
+    def fa_primitive(n):
+        return 0
+
+    def count_a6():
+        pass
+    count_a6.counter = 0
+
+    def get_fa_fan(fa2, num=0):
+        def fan(n, i, j):
+            fan.counter += 1
+
+            t = (n, i, j)
+            if t in fan.vals:
+                fan.vals_count[t] += 1
+                return fan.vals[t]
+
+            v = 0
+            if n >= 1:
+                a1 = fan(n-1, 0, 0)
+                a2 = fan(n-1-i-1, i+1, j)
+                a3 = fan(n-1-j-1, i, j+1)
+                a4 = fan(n-1-i-j-1, i+1, j+1)
+                a5 = fan(n-1-i-i-1-(i+j+i*j), i+1, j+1)
+                a6 = 0
+                if a1 == 0 or a2 == 0: # or a3 != 0:
+                    a6 = fa2(n)
+                    count_a6.counter += 1
+                v = (a1+a2+a3+a4+a5+a6) % m
+            fan.vals[t] = v
+            fan.vals_count[t] = 1
+            return v
+        fan.vals = {(1, 0, 0): 1}
+        fan.vals_count = {(1, 0, 0): 1}
+        fan.counter = 0
+        
+        def fa(n):
+            fa.counter += 1
+            if n in fa.vals:
+                return fa.vals[n]
+
+            v = fan(n, 0, 0)
+            fa.vals[n] = v
+            return v
+
+        fa.vals = {1: 1}
+        fa.num = num
+        fa.counter = 0
+        fa.fa2 = fa2
+        fa.fan = fan
+
+        return fa
+
+    fa_prev = fa_primitive
+    fa_lst = []
+
+    for num in range(1, funcs_amount+1):
+        fa = get_fa_fan(fa_prev, num=num)
+        for i in range(1, n+1): fa(i)
+        print("func num: {} finished!".format(num))
+
+        fa_lst.append(fa)
+        fa_prev = fa
+        num += 1
+
+    # fa2 = get_fa_fan(fa1)
+    # fa3 = get_fa_fan(fa2)
+    # fa4 = get_fa_fan(fa3)
+
+    # for i in range(1, n): fa1(i)
+    # for i in range(1, n): fa4(i)
+    
+    # fa_last = fa_lst[-1]
+    # for i in range(1, n+1): fa_last(i)
+
+    # print("count_a6.counter: {}".format(count_a6.counter))
+
+    # fa_lst = [fa1]
+    # fa_lst = [fa1, fa2, fa3, fa4]
+
+    return fa_lst
+
+
 if __name__ == "__main__":
-    n = 300
+    n = 100
     # lst = f_mult_1(n)
-    m = 4
+    m = 10
     # lst = f_jumping_modulo(n, m=m)
+
+    lst = get_sequence_A322670(n)
+    print("lst: {}".format(lst))
+    sys.exit(0)
+
+    # testing other 1d sequences!
+    fa_lst = do_generic_1d_sequence(n, m, funcs_amount=20)
+    for i, fa in enumerate(fa_lst, 1):
+    # for i, fa in enumerate(fa_lst[::10], 1):
+        print("i: {}".format(i))
+        # print("fa.vals:\n{}".format(fa.vals))
+        print("list(fa.vals.values()):\n{}".format(list(fa.vals.values())))
+        print("fa.num: {}".format(fa.num))
+        # print("fa.counter: {}, fa.fan.counter: {}".format(fa.counter, fa.fan.counter))
+
+    sys.exit(0)
+
 
     # lst, next_num, a, fy, fx, fd = f_rec_with_saving_2d(n, m=m)
     # arr3, next_num, a, f = f_rec_with_saving_2d(n, m=m, choosen=0)
@@ -707,31 +915,7 @@ if __name__ == "__main__":
 
     # arr = np.array(lst)
 
-    
-    path_custom_2d_sequences = "images/custom_2d_sequences/{}x{}_m_{}_2/".format(n, n, m)
-    if not os.path.exists(path_custom_2d_sequences):
-        os.makedirs(path_custom_2d_sequences)
-
-    resize = 2
-    start_accs = range(3, -4, -1)
-    for start_acc in start_accs:
-    # for start_acc in range(0, -31, -1):
-        arr, next_num, a, f = f_rec_with_saving_2d(n, m=m, start_acc=start_acc) #, choosen=1)
-        print("arr:\n{}".format(arr))
-
-        arr2 = (arr*(256//m)).astype(np.uint8)
-        new_size = (arr2.shape[1]*resize, arr2.shape[0]*resize)
-        img = Image.fromarray(arr2).resize(new_size)
-        file_name_suffix = str(start_acc)
-        if "-" in file_name_suffix:
-            file_name_suffix = file_name_suffix.replace("-", "neg_")
-        else:
-            file_name_suffix = "pos_"+file_name_suffix
-
-        img.save(path_custom_2d_sequences+"sequence_2d_start_acc_{}.png".format(file_name_suffix))
-
-    # Image.fromarray((((arr!=arr.T)+0)*255).astype(np.uint8)).resize(new_size).show()
-
+    create_2d_images(n, m, suffix_dir_name='5', nr=1)
     sys.exit(0)
 
     # arr_mod = arr%m
