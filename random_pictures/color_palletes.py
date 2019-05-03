@@ -21,8 +21,6 @@ import matplotlib.pyplot as plt
 
 import subprocess
 
-cpu_amount = multiprocessing.cpu_count()
-
 import numpy as np
 
 from PIL import Image
@@ -810,10 +808,15 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     img_src = Image.open(source_path)
     # img_src = img_src.resize((img_src.width*2, img_src.height*2))
     pix_src = np.array(img_src)
+    
+    h, w = pix_src.shape[:2]
+    h1, w1 = pixses_rgb[0].shape[:2]
+
+    if h % h1 != 0 or w % w1 != 0:
+        pix_src = pix_src[:(h//h1)*h1, :(w//w1)*w1]
+
     if pix_src.shape[2]  == 4:
         pix_src = pix_src[:, :, :3]
-
-    # img_src.show()
 
     destination_path = source_path.replace(".png", "_mosaic.png")
 
@@ -824,11 +827,6 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     else:
         img_dst = Image.open(destination_path)
         pix_dst = np.array(img_dst)
-
-    # img_dst.show()
-
-    h, w = pix_src.shape[:2]
-    h1, w1 = pixses_rgb[0].shape[:2]
 
     x_min = 0
     x_max = w//w1
@@ -929,7 +927,8 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     # index
     # pixses_rgb_smaller = pixses_rgb[np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*3]]
 
-    cpu_amount = 8
+    cpu_amount = multiprocessing.cpu_count()
+    # cpu_amount = 8
 
     n_src = pixses_src_rgb.shape[0]
     idx_parts = np.arange(0, cpu_amount+1)*(n_src//cpu_amount+1)
@@ -1068,6 +1067,7 @@ if __name__ == "__main__":
     # obj_file_path = ROOT_PATH+"datas/pixabay_com_40x30_2.pkl.gz"
     obj_file_path = ROOT_PATH+"images/pixabay_com/picture_dict_objs/60x45.pkl.gz"
 
+    # TODO: create pixses_dict bigger!!!
     with gzip.open(obj_file_path, "rb") as f:
         pixses_dict = dill.load(f)
     # pixses_dict = get_pixses_dict_object(mosaic_pixs_dir, obj_file_path)
@@ -1077,23 +1077,40 @@ if __name__ == "__main__":
 
 
     argv = sys.argv
-    if len(argv) < 2:
+    if len(argv) < 3:
         print("need second argument for the path of the image!")
+        print("need third argument for the resize of image!")
         sys.exit(-1)
 
     source_path_orig = argv[1]
     if not os.path.exists(source_path_orig):
         print("File '{}' does not exists!".format(source_path_orig))
+        print("Exit program!")
         sys.exit(-2)
+
+    try:
+        resize_factor = int(argv[2])
+        if resize_factor < 1:
+            resize_factor = 1
+        elif resize_factor > 10:
+            resize_factor = 10
+    except:
+        print("resize_factor cannot convert to int!")
+        print("Exit program!")
+        sys.exit(-3)
+
+    print("resize_factor set to: {}".format(resize_factor))
 
     img_src = Image.open(source_path_orig)
     pix_src = np.array(img_src)
 
+    if len(pix_src.shape) == 2:
+        pix_src = np.dstack((pix_src, pix_src, pix_src))
+        img_src = Image.fromarray(pix_src)
     if pix_src.shape[2] == 4:
         pix_src = pix_src[:, :, :3]
         img_src = Image.fromarray(pix_src)
 
-    resize_factor = 2
     source_path = source_path_orig.replace(".jpg", "_changed_size_{}.png".format(resize_factor))
 
     if not os.path.exists(source_path):
