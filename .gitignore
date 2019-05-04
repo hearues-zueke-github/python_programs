@@ -34,6 +34,9 @@ test_programs/recursive_imports/num.bin
 java/myJar.jar
 
 random_pictures/images
+random_pictures/datas
+random_pictures/*.txt
+random_pictures/*.html
 
 puzzle_solver/figures/*
 

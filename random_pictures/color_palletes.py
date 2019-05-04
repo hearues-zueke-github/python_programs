@@ -755,6 +755,11 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
         return datas
 
 
+    def get_finished_datas_pixses(datas_file_path):
+        with gzip.open(datas_file_path, "rb") as f:
+            datas = dill.load(f)
+        return datas
+
     def get_argsort_table(pixses_src_rgb, indexes_part, pixses_rgb, prefix=""): #, pixses_hsv): #, choosen_indexes):
         n = pixses_rgb.shape[0]
 
@@ -767,7 +772,8 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
 
         # print("{}h: {}, w: {}".format(prefix, h, w))
         # print("{}h1: {}, w1: {}".format(prefix, h1, w1))
-        h1, w1 = 45, 60
+        h1, w1 = 24, 32
+        # h1, w1 = 45, 60
 
         argsort_table = np.empty((pixses_src_rgb.shape[0], n), dtype=np.uint32)
 
@@ -794,15 +800,28 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     datas_folder = ROOT_PATH+"datas/"
     if not os.path.exists(datas_folder):
         os.makedirs(datas_folder)
-    
-    datas_file_path = datas_folder+"mosaic_pixses_nr_08.pkl.gz"
 
-    datas = get_datas_pixses(datas_file_path)
-    pixses_rgb = datas['pixses_rgb']
-    # pixses_hsv = datas['pixses_hsv']
-    # pixses_hsv = datas['pixses_rgb']
+    tile_h = 45
+    tile_w = 60
+    print("tile_h: {}".format(tile_h))
+    print("tile_w: {}".format(tile_w))
+    datas_file_path_template = "datas/all_pixabay_com_pixses_{h}_{w}_part_{{:02}}.pkl.gz".format(h=tile_h, w=tile_w)
+    pixses_rgb_lst = [get_finished_datas_pixses(datas_file_path_template.format(i)) for i in range(0, 10)]
+    # pixses_rgb = np.vstack(pixses_rgb_lst)
+    pixses_rgb_orig = np.vstack(pixses_rgb_lst)
+
+    tile_h_new = 24
+    tile_w_new = 32
+    datas_file_pixses_smaller = "datas/all_pixabay_com_pixses_{h}_{w}.pkl.gz".format(h=tile_h_new, w=tile_w_new)
+
+    pixses_rgb = np.empty((pixses_rgb_orig.shape[0], tile_h_new, tile_w_new, 3), dtype=np.uint8)
+    for i, pix in enumerate(pixses_rgb_orig, 0):
+        if i%1000 == 0:
+            print("i: {}".format(i))
+        pixses_rgb[i] = np.array(Image.fromarray(pix).resize((tile_w_new, tile_h_new), Image.LANCZOS))
 
     print("pixses_rgb.shape: {}".format(pixses_rgb.shape))
+    # input("ENTER...")
     # print("pixses_hsv.shape: {}".format(pixses_hsv.shape))
 
     img_src = Image.open(source_path)
@@ -874,16 +893,24 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     # idx_random = np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:18000]
     pixses_rgb_smaller = pixses_rgb[idx_random]
 
-    idxs_y = np.zeros((45, 60), dtype=np.int64)+np.arange(0, 45).reshape((-1, 1)).astype(np.int64)
-    idxs_x = np.zeros((45, 60), dtype=np.int64)+np.arange(0, 60).reshape((1, -1)).astype(np.int64)
+    idxs_y = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, h1).reshape((-1, 1)).astype(np.int64)
+    idxs_x = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, w1).reshape((1, -1)).astype(np.int64)
 
     idxs = np.dstack((idxs_y, idxs_x))
     print("idxs.shape: {}".format(idxs.shape))
 
+    # h1 = 45
+    # w1 = 60
+    h2 = h1
+    w2 = w1
+    t2 = 4
+    print("h2: {}".format(h2))
+    print("w2: {}".format(w2))
+    # h2, w2, t2 = 24, 32, 4
     idxs_parts = ( idxs
-        .reshape((45//5, 5, 60, 2))
+        .reshape((h2//t2, t2, w2, 2))
         .transpose(0, 2, 1, 3)
-        .reshape((45//5*60//5, 5, 5, 2))
+        .reshape((h2//t2*w2//t2, t2, t2, 2))
         .transpose(0, 2, 1, 3)
     )
 
@@ -892,7 +919,8 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     def get_feature_matrix(pixses):    
         m_row_sum_feature = np.sum(pixses, axis=1).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
         m_col_sum_feature = np.sum(pixses, axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
-        m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, 5*5, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+        m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, t2*t2, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+        # m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, 5*5, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
 
         m_feature = np.hstack((m_row_sum_feature, m_col_sum_feature, m_5x5_feature))
 

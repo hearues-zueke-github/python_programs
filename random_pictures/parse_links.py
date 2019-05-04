@@ -35,8 +35,13 @@ hasher = filehash.FileHash('sha512')
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))+"/"
 
 if __name__ == "__main__":
-    n = 4
-    for page_num in range(100*n, 100*(n+1)):
+    # n = 4
+    # for page_num in range(100*n, 100*(n+1)):
+    # 1237
+    # n = 1000
+    n1 = 3800
+    n2 = 4200
+    for page_num in range(n1, n2):
         print("page_num: {}".format(page_num))
         os.system("curl https://pixabay.com/images/search/?pagi={} > page.html".format(page_num))
         
@@ -54,7 +59,7 @@ if __name__ == "__main__":
         print("len(img_links): {}".format(len(img_links)))
         # print("img_links: {}".format(img_links))
 
-        images_path = ROOT_PATH+"images/pixabay_com_2/"
+        images_path = ROOT_PATH+"images/pixabay_com_9/"
         if not os.path.exists(images_path):
             os.makedirs(images_path)
 
