@@ -930,7 +930,7 @@ def do_generic_1d_sequence(n, m, funcs_amount=1):
 
     return fa_lst
 
-
+ 
 if __name__ == "__main__":
     n = 100
     # lst = f_mult_1(n)
