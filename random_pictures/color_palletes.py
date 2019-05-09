@@ -724,6 +724,7 @@ def find_best_fitting_mosaic_images_for_image():
     # img_rgb_new = Image.fromarray(pix_copy)
     # img_rgb_new.save(choosen_img_path.replace(".png", "_approx_nr_1.png"))
 
+
 def create_from_image_mosaic_image(source_path):
     def get_finished_datas_pixses(datas_file_path):
         with gzip.open(datas_file_path, "rb") as f:
@@ -731,7 +732,7 @@ def create_from_image_mosaic_image(source_path):
         return datas
 
 
-    def get_argsort_table(pixses_src_rgb, pixses_rgb, prefix=""): #, pixses_hsv): #, choosen_indexes):
+    def get_argsort_table(pixses_src_rgb, pixses_rgb, prefix=""):
         n = pixses_rgb.shape[0]
 
         pix_src_f = pix_src.astype(np.double)
@@ -740,7 +741,6 @@ def create_from_image_mosaic_image(source_path):
         argsort_table = np.empty((pixses_src_rgb.shape[0], n), dtype=np.uint32)
 
         for idx, pix_ in enumerate(pixses_src_rgb, 0):
-            # print("{}idx: {}, y: {}, x: {}".format(prefix, idx, y, x))
             print("{}idx: {}".format(prefix, idx))
 
             pix_ = pix_.astype(np.double)
@@ -767,15 +767,14 @@ def create_from_image_mosaic_image(source_path):
     tile_w, tile_h = 60, 45
     print("tile_h: {}".format(tile_h))
     print("tile_w: {}".format(tile_w))
-    datas_file_path_template = "datas/all_pixabay_com_pixses_{h}_{w}_part_{{:02}}.pkl.gz".format(h=tile_h, w=tile_w)
-    amount_pkl_files = 15
+    datas_file_path_template = datas_folder+"all_pixabay_com_pixses_{h}_{w}_part_{{:02}}.pkl.gz".format(h=tile_h, w=tile_w)
+    amount_pkl_files = 20
     pixses_rgb_lst = [get_finished_datas_pixses(datas_file_path_template.format(i)) for i in range(0, amount_pkl_files)]
     pixses_rgb_orig = np.vstack(pixses_rgb_lst)
 
     print("pixses_rgb_orig.shape: {}".format(pixses_rgb_orig.shape))
-    # input("ENTER...")
 
-    t2 = 10
+    t2 = 15
     tile_w_new, tile_h_new = 4*t2, 3*t2
     datas_file_pixses_smaller = "datas/all_pixabay_com_pixses_{h}_{w}.pkl.gz".format(h=tile_h_new, w=tile_w_new)
 
@@ -785,19 +784,11 @@ def create_from_image_mosaic_image(source_path):
             print("i: {}".format(i))
         pixses_rgb_smaller[i] = np.array(Image.fromarray(pix).resize((tile_w_new, tile_h_new), Image.LANCZOS))
 
-    idxs_rnd = np.random.permutation(np.arange(0, pixses_rgb_smaller.shape[0]))[:50000]
-    pixses_rgb = pixses_rgb_smaller[idxs_rnd]
-
-    print("pixses_rgb.shape: {}".format(pixses_rgb.shape))
-    # input("ENTER...")
-    # print("pixses_hsv.shape: {}".format(pixses_hsv.shape))
-
     img_src = Image.open(source_path)
-    # img_src = img_src.resize((img_src.width*2, img_src.height*2))
     pix_src = np.array(img_src)
     
     h, w = pix_src.shape[:2]
-    h1, w1 = pixses_rgb[0].shape[:2]
+    h1, w1 = pixses_rgb_smaller[0].shape[:2]
 
     if h % h1 != 0 or w % w1 != 0:
         pix_src = pix_src[:(h//h1)*h1, :(w//w1)*w1]
@@ -824,8 +815,6 @@ def create_from_image_mosaic_image(source_path):
     print("x_min: {}, x_max: {}".format(x_min, x_max))
     print("y_min: {}, y_max: {}".format(y_min, y_max))
 
-    # create the index table...
-    # index_table_path = 
     ys = np.tile(np.arange(0, y_max), x_max).reshape((x_max, y_max)).T.reshape((-1, ))
     xs = np.tile(np.arange(0, x_max), y_max)
     indexes = np.vstack((ys, xs)).T
@@ -839,203 +828,117 @@ def create_from_image_mosaic_image(source_path):
     idxs2_4 = idxs2[:-1, :-1].copy().reshape((-1, 4))*(tile_h_new, tile_w_new, tile_h_new, tile_w_new)+(tile_h_new//2, tile_w_new//2, tile_h_new//2, tile_w_new//2)
     choosen_indexes_all = np.vstack((idxs2_1, idxs2_2, idxs2_3, idxs2_4))
 
-    # globals()['ys'] = ys
-    # globals()['xs'] = xs
-    # globals()['indexes'] = indexes
-    # globals()['idxs'] = idxs
-    # globals()['idxs2'] = idxs2
-    # globals()['choosen_indexes_all'] = choosen_indexes_all
 
-    # sys.exit(-1)
+    for doing_parts_number in range(0, 1):
+        print("doing_parts_number: {}".format(doing_parts_number))
+        idxs_rnd = np.random.permutation(np.arange(0, pixses_rgb_smaller.shape[0]))[:50000]
+        pixses_rgb = pixses_rgb_smaller[idxs_rnd]
 
-    # print("indexes: {}".format(indexes))
-    # print("indexes.shape: {}".format(indexes.shape))
+        print("pixses_rgb.shape: {}".format(pixses_rgb.shape))
 
-    # choosen_idx = np.random.permutation(np.arange(0, indexes.shape[0]))[:]
-    # choosen_idx = np.random.permutation(np.arange(0, indexes.shape[0])) # [:1000]
-    # print("choosen_idx: {}".format(choosen_idx))
+        choosen_idx = np.random.permutation(np.arange(0, choosen_indexes_all.shape[0])) # [:1000]
+        choosen_idx = choosen_idx[:choosen_idx.shape[0]//6]
+        choosen_indexes = choosen_indexes_all[choosen_idx]
+        print("choosen_idx: {}".format(choosen_idx))
+        print("choosen_indexes.shape: {}".format(choosen_indexes.shape))
 
-    # choosen_indexes = indexes[choosen_idx]
-    # choosen_indexes = np.hstack((choosen_indexes, choosen_indexes+1))*(tile_h_new, tile_w_new, tile_h_new, tile_w_new)
-    
-    choosen_idx = np.random.permutation(np.arange(0, choosen_indexes_all.shape[0])) # [:1000]
-    choosen_idx = choosen_idx[:choosen_idx.shape[0]//6]
-    choosen_indexes = choosen_indexes_all[choosen_idx]
-    print("choosen_idx: {}".format(choosen_idx))
-    print("choosen_indexes.shape: {}".format(choosen_indexes.shape))
+        pixses_src_rgb = np.empty((choosen_indexes.shape[0], h1, w1, 3), dtype=np.uint8)
+        for i, (y1, x1, y2, x2) in enumerate(choosen_indexes, 0):
+            pix_ = pix_src[y1:y2, x1:x2]
+            pixses_src_rgb[i] = pix_
 
-    # globals()['indexes'] = indexes
-    # globals()['choosen_indexes'] = choosen_indexes
+        idxs_y = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, h1).reshape((-1, 1)).astype(np.int64)
+        idxs_x = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, w1).reshape((1, -1)).astype(np.int64)
 
-    # sys.exit(-1)
+        idxs = np.dstack((idxs_y, idxs_x))
+        print("idxs.shape: {}".format(idxs.shape))
 
+        h2 = h1
+        w2 = w1
+        print("h2: {}".format(h2))
+        print("w2: {}".format(w2))
+        idxs_parts = ( idxs
+            .reshape((h2//t2, t2, w2, 2))
+            .transpose(0, 2, 1, 3)
+            .reshape((h2//t2*w2//t2, t2, t2, 2))
+            .transpose(0, 2, 1, 3)
+        )
 
-    params = {
-        'x_min': x_min,
-        'x_max': x_max,
-        'y_min': y_min,
-        'y_max': y_max,
-    }
+        idxs_1d_y, idxs_1d_x = idxs_parts.reshape((-1, 2)).T
 
-    pixses_src_rgb = np.empty((choosen_indexes.shape[0], h1, w1, 3), dtype=np.uint8)
-    # for i, (y, x) in enumerate(choosen_indexes, 0):
-    for i, (y1, x1, y2, x2) in enumerate(choosen_indexes, 0):
-        # x1 = w1*x
-        # y1 = h1*y
-        pix_ = pix_src[y1:y2, x1:x2] # .astype(np.double)
-        # pix_ = pix_src[y1:y1+h1, x1:x1+w1] # .astype(np.double)
-        pixses_src_rgb[i] = pix_
+        def get_feature_matrix(pixses):    
+            m_row_sum_feature = np.sum(pixses, axis=1).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+            m_col_sum_feature = np.sum(pixses, axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+            m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, t2*t2, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
 
-    # TODO: split choosen_indexes and pixses_src_rgb into core amount, after calc of argsort_table, combine all argsort_tables together!
+            m_feature = np.hstack((m_row_sum_feature, m_col_sum_feature, m_5x5_feature))
 
-    # pixses_rgb_smaller = pixses_rgb # [np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*10]]
-    # idx_random = np.random.permutation(np.arange(0, pixses_rgb.shape[0]))
-    # idx_random = np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:18000]
-    # pixses_rgb_smaller = pixses_rgb[idx_random]
+            return m_feature
 
-    idxs_y = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, h1).reshape((-1, 1)).astype(np.int64)
-    idxs_x = np.zeros((h1, w1), dtype=np.int64)+np.arange(0, w1).reshape((1, -1)).astype(np.int64)
+        print("Calculating 'm_rgb_features'!")
+        m_rgb_features = get_feature_matrix(pixses_rgb)
+        print("Calculating 'm_src_features'!")
+        m_src_features = get_feature_matrix(pixses_src_rgb)
 
-    idxs = np.dstack((idxs_y, idxs_x))
-    print("idxs.shape: {}".format(idxs.shape))
+        print("pixses_rgb.nbytes: {}".format(pixses_rgb.nbytes))
+        
+        print("pixses_src_rgb.shape: {}".format(pixses_src_rgb.shape))
+        print("pixses_rgb.shape: {}".format(pixses_rgb.shape))
+        
+        cpu_amount = multiprocessing.cpu_count()
 
-    # h1 = 45
-    # w1 = 60
-    h2 = h1
-    w2 = w1
-    # t2 = 4
-    print("h2: {}".format(h2))
-    print("w2: {}".format(w2))
-    # h2, w2, t2 = 24, 32, 4
-    idxs_parts = ( idxs
-        .reshape((h2//t2, t2, w2, 2))
-        .transpose(0, 2, 1, 3)
-        .reshape((h2//t2*w2//t2, t2, t2, 2))
-        .transpose(0, 2, 1, 3)
-    )
+        n_src = pixses_src_rgb.shape[0]
+        idx_parts = np.arange(0, cpu_amount+1)*(n_src//cpu_amount+1)
 
-    idxs_1d_y, idxs_1d_x = idxs_parts.reshape((-1, 2)).T
+        print("idx_parts: {}".format(idx_parts))
 
-    def get_feature_matrix(pixses):    
-        m_row_sum_feature = np.sum(pixses, axis=1).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
-        m_col_sum_feature = np.sum(pixses, axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
-        m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, t2*t2, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
-        # m_5x5_feature = np.sum(pixses[:, idxs_1d_y, idxs_1d_x].reshape((pixses.shape[0], -1, 5*5, 3)), axis=2).transpose(0, 2, 1).reshape((pixses.shape[0], -1))
+        def process(proc_num, receiver, sender):
+            pixses_src_rgb_part = receiver.recv()
+            pixses_rgb = receiver.recv()
+            argsort_table = get_argsort_table(pixses_src_rgb_part, pixses_rgb, prefix="{}: ".format(proc_num))
+            sender.send(argsort_table)
 
-        m_feature = np.hstack((m_row_sum_feature, m_col_sum_feature, m_5x5_feature))
+        m_src_features_parts = [m_src_features[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
+        pipes_proc_main = [Pipe() for _ in range(cpu_amount)]
+        pipes_main_proc = [Pipe() for _ in range(cpu_amount)]
+        receivers_proc, senders_main = list(zip(*pipes_proc_main))
+        receivers_main, senders_proc = list(zip(*pipes_main_proc))
 
-        return m_feature
+        procs = [Process(target=process, args=(proc_num, receiver, sender)) for proc_num, (receiver, sender) in enumerate(zip(receivers_proc, senders_proc))]
+        for proc in procs:
+            proc.start()
 
-    print("Calculating 'm_rgb_features'!")
-    m_rgb_features = get_feature_matrix(pixses_rgb)
-    print("Calculating 'm_src_features'!")
-    m_src_features = get_feature_matrix(pixses_src_rgb)
+        for idx, (m_src_features_part, sender) in enumerate(zip(m_src_features_parts, senders_main), 0):
+            print("send to proc: idx: {}".format(idx))
+            sender.send(m_src_features_part)
+            sender.send(m_rgb_features)
 
-    # f = open("/tmp/pixses_rgb.bytes", "wb")
-    # pixses_rgb_1d = pixses_rgb.reshape((-1, ))
-    # f.write(pixses_rgb_1d)
-    # f.close()
+        argsort_table = np.zeros((0, pixses_rgb.shape[0]), dtype=np.uint32)
+        for idx, receiver in enumerate(receivers_main, 0):
+            print("receive from proc: idx: {}".format(idx))
+            argsort_table_part = receiver.recv()
+            argsort_table = np.vstack((argsort_table, argsort_table_part))
 
+        for proc in procs:
+            proc.join()
 
-    # shm = shared_memory.SharedMemory(create=True, size=pixses_rgb.nbytes)
-    # pxs_rgb_sml_shm = np.ndarray(pixses_rgb.shape, dtype=pixses_rgb.dtype, buffer=shm.buf)
-    # pxs_rgb_sml_shm[:] = pixses_rgb
+        used_idx = {}
+        for i, (y1, x1, y2, x2) in enumerate(choosen_indexes, 0):
+            arg_sort = argsort_table[i]
+            for i, idx in enumerate(arg_sort, 0):
+                if not idx in used_idx:
+                    used_idx[idx] = 0
+                    break
 
-    print("pixses_rgb.nbytes: {}".format(pixses_rgb.nbytes))
-    
-    print("pixses_src_rgb.shape: {}".format(pixses_src_rgb.shape))
-    print("pixses_rgb.shape: {}".format(pixses_rgb.shape))
-    
-    # print("Saving data to temp obj!")
-    # with gzip.open("/tmp/temp_obj.pkl.gz", "wb") as f:
-    #     dill.dump({'pixses_src_rgb': pixses_src_rgb, 'pixses_rgb': pixses_rgb}, f)
+            print("i: {}, idx: {}".format(i, idx))
 
-    # sys.exit(-1)
-
-    # index
-    # pixses_rgb = pixses_rgb[np.random.permutation(np.arange(0, pixses_rgb.shape[0]))[:y_max*x_max*3]]
-
-    cpu_amount = multiprocessing.cpu_count()
-    # cpu_amount = 8
-
-    n_src = pixses_src_rgb.shape[0]
-    idx_parts = np.arange(0, cpu_amount+1)*(n_src//cpu_amount+1)
-
-    print("idx_parts: {}".format(idx_parts))
-
-    def process(proc_num, receiver, sender):
-        pixses_src_rgb_part = receiver.recv()
-        # indexes_part = receiver.recv()
-        pixses_rgb = receiver.recv()
-        argsort_table = get_argsort_table(pixses_src_rgb_part, pixses_rgb, prefix="{}: ".format(proc_num))
-        sender.send(argsort_table)
-
-    # pixses_src_rgb_parts = [pixses_src_rgb[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
-    m_src_features_parts = [m_src_features[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
-    # indexes_parts = [choosen_indexes[idx1:idx2] for idx1, idx2 in zip(idx_parts[:-1], idx_parts[1:])]
-    pipes_proc_main = [Pipe() for _ in range(cpu_amount)]
-    pipes_main_proc = [Pipe() for _ in range(cpu_amount)]
-    receivers_proc, senders_main = list(zip(*pipes_proc_main))
-    receivers_main, senders_proc = list(zip(*pipes_main_proc))
-
-    procs = [Process(target=process, args=(proc_num, receiver, sender)) for proc_num, (receiver, sender) in enumerate(zip(receivers_proc, senders_proc))]
-    for proc in procs:
-        proc.start()
-
-    for idx, (m_src_features_part, sender) in enumerate(zip(m_src_features_parts, senders_main), 0):
-    # for idx, (m_src_features_part, indexes_part, sender) in enumerate(zip(m_src_features_parts, indexes_parts, senders_main), 0):
-    # for idx, (pixses_src_rgb_part, indexes_part, sender) in enumerate(zip(pixses_src_rgb_parts, indexes_parts, senders_main), 0):
-        print("send to proc: idx: {}".format(idx))
-        sender.send(m_src_features_part)
-        # sender.send(indexes_part)
-        sender.send(m_rgb_features)
-        # sender.send(pixses_rgb)
-
-    argsort_table = np.zeros((0, pixses_rgb.shape[0]), dtype=np.uint32)
-    for idx, receiver in enumerate(receivers_main, 0):
-        print("receive from proc: idx: {}".format(idx))
-        argsort_table_part = receiver.recv()
-        argsort_table = np.vstack((argsort_table, argsort_table_part))
-
-    for proc in procs:
-        proc.join()
-
-    # argsort_table = get_argsort_table(pixses_src_rgb, pixses_rgb) #, pixses_hsv) #, choosen_indexes)
-    # argsort_table = get_argsort_table(pixses_src_rgb, pixses_rgb) #, pixses_hsv) #, choosen_indexes)
-    # # argsort_table = get_argsort_table(pix_src, pixses_rgb[:4000], pixses_hsv, choosen_indexes)
+            pix_choosen = pixses_rgb[idx]
+            pix_dst[y1:y2, x1:x2] = pix_choosen
 
 
-    used_idx = {}
-    for i, (y1, x1, y2, x2) in enumerate(choosen_indexes, 0):
-    # for i in range(0, len(choosen_indexes)):
-    # for j, y in enumerate(range(y_min, y_max), 0):
-    #   for i, x in enumerate(range(x_min, x_max), 0):
-        arg_sort = argsort_table[i]
-        # arg_sort = argsort_table[j, i]
-
-        # idx = arg_sort[0]
-        for i, idx in enumerate(arg_sort, 0):
-            if not idx in used_idx:
-                used_idx[idx] = 0
-                break
-            # if i >= 5:
-            #     break
-
-        print("i: {}, idx: {}".format(i, idx))
-
-        # x1 = w1*x
-        # y1 = h1*y
-
-        pix_choosen = pixses_rgb[idx]
-        # pix_choosen = pixses_rgb[idx]
-        # pix_dst[y1:y1+h1, x1:x1+w1] = pix_choosen
-        pix_dst[y1:y2, x1:x2] = pix_choosen
-
-
-    img_dst = Image.fromarray(pix_dst)
-    # img_dst.show()
-    img_dst.save(destination_path)
-    img_dst.save(destination_path.replace(".png", ".jpg"))
+        img_dst = Image.fromarray(pix_dst)
+        img_dst.save(destination_path)
+        img_dst.save(destination_path.replace(".png", ".jpg"))
 
     print("(tile_w_new, tile_h_new): {}".format((tile_w_new, tile_h_new)))
 
