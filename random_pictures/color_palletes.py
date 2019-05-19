@@ -903,7 +903,7 @@ def create_from_image_mosaic_image(source_path, pixses_dict):
     # w1 = 60
     h2 = h1
     w2 = w1
-    t2 = 4
+    t2 = 12
     print("h2: {}".format(h2))
     print("w2: {}".format(w2))
     # h2, w2, t2 = 24, 32, 4

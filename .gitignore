@@ -33,6 +33,8 @@ test_programs/recursive_imports/num.bin
 
 java/myJar.jar
 
+image_resizing/*.png
+
 random_pictures/images
 random_pictures/datas
 random_pictures/*.txt
