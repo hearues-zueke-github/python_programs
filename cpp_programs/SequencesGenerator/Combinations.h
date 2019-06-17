@@ -1,0 +1,14 @@
+//
+// Created by doublepmcl on 14.06.19.
+//
+
+#ifndef SEQUENCESGENERATOR_COMBINATIONS_H
+#define SEQUENCESGENERATOR_COMBINATIONS_H
+
+
+class Combinations {
+
+};
+
+
+#endif //SEQUENCESGENERATOR_COMBINATIONS_H
