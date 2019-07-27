@@ -3,6 +3,15 @@
 import numpy as np
 
 def get_primes(n):
+    if n < 2:
+        return
+    yield 2
+    if n < 3:
+        return
+    yield 3
+    if n < 5:
+        return
+    yield 5
     ps = [2, 3, 5]
     d = [4, 2]
 
@@ -21,12 +30,14 @@ def get_primes(n):
             k += 1
 
         if is_prime:
+            yield i
             ps.append(i)
 
         i += d[j]
         j = (j+1) % 2 
 
-    return ps
+    # return ps
+
 
 def get_prime_amount_timetable(n, ps):
     timetable = np.zeros((len(ps), )).astype(np.int)
@@ -41,17 +52,19 @@ def get_prime_amount_timetable(n, ps):
 
     return timetable
 
-n = 100
-print("n: {}".format(n))
 
-ps = get_primes(n)
-print("ps: {}".format(ps))
+if __name__ == "__main__":
+    n = 100
+    print("n: {}".format(n))
 
-timetable = get_prime_amount_timetable(n, ps).astype(object)
-print("timetable: {}".format(timetable))
+    ps = get_primes(n)
+    print("ps: {}".format(ps))
 
-ps_pow = ps**timetable
-print("ps_pow: {}".format(ps_pow))
+    timetable = get_prime_amount_timetable(n, ps).astype(object)
+    print("timetable: {}".format(timetable))
 
-biggest_n_number = np.prod(ps_pow)
-print("biggest_n_number: {}".format(biggest_n_number))
+    ps_pow = ps**timetable
+    print("ps_pow: {}".format(ps_pow))
+
+    biggest_n_number = np.prod(ps_pow)
+    print("biggest_n_number: {}".format(biggest_n_number))

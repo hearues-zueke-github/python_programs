@@ -7,6 +7,7 @@ import functools
 import sys
 import time
 
+# from ..picture_manipulation import approx_random_images
 sys.path.append("../../picture_manipulation")
 import approx_random_images
 
@@ -48,9 +49,9 @@ class Window(tk.Frame):
         print("self.cpu_count: {}".format(self.cpu_count))
 
         # self.pipes = [Pipe() for _ in range(0, self.cpu_count)]
-        self.pipes_main_proc = [Pipe() for i in range(0, self.cpu_count)]
-        self.pipes_proc_main = [Pipe() for i in range(0, self.cpu_count)]
-        
+        self.pipes_main_proc = [Pipe() for _ in range(0, self.cpu_count)]
+        self.pipes_proc_main = [Pipe() for _ in range(0, self.cpu_count)]
+
         self.pipes_proc_recv = [pipe[0] for pipe in self.pipes_main_proc]
         self.pipes_main_send = [pipe[1] for pipe in self.pipes_main_proc]
         
@@ -322,7 +323,35 @@ class Window(tk.Frame):
             def get_pixs_frames(y, x):
                 tries = 0
                 while True:
-                    pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
+                    variables = approx_random_images.get_default_variables()
+
+                    print("Before:")
+                    print("variables.height: {}".format(variables.height))
+                    print("variables.width: {}".format(variables.width))
+                    variables.lambdas_in_picture = False
+                    variables.with_resize_image = False
+                    variables.bits = 1
+                    variables.min_or = 2
+                    variables.max_or = 2
+                    variables.width = 64
+                    variables.height = 64
+                    variables.temp_path_lambda_file = 'lambdas.txt'
+                    variables.save_pictures = False
+                    variables.suffix = ' '
+
+                    print("After:")
+                    print("variables.height: {}".format(variables.height))
+                    print("variables.width: {}".format(variables.width))
+
+                    dm_params_lambda = approx_random_images.get_dm_params_lambda(variables)
+                    dm_params = approx_random_images.get_dm_params(variables)
+
+                    returns = approx_random_images.create_bits_neighbour_pictures(dm_params, dm_params_lambda)
+                    pixs, _, dm, _ = returns
+                    # pixs, pixs_combined, dm_params, dm_params_lambda = returns
+                    # pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
+                    # approx_random_images
+                    # pixs, dm = approx_random_images.create_1_bit_neighbour_pictures(64, 64, return_pix_array=True, save_pictures=False)
                     if len(pixs) >= 5:
                         break
                     
@@ -392,12 +421,12 @@ class Window(tk.Frame):
 
             cnum = self.cpu_count
             for idx, (y, x) in enumerate(y_x_lst[:cnum], 0):
-                    func_send(idx%cnum, y, x)
+                func_send(idx%cnum, y, x)
             for idx, (y, x) in enumerate(y_x_lst[cnum:], 0):
-                    func_recv(idx)
-                    func_send(idx%cnum, y, x)
-            for idx, (y, x) in enumerate(y_x_lst[-cnum:], len(y_x_lst)-cnum):
-                    func_recv(idx)
+                func_recv(idx)
+                func_send(idx%cnum, y, x)
+            for idx, _ in enumerate(y_x_lst[-cnum:], len(y_x_lst) - cnum):
+                func_recv(idx)
 
             self.all_lens = np.array(all_lens)
             self.idxs = np.arange(0, np.multiply.reduce(self.all_lens.shape))
@@ -610,14 +639,15 @@ class Window(tk.Frame):
 
         return show_lambdas
 
-# root window created. Here, that would be the only window, but
-# you can later have windows within windows.
-root = tk.Tk()
+if __name__ == "__main__":
+    # root window created. Here, that would be the only window, but
+    # you can later have windows within windows.
+    root = tk.Tk()
 
-root.geometry("1000x630")
+    root.geometry("1000x630")
 
-#creation of an instance
-app = Window(root)
+    #creation of an instance
+    app = Window(root)
 
-#mainloop 
-root.mainloop()
+    #mainloop
+    root.mainloop()

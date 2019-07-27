@@ -19,6 +19,8 @@ import numpy as np
 from dotmap import DotMap
 from PIL import Image, ImageFont, ImageDraw
 
+# from . import create_lambda_functions
+
 import create_lambda_functions
 
 path_root_dir = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
@@ -180,6 +182,9 @@ class BitNeighborManipulation(Exception):
 
         # TODO: maybe make an other function for a better splitting up for defs and lambdas!
         # first find 'def' functions and split it up!
+        
+        print("read lines:\n{}".format(lines))
+
         lambdas = []
         lambdas_str = []
         def_func = ""
@@ -202,6 +207,7 @@ class BitNeighborManipulation(Exception):
             lambdas_str.append(def_func)
 
         self.max_bit_operators = len(lambdas)
+        print("len(lambdas): {}".format(len(lambdas)))
         self.lambdas_str = lambdas_str
 
         return lambdas
@@ -319,18 +325,18 @@ def create_bits_neighbour_pictures(dm_params, dm_params_lambda):
         suffix = "_" + suffix
 
     print("save_pictures: {}".format(save_pictures))
+    # if save_pictures:
+    font_name = "712_serif.ttf"
+    font_size = 16
+    fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
+
+    char_width, char_height = fnt.getsize("a")
+    print("char_width of 'a': {}".format(char_width))
+    print("char_height of 'a': {}".format(char_height))
+
     if save_pictures:
-        font_name = "712_serif.ttf"
-        font_size = 16
-        fnt = ImageFont.truetype('../fonts/{}'.format(font_name), font_size)
-
-        char_width, char_height = fnt.getsize("a")
-        print("char_width of 'a': {}".format(char_width))
-        print("char_height of 'a': {}".format(char_height))
-
         path_pictures = path_root_dir+"images/{next_folder}changing_bw_1_bit{suffix}/".format(next_folder=next_folder, suffix=suffix)
         print("path_pictures: {}".format(path_pictures))
-
 
         if os.path.exists(path_pictures):
             os.system("rm -rf {}".format(path_pictures))
@@ -343,110 +349,119 @@ def create_bits_neighbour_pictures(dm_params, dm_params_lambda):
 
         dm_params_lambda.path_dir = path_pictures
         dm_params_lambda.save_data = save_pictures
+    else:
+        dm_params.path_dir = None
+        dm_params_lambda.path_dir = None
+        dm_params_lambda.save_data = False
 
-        if len(functions_str_lst) == 0:
-            if len(temp_path_lambda_file) > 0:
-                assert os.path.exists(temp_path_lambda_file)
+    if len(functions_str_lst) == 0:
+        if len(temp_path_lambda_file) > 0:
+            assert os.path.exists(temp_path_lambda_file)
 
-                dm_params_lambda.path_dir = path_pictures
-                dm_params_lambda.save_data = True
-                dm_params_lambda.used_method = "from_temp_path_file"
-                bnm = BitNeighborManipulation(path_dir=temp_path_lambda_file)
-                dm_params_lambda.functions_str_lst =  bnm.lambdas_str
-                print("dm_params_lambda.functions_str_lst:\n{}".format(dm_params_lambda.functions_str_lst))
-                print("len(dm_params_lambda.functions_str_lst): {}".format(len(dm_params_lambda.functions_str_lst)))
-            else:
-                dm_params_lambda = create_lambda_functions.create_lambda_functions_with_matrices(dm_params_lambda)
+            # dm_params_lambda.path_dir = path_pictures
+            # dm_params_lambda.save_data = True
+            dm_params_lambda.used_method = "from_temp_path_file"
+            bnm = BitNeighborManipulation(path_dir=temp_path_lambda_file)
+            dm_params_lambda.functions_str_lst =  bnm.lambdas_str
+            print("dm_params_lambda.functions_str_lst:\n{}".format(dm_params_lambda.functions_str_lst))
+            print("len(dm_params_lambda.functions_str_lst): {}".format(len(dm_params_lambda.functions_str_lst)))
         else:
-            # dm_params_lambda = DotMap()
-            dm_params_lambda.path_dir = path_pictures
-            dm_params_lambda.save_data = True
-            dm_params_lambda.used_method = "own_defined_lambdas"
-            dm_params_lambda.functions_str_lst = functions_str_lst
+            dm_params_lambda = create_lambda_functions.create_lambda_functions_with_matrices(dm_params_lambda)
+            dm_params_lambda.used_method = 'create_new_random_lambdas'
+            # dm_params_lambda.functions_str_lst = functions_str_lst
+    else:
+        # dm_params_lambda.path_dir = path_pictures
+        # dm_params_lambda.save_data = True
+        dm_params_lambda.used_method = "own_defined_lambdas"
+        dm_params_lambda.functions_str_lst = functions_str_lst
 
+    # print("len(dm_params_lambda.functions_str_lst): {}".format(len(dm_params_lambda.functions_str_lst)))
+    # sys.exit(-2)
+
+    if dm_params_lambda.save_data:
         create_lambda_functions.write_dm_obj_txt(dm_params_lambda)
 
-        functions_str_lst = dm_params_lambda.functions_str_lst
+    functions_str_lst = dm_params_lambda.functions_str_lst
 
-        functions_str_lst_split = []
-        # functions_str_lst_split = [l.split("\n")[:-1] if "def" in "{:2}: ".format(i)+l else l ]
+    functions_str_lst_split = []
+    # functions_str_lst_split = [l.split("\n")[:-1] if "def" in "{:2}: ".format(i)+l else l ]
 
-        for i, l in enumerate(functions_str_lst, 1):
-            if "def" in l:
-                l = l.split("\n")[:-1]
-                l[0] = "{:2}: ".format(i)+l[0]
-                l[1:] = list(map(lambda x: "  / "+x, l[1:]))
-                functions_str_lst_split.extend(l)
-            else:
-                functions_str_lst_split.append("{:2}: ".format(i)+l)
+    for i, l in enumerate(functions_str_lst, 1):
+        if "def" in l:
+            l = l.split("\n")[:-1]
+            l[0] = "{:2}: ".format(i)+l[0]
+            l[1:] = list(map(lambda x: "  / "+x, l[1:]))
+            functions_str_lst_split.extend(l)
+        else:
+            functions_str_lst_split.append("{:2}: ".format(i)+l)
 
-        functions_str_lst = []
-        for l in functions_str_lst_split:
-            if isinstance(l, list):
-                functions_str_lst.extend(l)
-            else:
-                functions_str_lst.append(l)
+    functions_str_lst = []
+    for l in functions_str_lst_split:
+        if isinstance(l, list):
+            functions_str_lst.extend(l)
+        else:
+            functions_str_lst.append(l)
 
-        lines_print = []
-        for i, line in enumerate(functions_str_lst, 0):
-            lines_print.append("{}".format(line))
-            # lines_print.append("i: {}, {}".format(i, line))
+    lines_print = []
+    for i, line in enumerate(functions_str_lst, 0):
+        lines_print.append("{}".format(line))
+        # lines_print.append("i: {}, {}".format(i, line))
 
-        text_sizes = []
-        max_chars = 0
-        max_width = 0
-        max_char_height = 0
-        for line in lines_print:
-            size = fnt.getsize(line)
-            char_height = size[1]
-            if max_char_height < char_height:
-                max_char_height = char_height
+    # text_sizes = []
+    max_chars = 0
+    max_width = 0
+    max_char_height = 0
+    for line in lines_print:
+        size = fnt.getsize(line)
+        char_height = size[1]
+        if max_char_height < char_height:
+            max_char_height = char_height
 
-            text_width = size[0]
-            if max_width < text_width:
-                max_width = text_width
+        text_width = size[0]
+        if max_width < text_width:
+            max_width = text_width
 
-            text_sizes.append(size)
-            length = len(line)
-            if max_chars < length:
-                max_chars = length
+        # text_sizes.append(size)
+        length = len(line)
+        if max_chars < length:
+            max_chars = length
 
-        # for i, text_size in enumerate(text_sizes):
-        #     print("i: {}, text_size: {}".format(i, text_size))
+    # for i, text_size in enumerate(text_sizes):
+    #     print("i: {}, text_size: {}".format(i, text_size))
 
-        print("max_chars: {}".format(max_chars))
+    # print("max_chars: {}".format(max_chars))
 
-        pix2 = np.zeros((len(lines_print)*(max_char_height+2)+2, max_width+2, 3), dtype=np.uint8)
-        pix2 += 0x40
-        img2 = Image.fromarray(pix2)
-        d = ImageDraw.Draw(img2)
+    pix2 = np.zeros((len(lines_print)*(max_char_height+2)+2, max_width+2, 3), dtype=np.uint8)
+    pix2 += 0x40
+    img2 = Image.fromarray(pix2)
+    d = ImageDraw.Draw(img2)
 
-        for i, line in enumerate(lines_print):
-            d.text((1, 1+i*(max_char_height+2)), line, font=fnt, fill=(255, 255, 255))
-            # d.text((1, 1+i*(font_size)), line, font=fnt, fill=(255, 255, 255))
+    for i, line in enumerate(lines_print):
+        d.text((1, 1+i*(max_char_height+2)), line, font=fnt, fill=(255, 255, 255))
 
+    if save_pictures:
         img2.save(path_pictures+"lambdas.png")
 
-        # save the lambda functions into as a image!
-        pix2_1 = np.array(img2)
+    # save the lambda functions into as a image!
+    pix2_1 = np.array(img2)
 
-        if pix2_1.shape[0] < height:
-            diff = height-pix2_1.shape[0]
-            h1 = diff//2
-            h2 = h1+diff%2
-            pix2_1 = np.vstack((
-                np.zeros((h1, pix2_1.shape[1], 3), dtype=np.uint8),
-                pix2_1,
-                np.zeros((h2, pix2_1.shape[1], 3), dtype=np.uint8)
-            ))
+    if pix2_1.shape[0] < height:
+        diff = height-pix2_1.shape[0]
+        h1 = diff//2
+        h2 = h1+diff%2
+        pix2_1 = np.vstack((
+            np.zeros((h1, pix2_1.shape[1], 3), dtype=np.uint8),
+            pix2_1,
+            np.zeros((h2, pix2_1.shape[1], 3), dtype=np.uint8)
+        ))
 
-        print("pix2_1.shape: {}".format(pix2_1.shape))
-    else:
-        dm_params_lambda.path_dir = None
-        dm_params_lambda.save_pictures = False
-        # dm = create_lambda_functions.create_lambda_functions_with_matrices(path_dir=None, save_data=False)
-        create_lambda_functions.create_lambda_functions_with_matrices(dm_params_lambda)
-        # dm = create_lambda_functions.conway_game_of_life_functions(path_dir=None, save_data=False)
+    print("pix2_1.shape: {}".format(pix2_1.shape))
+    # else:
+    # dm_params_lambda.path_dir = None
+    # dm_params_lambda.save_pictures = False
+    # # dm = create_lambda_functions.create_lambda_functions_with_matrices(path_dir=None, save_data=False)
+    # create_lambda_functions.create_lambda_functions_with_matrices(dm_params_lambda)
+    # # dm = create_lambda_functions.conway_game_of_life_functions(path_dir=None, save_data=False)
 
     # function_str_lst = create_lambda_functions.conway_game_of_life_functions(path_pictures)
     # function_str_lst = create_lambda_functions.simplest_lambda_functions(path_pictures)
@@ -566,13 +581,16 @@ def create_bits_neighbour_pictures(dm_params, dm_params_lambda):
 
     # with_frame = False
     
+    print("TEST!!!")
+    print("dm_params_lambda.functions_str_lst: {}".format(dm_params_lambda.functions_str_lst))
+    print("TEST!!!")
     if save_pictures:
         if len(temp_path_lambda_file) > 0:
             # copy the temp_path_lambda_file as path_pictures+'lambdas.txt' file!
             shutil.copy(temp_path_lambda_file, path_pictures+'lambdas.txt')
         bit_neighbor_manipulation = BitNeighborManipulation(ft=ft, with_frame=with_frame, path_dir=path_pictures+"lambdas.txt")
     else:
-        bit_neighbor_manipulation = BitNeighborManipulation(ft=ft, with_frame=with_frame, lambda_str_funcs_lst=dm_params.functions_str_lst)
+        bit_neighbor_manipulation = BitNeighborManipulation(ft=ft, with_frame=with_frame, lambda_str_funcs_lst=dm_params_lambda.functions_str_lst)
 
     bit_neighbor_manipulation.bws_to_pix_converter = bws_to_pix_converter
 
@@ -1142,31 +1160,37 @@ def get_special_functions_str_lst(name):
     return functions_str_lst_dict[name]
 
 
-def main(argv):
-    print("Now in 'main' of 'approx_random_images.py'")
+def print_variables_content(variables):
+    print(" - ft: {}".format(variables.ft))
+    print(" - file_name_dm: {}".format(variables.file_name_dm))
+    print(" - file_name_txt: {}".format(variables.file_name_txt))
+    print(" - min_or: {}".format(variables.min_or))
+    print(" - max_or: {}".format(variables.max_or))
+    print(" - min_and: {}".format(variables.min_and))
+    print(" - max_and: {}".format(variables.max_and))
+    print(" - min_n: {}".format(variables.min_n))
+    print(" - max_n: {}".format(variables.max_n))
 
-    # TODO: move the args parse part into a function too!
-    print("argv: {}".format(argv))
-    # argv = sys.argv
-    value_str = ""
-    if len(argv) > 1:
-        value_str = ",".join(argv[1:]).lstrip(",").rstrip(",")
-    print("value_str: {}".format(value_str))
-    value_str_split = value_str.split(",")
-    # print("value_str_split: {}".format(value_str_split))
-    value_str_split = list(filter(lambda x: x.count("=") == 1, value_str_split))
-    # print("value_str_split: {}".format(value_str_split))
-    var_val_lst = list(map(lambda x: x.split("="), value_str_split))
-    print("var_val_lst:\n{}".format(var_val_lst))    
+    print(" - height: {}".format(variables.height))
+    print(" - width: {}".format(variables.width))
+    print(" - next_folder: {}".format(variables.next_folder))
+    print(" - with_frame: {}".format(variables.with_frame))
+    print(" - width_append_frame: {}".format(variables.width_append_frame))
+    print(" - return_pix_array: {}".format(variables.return_pix_array))
+    print(" - save_pictures: {}".format(variables.save_pictures))
+    print(" - functions_str_lst: {}".format(variables.functions_str_lst))
+    print(" - with_resize_image: {}".format(variables.with_resize_image))
+    print(" - resize_factor: {}".format(variables.resize_factor))
+    print(" - func_by_name: {}".format(variables.func_by_name))
+    print(" - lambdas_in_picture: {}".format(variables.lambdas_in_picture))
+    print(" - max_it: {}".format(variables.max_it))
+    print(" - bits: {}".format(variables.bits))
+    print(" - temp_path_lambda_file: {}".format(variables.temp_path_lambda_file))
+    print(" - image_by_str: {}".format(variables.image_by_str))
 
-    # path_dir, ft and save_data are the same as the other similiar parameters!
-    # path_dir = "lambda_functions/"
-    # ft = 1
-    # save_data = True
 
+def get_default_variables():
     variables = DotMap()
-    path_dir = None
-    save_data = False
 
     variables.file_name_dm = "dm.pkl.gz"
     variables.file_name_txt = "lambdas.txt"
@@ -1181,16 +1205,155 @@ def main(argv):
     variables.width = variables.height
 
     variables.ft = 1
-    
+
     dt = datetime.datetime.now()
     variables.next_folder = "{year:04}_{month:02}_{day:02}".format(year=dt.year, month=dt.month, day=dt.day)
-    # variables.next_folder = "2019_04_07"
-    
+
     variables.with_frame = True
     variables.width_append_frame = 5
 
     variables.return_pix_array = True
     variables.save_pictures = True
+
+    variables.functions_str_lst = []
+
+    variables.with_resize_image = False
+    variables.resize_factor = 3
+    variables.bits = 1
+    variables.func_by_name = ''
+    variables.lambdas_in_picture = True
+    variables.max_it = 100
+
+    variables.height_resize = variables.height * variables.resize_factor
+    variables.width_resize = variables.width * variables.resize_factor
+
+    variables.temp_path_lambda_file = ''
+    variables.image_by_str = ''
+
+    return variables
+
+
+def parse_argv_to_variables(argv, variables):
+    using_vars_type = {
+        'ft': int,
+        'file_name_dm': str,
+        'file_name_txt': str,
+        'min_and': int,
+        'max_and': int,
+        'min_or': int,
+        'max_or': int,
+        'min_n': int,
+        'max_n': int,
+
+        'height': int,
+        'width': int,
+        'next_folder': str,
+        'with_frame': bool,
+        'width_append_frame': int,
+        'return_pix_array': bool,
+        'save_pictures': bool,
+        'functions_str_lst': list,
+        'with_resize_image': bool,
+        'resize_factor': int,
+        'func_by_name': str,
+        'lambdas_in_picture': bool,
+        'max_it': int,
+        'bits': int,
+        'temp_path_lambda_file': str,
+        'image_by_str': str,
+    }
+
+    value_str = ""
+    if len(argv) > 1:
+        value_str = ",".join(argv[1:]).lstrip(",").rstrip(",")
+    print("value_str: {}".format(value_str))
+    value_str_split = value_str.split(",")
+    value_str_split = list(filter(lambda x: x.count("=") == 1, value_str_split))
+    var_val_lst = list(map(lambda x: x.split("="), value_str_split))
+    print("var_val_lst:\n{}".format(var_val_lst))
+
+    loc_dir = {'variables': variables}
+
+    # Do the check and convert the variable for the given input!
+    for var, val in var_val_lst:
+        if var in using_vars_type:
+            try:
+                type_var = using_vars_type[var]
+                val_converted = type_var(val)
+                if type_var == int:
+                    exec("variables.{var} = {val}".format(var=var, val=val_converted), {}, loc_dir)
+                elif type_var == str:
+                    if var == 'func_by_name':
+                        functions_str_lst = get_special_functions_str_lst(val)
+                    else:
+                        exec("variables.{var} = '{val}'".format(var=var, val=val_converted), {}, loc_dir)
+                elif type_var == bool:
+                    if val == "0" or val == "False" or val == "false":
+                        exec('variables.{var} = False'.format(var=var))
+                    elif val == "1" or val == "True" or val == "true":
+                        exec('variables.{var} = True'.format(var=var))
+                    else:
+                        raise
+                elif type_var == list:
+                    pass
+                print("var: {}, val: {}, type_var: {}, val_converted: {}".format(
+                    var, val, type_var, val_converted))
+            except:
+                print("For var '{var}' could not convert to type '{type_var}' of val '{val}'!".format(
+                    var=var, type_var=type_var, val=val))
+
+
+def get_dm_params_lambda(variables):
+    dm_params_lambda = DotMap()
+
+    dm_params_lambda.ft = variables.ft
+    dm_params_lambda.path_dir = None
+    dm_params_lambda.save_data = False
+    dm_params_lambda.file_name_dm = variables.file_name_dm
+    dm_params_lambda.file_name_txt = variables.file_name_txt
+    dm_params_lambda.min_or = variables.min_or
+    dm_params_lambda.max_or = variables.max_or
+    dm_params_lambda.min_and = variables.min_and
+    dm_params_lambda.max_and = variables.max_and
+    dm_params_lambda.min_n = variables.min_n
+    dm_params_lambda.max_n = variables.max_n
+
+    return dm_params_lambda
+
+
+def get_dm_params(variables):
+    dm_params = DotMap()
+
+    dm_params.height = variables.height
+    dm_params.width = variables.width
+    dm_params.ft = variables.ft
+    dm_params.next_folder = variables.next_folder
+    dm_params.suffix = variables.suffix
+    dm_params.with_frame = variables.with_frame
+    dm_params.return_pix_array = variables.return_pix_array
+    dm_params.save_pictures = variables.save_pictures
+    dm_params.functions_str_lst = variables.functions_str_lst
+    dm_params.width_append_frame = variables.width_append_frame
+    dm_params.with_resize_image = variables.with_resize_image
+    dm_params.resize_factor = variables.resize_factor
+    dm_params.lambdas_in_picture = variables.lambdas_in_picture
+    dm_params.max_it = variables.max_it
+    dm_params.bits = variables.bits
+    dm_params.temp_path_lambda_file = variables.temp_path_lambda_file
+    dm_params.image_by_str = variables.image_by_str
+
+    return dm_params
+
+
+def main(argv):
+    print("Now in 'main' of 'approx_random_images.py'")
+
+    print("argv: {}".format(argv))
+
+    path_dir = None
+    save_data = False
+
+    variables = get_default_variables()
 
     variables.functions_str_lst = [
         # "lambda: u",
@@ -1212,198 +1375,15 @@ def main(argv):
         # "lambda: u&d&l&p|r&d&i(p)|p&ur&dl&l|l&i(r)&p",
     ]
 
-    variables.with_resize_image = False
-    variables.resize_factor = 3
-    variables.bits = 1
-    variables.func_by_name = ''
-    variables.lambdas_in_picture = True
-    variables.max_it = 100
-
-    variables.height_resize = variables.height*variables.resize_factor
-    variables.width_resize = variables.width*variables.resize_factor
-
-    variables.temp_path_lambda_file = ''
-    variables.image_by_str = ''
-
     print("locals():\n{}".format(locals()))
 
-    using_vars_type = {
-        'ft': int,
-        'file_name_dm': str,
-        'file_name_txt': str,
-        'min_and' : int,
-        'max_and' : int,
-        'min_or' : int,
-        'max_or' : int,
-        'min_n' : int,
-        'max_n' : int,
-
-        'height': int,
-        'width': int,
-        'next_folder': str,
-        # 'suffix': str,
-        'with_frame': bool,
-        'width_append_frame': int,
-        'return_pix_array': bool,
-        'save_pictures': bool,
-        'functions_str_lst': list,
-        'with_resize_image': bool,
-        'resize_factor': int,
-        'func_by_name': str,
-        'lambdas_in_picture': bool,
-        'max_it': int,
-        'bits': int,
-        'temp_path_lambda_file': str,
-        'image_by_str': str,
-    }
-
     print("Values for variables before input:")
-    print(" - ft: {}".format(variables.ft))
-    print(" - file_name_dm: {}".format(variables.file_name_dm))
-    print(" - file_name_txt: {}".format(variables.file_name_txt))
-    print(" - min_or: {}".format(variables.min_or))
-    print(" - max_or: {}".format(variables.max_or))
-    print(" - min_and: {}".format(variables.min_and))
-    print(" - max_and: {}".format(variables.max_and))
-    print(" - min_n: {}".format(variables.min_n))
-    print(" - max_n: {}".format(variables.max_n))
+    print_variables_content(variables)
 
-    print(" - height: {}".format(variables.height))
-    print(" - width: {}".format(variables.width))
-    print(" - next_folder: {}".format(variables.next_folder))
-    # print(" - suffix: {}".format(variables.suffix))
-    print(" - with_frame: {}".format(variables.with_frame))
-    print(" - width_append_frame: {}".format(variables.width_append_frame))
-    print(" - return_pix_array: {}".format(variables.return_pix_array))
-    print(" - save_pictures: {}".format(variables.save_pictures))
-    print(" - functions_str_lst: {}".format(variables.functions_str_lst))
-    print(" - with_resize_image: {}".format(variables.with_resize_image))
-    print(" - resize_factor: {}".format(variables.resize_factor))
-    print(" - func_by_name: {}".format(variables.func_by_name))
-    print(" - lambdas_in_picture: {}".format(variables.lambdas_in_picture))
-    print(" - max_it: {}".format(variables.max_it))
-    print(" - bits: {}".format(variables.bits))
-    print(" - temp_path_lambda_file: {}".format(variables.temp_path_lambda_file))
-    print(" - image_by_str: {}".format(variables.image_by_str))
-
-    # loc_dir = locals()
-    loc_dir = {'variables': variables}
-
-    # Do the check and convert the variable for the given input!
-    for var, val in var_val_lst:
-        if var in using_vars_type:
-            try:
-                type_var = using_vars_type[var]
-                val_converted = type_var(val)
-                if type_var == int:
-                    # if var == "bits":
-                    #     bits_possible = ['1', '8', '24']
-                    #     if not val in bits_possible:
-                    #         print("Bits can only be only '{bits}'!".format(", ".join(bits_possible)))
-                    exec("variables.{var} = {val}".format(var=var, val=val_converted), {}, loc_dir)
-                elif type_var == str:                    
-                    if var == 'func_by_name':
-                        functions_str_lst = get_special_functions_str_lst(val)
-                    else:    
-                        exec("variables.{var} = '{val}'".format(var=var, val=val_converted), {}, loc_dir)
-                elif type_var == bool:                    
-                    if val == "0" or val == "False" or val == "false":
-                        exec('variables.{var} = False'.format(var=var))
-                    elif val == "1" or val == "True" or val == "true":
-                        exec('variables.{var} = True'.format(var=var))
-                    else:
-                        raise
-                elif type_var == list:
-                    pass
-                    # if var == "functions_str_lst":
-                    #     print("functions_str_lst: val:\n{}".format(val))
-                    #     val = val.replace("\\\\", "\\")
-                    #     functions_str_lst = val.split("\n")
-                    #     functions_str_lst = list(filter(lambda x: len(x) > 3, functions_str_lst))
-                    #     functions_str_lst = [str(l) for l in functions_str_lst]
-
-                    # exec("{var} = bool('{val}')".format(var=var, val=val_converted), globals())
-                print("var: {}, val: {}, type_var: {}, val_converted: {}".format(
-                    var, val, type_var, val_converted))
-            except:
-                print("For var '{var}' could not convert to type '{type_var}' of val '{val}'!".format(
-                    var=var, type_var=type_var, val=val))
-        # if var == "functions_str_lst":
-        #     # functions_str_lst = str(functions_str_lst[0])#.replace("\\\\", "\\"))
-        #     print("functions_str_lst: {}".format(functions_str_lst))
-        #     sys.exit(-1)
-
-    # for key, val in loc_dir.items():
-    #     locals()[key] = val
-
-    # print("locals() after:\n{}".format(locals()))
-
-    # print("width: {}".format(width))
-    # print("locals()['width']: {}".format(locals()['width']))
-    # locals()['width'] = 450
-    # print("locals()['width'] later: {}".format(locals()['width']))
-    # locals()['new_var'] = 3
-    # print("locals()['new_var']: {}".format(locals()['new_var']))
-    # # print("new_var: {}".format(new_var))
-    # x = 4
-    # print("1st: locals()['x']: {}".format(locals()['x']))
-    # x = 6
-    # print("2nd: locals()['x']: {}".format(locals()['x']))
-    # locals()['x'] = 7
-    # print("3rd: locals()['x']: {}".format(locals()['x']))
-
-    # def f():
-    #     print("globals(): {}".format(globals()))
-    #     print("globals().keys(): {}".format(globals().keys()))
-    #     print("locals(): {}".format(locals()))
-    # f()
-    # sys.exit(-1)
-
-    # print("loc_dir: {}".format(loc_dir))
-
-    # if len(temp_path_lambda_file) > 0:
-    #     if os.path.exists(temp_path_lambda_file):
-    #         with open(temp_path_lambda_file, "r") as fin:
-    #             lines = fin.readlines()
-    #         lines = list(map(lambda x: x[:-1] if x[-1]=='\n' else x, lines))
-    #         functions_str_lst = lines
+    parse_argv_to_variables(argv, variables)
 
     print("Values for variables after input:")
-    print(" - ft: {}".format(variables.ft))
-    print(" - file_name_dm: {}".format(variables.file_name_dm))
-    print(" - file_name_txt: {}".format(variables.file_name_txt))
-    print(" - min_or: {}".format(variables.min_or))
-    print(" - max_or: {}".format(variables.max_or))
-    print(" - min_and: {}".format(variables.min_and))
-    print(" - max_and: {}".format(variables.max_and))
-    print(" - min_n: {}".format(variables.min_n))
-    print(" - max_n: {}".format(variables.max_n))
-    
-    print(" - height: {}".format(variables.height))
-    print(" - width: {}".format(variables.width))
-    print(" - next_folder: {}".format(variables.next_folder))
-    # print(" - suffix: {}".format(variables.suffix))
-    print(" - with_frame: {}".format(variables.with_frame))
-    print(" - width_append_frame: {}".format(variables.width_append_frame))
-    print(" - return_pix_array: {}".format(variables.return_pix_array))
-    print(" - save_pictures: {}".format(variables.save_pictures))
-    print(" - functions_str_lst: {}".format(variables.functions_str_lst))
-    print(" - with_resize_image: {}".format(variables.with_resize_image))
-    print(" - resize_factor: {}".format(variables.resize_factor))
-    print(" - func_by_name: {}".format(variables.func_by_name))
-    print(" - lambdas_in_picture: {}".format(variables.lambdas_in_picture))
-    print(" - max_it: {}".format(variables.max_it))
-    print(" - bits: {}".format(variables.max_it))
-    print(" - temp_path_lambda_file: {}".format(variables.temp_path_lambda_file))
-    print(" - image_by_str: {}".format(variables.image_by_str))
-
-    # create_1_bit_neighbour_pictures_only_good_ones(height, width, amount=100)
-    # sys.exit(0)
-    
-    # next_folder="{}_{}/".format(
-    #     utils_all.get_date_time_str_full(),
-    #     utils_all.get_random_str_base_16(4)
-    # )
+    print_variables_content(variables)
 
     variables.suffix = "h{}_w{}_{}_{}".format(
         variables.height,
@@ -1412,37 +1392,11 @@ def main(argv):
         utils_all.get_random_str_base_16(4)
     )
 
-    dm_params_lambda = DotMap()
-    dm_params_lambda.ft = variables.ft
-    dm_params_lambda.path_dir = None
-    dm_params_lambda.save_data =False
-    dm_params_lambda.file_name_dm = variables.file_name_dm
-    dm_params_lambda.file_name_txt = variables.file_name_txt
-    dm_params_lambda.min_or = variables.min_or
-    dm_params_lambda.max_or = variables.max_or
-    dm_params_lambda.min_and = variables.min_and
-    dm_params_lambda.max_and = variables.max_and
-    dm_params_lambda.min_n = variables.min_n
-    dm_params_lambda.max_n = variables.max_n
+    dm_params_lambda = get_dm_params_lambda(variables)
+    dm_params = get_dm_params(variables)
 
-    dm_params = DotMap()
-    dm_params.height = variables.height
-    dm_params.width = variables.width
-    dm_params.ft = variables.ft
-    dm_params.next_folder = variables.next_folder
-    dm_params.suffix = variables.suffix
-    dm_params.with_frame = variables.with_frame
-    dm_params.return_pix_array = variables.return_pix_array
-    dm_params.save_pictures = variables.save_pictures
-    dm_params.functions_str_lst = variables.functions_str_lst
-    dm_params.width_append_frame = variables.width_append_frame
-    dm_params.with_resize_image = variables.with_resize_image
-    dm_params.resize_factor = variables.resize_factor
-    dm_params.lambdas_in_picture = variables.lambdas_in_picture
-    dm_params.max_it = variables.max_it
-    dm_params.bits = variables.bits
-    dm_params.temp_path_lambda_file = variables.temp_path_lambda_file
-    dm_params.image_by_str = variables.image_by_str
+    # print("FINISHED EARLIER!!!")
+    # sys.exit(-1)
 
     print("dm_params.functions_str_lst: {}".format(dm_params.functions_str_lst))
     
@@ -1451,10 +1405,50 @@ def main(argv):
     # ../venv/bin/python3.6 approx_random_images.py lambdas_in_picture=False,with_resize_image=False,bits=1,min_or=2,max_or=2,width=200,height=200,temp_path_lambda_file=lambdas.txt
     # sys.exit(-1)
     
-    pixs, pixs_combined, dm_params, dm_params_lambda = create_bits_neighbour_pictures(dm_params, dm_params_lambda)
+    returns = create_bits_neighbour_pictures(dm_params, dm_params_lambda)
+    if len(returns) == 3:
+        path_pictures, dm_params, dm_params_lambda = returns
+    elif len(returns) == 4:
+        pixs, pixs_combined, dm_params, dm_params_lambda = returns
+        globals()['pixs'] = pixs
+        globals()['pixs_combined'] = pixs_combined
+        globals()['dm_params'] = dm_params
+        globals()['dm_params_lambda'] = dm_params_lambda
     # path_pictures = create_bits_neighbour_pictures(dm_params)
     print("len(pixs): {}".format(len(pixs)))
     print("dm_params.path_dir:\n{}".format(dm_params.path_dir))
+
+
+def test_nr_1():
+    variables = get_default_variables()
+
+    print("Before:")
+    print("variables.height: {}".format(variables.height))
+    print("variables.width: {}".format(variables.width))
+    variables.lambdas_in_picture=False
+    variables.with_resize_image=False
+    variables.bits=1
+    variables.min_or=2
+    variables.max_or=2
+    variables.width=200
+    variables.height=200
+    variables.temp_path_lambda_file='lambdas.txt'
+    variables.save_pictures=False
+    variables.suffix = ' '
+
+    print("After:")
+    print("variables.height: {}".format(variables.height))
+    print("variables.width: {}".format(variables.width))
+
+    dm_params_lambda = get_dm_params_lambda(variables)
+    dm_params = get_dm_params(variables)
+
+    returns = create_bits_neighbour_pictures(dm_params, dm_params_lambda)
+    pixs, pixs_combined, dm_params, dm_params_lambda = returns
+    globals()['pixs'] = pixs
+    globals()['pixs_combined'] = pixs_combined
+    globals()['dm_params'] = dm_params
+    globals()['dm_params_lambda'] = dm_params_lambda
 
 
 if __name__ == "__main__":
@@ -1464,7 +1458,10 @@ if __name__ == "__main__":
     # argv_own = ['approx_random_images.py',
     #             'lambdas_in_picture=False,with_resize_image=False,bits=24,min_or=2,max_or=2,width=450,height=300,temp_path_lambda_file=lambdas.txt,image_by_str=234']
     # approx_random_images.py lambdas_in_picture=False,with_resize_image=False,bits=24,min_or=2,max_or=2,width=450,height=300,temp_path_lambda_file=lambdas.txt,image_by_str=234
-    
+
+    test_nr_1()
+    sys.exit(-12345)
+
     main(sys.argv)
     # main(argv_own)
 

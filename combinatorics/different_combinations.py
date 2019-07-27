@@ -30,6 +30,24 @@ def get_all_combinations_repeat(m, n):
     return arr
 
 
+def get_all_combinations_repeat_generator(m, n):
+    arr = np.zeros((n, ), dtype=np.uint8).copy()
+    yield arr.copy()
+
+    i_start = arr.shape[0]-1
+    while True:
+        i = i_start
+        while i >= 0:
+            arr[i] += 1
+            if arr[i] < m:
+                break
+            arr[i] = 0
+            i -= 1
+        if i < 0:
+            break
+        yield arr.copy()
+
+
 # m ... max num for state
 # n ... amount of states
 def get_all_combinations_increment(m, n):
@@ -212,6 +230,14 @@ def simple_example():
     print("arr_increment.shape:\n{}".format(arr_increment.shape))
     print("amount_arr_increment.shape: {}".format(amount_arr_increment.shape))
 
+# global simple tests
+arr_1_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]], dtype=np.uint8)
+arr_1_2 = get_all_combinations_repeat(2, 3)
+assert np.all(arr_1_1==arr_1_2)
+
+arr_2_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1], [0, 1, 2], [0, 2, 2], [1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]])
+arr_2_2 = get_all_combinations_increment(3, 3)
+assert np.all(arr_2_1==arr_2_2)
 
 if __name__ == "__main__":
     # move_all_values_to_left()
