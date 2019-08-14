@@ -298,6 +298,30 @@ class RubiksCube(Exception):
         # Colors: 0123456 -> WYORGB
         self.dict_col_int_col_str = {0: 'W', 1: 'Y', 2: 'O', 3: 'R', 4: 'G', 5: 'B'}
 
+        moving_dicts_basis = {
+            "U":  {"U": "U", "D": "D", "F": "L", "R": "F", "B": "R", "L": "B"},
+            "U'": {"U": "U", "D": "D", "F": "R", "R": "B", "B": "L", "L": "F"},
+            "F":  {"U": "R", "D": "L", "F": "F", "R": "D", "B": "B", "L": "U"},
+            "F'": {"U": "L", "D": "R", "F": "F", "R": "U", "B": "B", "L": "D"},
+            "R":  {"U": "B", "D": "F", "F": "U", "R": "R", "B": "D", "L": "L"},
+            "R'": {"U": "F", "D": "B", "F": "D", "R": "R", "B": "U", "L": "L"},
+        }
+        
+        moving_dicts_part = {
+            k: {
+                **v,
+                **{k1.lower(): v1.lower() for k1, v1 in v.items()},
+                **{k1+"w": v1+"w" for k1, v1 in v.items()}
+            } for k, v in moving_dicts_basis.items()
+        }
+        self.moving_dicts = {
+            k: {
+                **v,
+                **{k1+"'": v1+"'" for k1, v1 in v.items()},
+                **{k1+"2": v1+"2" for k1, v1 in v.items()},
+            } for k, v in moving_dicts_part.items()
+        }
+
         self.moving_table = {
             "U": lambda: (self.rotate_u(0), ),
             "D": lambda: (self.rotate_ui(3), ),
@@ -538,6 +562,16 @@ class RubiksCube(Exception):
         print("random_move_lst: {}".format(random_move_lst))
         for m in random_move_lst:
             self.moving_table[m]()
+
+
+    def rotate_moves_lst(self, moves_lst, rotation):
+        assert rotation in self.moving_dicts
+        d = self.moving_dicts[rotation]
+        return [d[m] for m in moves_lst]
+
+
+    def inverse_moves_lst(self, moves_lst):
+        return [m if "2" in m else m.replace("'", "") if "'" in m else m+"'" for m in reversed(moves_lst)]
 
 
     def solve_cube(self):
@@ -1026,8 +1060,6 @@ class RubiksCube(Exception):
                 print("do the pairing of two pairs!")
                 self.apply_move_lst(["B'", "U", "R'", "f", "R'", "F'", "R", "f'", "U'", "R'", "U", "b", "U'", "F'", "U", "b'"])
 
-        # self.print_field()
-
         assert self.count_finished_pairs()==12
 
 
@@ -1096,6 +1128,44 @@ class RubiksCube(Exception):
         }
 
         di = {v: k for k, v in d.items()}
+
+        move_tbl_exchange_edge_left = ["U'", "L'", "U", "L", "U", "F", "U'", "F'"]
+        move_tbl_exchange_edge_right = ["U", "R", "U'", "R'", "U'", "F'", "U", "F"]
+
+        move_tbl_exchange_edge_l_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_left, "F"), "F")
+        move_tbl_exchange_edge_r_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_right, "F"), "F")
+
+        move_tbl_exchange_edge_l_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_F, "U'")
+        move_tbl_exchange_edge_r_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_F, "U'")
+        
+        move_tbl_exchange_edge_l_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_R, "U'")
+        move_tbl_exchange_edge_r_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_R, "U'")
+
+        move_tbl_exchange_edge_l_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_B, "U'")
+        move_tbl_exchange_edge_r_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_B, "U'")
+
+        move_tbl_exchange_edge_left_inv = self.inverse_moves_lst(move_tbl_exchange_edge_left)
+        move_tbl_exchange_edge_right_inv = self.inverse_moves_lst(move_tbl_exchange_edge_right)
+
+        # print("move_tbl_exchange_edge_left: {}".format(move_tbl_exchange_edge_left))
+        # print("move_tbl_exchange_edge_right: {}".format(move_tbl_exchange_edge_right))
+        # print("move_tbl_exchange_edge_left_inv: {}".format(move_tbl_exchange_edge_left_inv))
+        # print("move_tbl_exchange_edge_right_inv: {}".format(move_tbl_exchange_edge_right_inv))
+        # print("move_tbl_exchange_edge_l_D_R: {}".format(move_tbl_exchange_edge_l_D_R))
+        # print("move_tbl_exchange_edge_r_D_R: {}".format(move_tbl_exchange_edge_r_D_R))
+        # sys.exit(-1234567)
+
+        move_tbl_exchange_edge_l_D_F_inv = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_left_inv, "F"), "F")
+        move_tbl_exchange_edge_r_D_F_inv = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_right_inv, "F"), "F")
+
+        move_tbl_exchange_edge_l_D_R_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_F_inv, "U'")
+        move_tbl_exchange_edge_r_D_R_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_F_inv, "U'")
+        
+        move_tbl_exchange_edge_l_D_B_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_R_inv, "U'")
+        move_tbl_exchange_edge_r_D_B_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_R_inv, "U'")
+
+        move_tbl_exchange_edge_l_D_L_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_B_inv, "U'")
+        move_tbl_exchange_edge_r_D_L_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_B_inv, "U'")
 
         moving_table_solve_3x3 = [
             ((d[(0, 2, 1)], d[(2, 0, 1)]), [
@@ -1324,6 +1394,94 @@ class RubiksCube(Exception):
                 ((d[(1, 2, 2)], d[(3, 0, 2)], d[(4, 0, 2)]), ["B'" ,"D2", "B", "D'", "R", "D2", "R'"]),
                 ((d[(4, 0, 2)], d[(1, 2, 2)], d[(3, 0, 2)]), ["D'", "B'", "D", "B"]),
                 ((d[(3, 0, 2)], d[(4, 0, 2)], d[(1, 2, 2)]), ["B'", "D'", "B"]),
+            ]),
+
+            ((d[(2, 1, 2)], d[(4, 2, 1)]), [
+                ((d[(2, 1, 2)], d[(4, 2, 1)]), []),
+                ((d[(4, 0, 1)], d[(3, 1, 2)]), move_tbl_exchange_edge_r_D_B_inv+["D'"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(3, 1, 0)], d[(5, 0, 1)]), move_tbl_exchange_edge_r_D_L_inv+["D2"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(5, 2, 1)], d[(2, 1, 0)]), move_tbl_exchange_edge_r_D_F_inv+["D"]+move_tbl_exchange_edge_r_D_R),
+
+                ((d[(4, 2, 1)], d[(2, 1, 2)]), move_tbl_exchange_edge_l_D_F_inv+["D"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(3, 1, 2)], d[(4, 0, 1)]), move_tbl_exchange_edge_l_D_R_inv+move_tbl_exchange_edge_r_D_R),
+                ((d[(5, 0, 1)], d[(3, 1, 0)]), move_tbl_exchange_edge_l_D_B_inv+["D'"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(2, 1, 0)], d[(5, 2, 1)]), move_tbl_exchange_edge_r_D_F_inv+move_tbl_exchange_edge_l_D_F),
+                
+                ((d[(1, 0, 1)], d[(2, 2, 1)]), ["D"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(1, 1, 2)], d[(4, 1, 2)]), move_tbl_exchange_edge_r_D_R),
+                ((d[(1, 2, 1)], d[(3, 0, 1)]), ["D'"]+move_tbl_exchange_edge_r_D_R),
+                ((d[(1, 1, 0)], d[(5, 1, 0)]), ["D2"]+move_tbl_exchange_edge_r_D_R),
+
+                ((d[(2, 2, 1)], d[(1, 0, 1)]), move_tbl_exchange_edge_l_D_F),
+                ((d[(4, 1, 2)], d[(1, 1, 2)]), ["D'"]+move_tbl_exchange_edge_l_D_F),
+                ((d[(3, 0, 1)], d[(1, 2, 1)]), ["D2"]+move_tbl_exchange_edge_l_D_F),
+                ((d[(5, 1, 0)], d[(1, 1, 0)]), ["D"]+move_tbl_exchange_edge_l_D_F),
+            ]),
+
+            ((d[(4, 0, 1)], d[(3, 1, 2)]), [
+                ((d[(4, 0, 1)], d[(3, 1, 2)]), []),
+                ((d[(3, 1, 0)], d[(5, 0, 1)]), move_tbl_exchange_edge_r_D_L_inv+["D'"]+move_tbl_exchange_edge_r_D_B),
+                ((d[(5, 2, 1)], d[(2, 1, 0)]), move_tbl_exchange_edge_r_D_F_inv+["D2"]+move_tbl_exchange_edge_r_D_B),
+
+                ((d[(3, 1, 2)], d[(4, 0, 1)]), move_tbl_exchange_edge_l_D_R_inv+["D"]+move_tbl_exchange_edge_r_D_B),
+                ((d[(5, 0, 1)], d[(3, 1, 0)]), move_tbl_exchange_edge_l_D_B_inv+move_tbl_exchange_edge_r_D_B),
+                ((d[(2, 1, 0)], d[(5, 2, 1)]), move_tbl_exchange_edge_l_D_L_inv+["D'"]+move_tbl_exchange_edge_r_D_B),
+                
+                ((d[(1, 0, 1)], d[(2, 2, 1)]), ["D2"]+move_tbl_exchange_edge_r_D_B),
+                ((d[(1, 1, 2)], d[(4, 1, 2)]), ["D"]+move_tbl_exchange_edge_r_D_B),
+                ((d[(1, 2, 1)], d[(3, 0, 1)]), move_tbl_exchange_edge_r_D_B),
+                ((d[(1, 1, 0)], d[(5, 1, 0)]), ["D'"]+move_tbl_exchange_edge_r_D_B),
+
+                ((d[(2, 2, 1)], d[(1, 0, 1)]), ["D"]+move_tbl_exchange_edge_l_D_R),
+                ((d[(4, 1, 2)], d[(1, 1, 2)]), move_tbl_exchange_edge_l_D_R),
+                ((d[(3, 0, 1)], d[(1, 2, 1)]), ["D'"]+move_tbl_exchange_edge_l_D_R),
+                ((d[(5, 1, 0)], d[(1, 1, 0)]), ["D2"]+move_tbl_exchange_edge_l_D_R),
+            ]),
+
+            ((d[(3, 1, 0)], d[(5, 0, 1)]), [
+                ((d[(3, 1, 0)], d[(5, 0, 1)]), []),
+                ((d[(5, 2, 1)], d[(2, 1, 0)]), move_tbl_exchange_edge_r_D_F_inv+["D'"]+move_tbl_exchange_edge_r_D_L),
+
+                ((d[(5, 0, 1)], d[(3, 1, 0)]), move_tbl_exchange_edge_l_D_B_inv+["D"]+move_tbl_exchange_edge_r_D_L),
+                ((d[(2, 1, 0)], d[(5, 2, 1)]), move_tbl_exchange_edge_l_D_L_inv+move_tbl_exchange_edge_r_D_L),
+                
+                ((d[(1, 0, 1)], d[(2, 2, 1)]), ["D'"]+move_tbl_exchange_edge_r_D_L),
+                ((d[(1, 1, 2)], d[(4, 1, 2)]), ["D2"]+move_tbl_exchange_edge_r_D_L),
+                ((d[(1, 2, 1)], d[(3, 0, 1)]), ["D"]+move_tbl_exchange_edge_r_D_L),
+                ((d[(1, 1, 0)], d[(5, 1, 0)]), move_tbl_exchange_edge_r_D_L),
+
+                ((d[(2, 2, 1)], d[(1, 0, 1)]), ["D2"]+move_tbl_exchange_edge_l_D_B),
+                ((d[(4, 1, 2)], d[(1, 1, 2)]), ["D"]+move_tbl_exchange_edge_l_D_B),
+                ((d[(3, 0, 1)], d[(1, 2, 1)]), move_tbl_exchange_edge_l_D_B),
+                ((d[(5, 1, 0)], d[(1, 1, 0)]), ["D'"]+move_tbl_exchange_edge_l_D_B),
+            ]),
+
+            ((d[(5, 2, 1)], d[(2, 1, 0)]), [
+                ((d[(5, 2, 1)], d[(2, 1, 0)]), []),
+
+                ((d[(2, 1, 0)], d[(5, 2, 1)]), move_tbl_exchange_edge_l_D_L_inv+["D"]+move_tbl_exchange_edge_r_D_F),
+                
+                ((d[(1, 0, 1)], d[(2, 2, 1)]), move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 1, 2)], d[(4, 1, 2)]), ["D'"]+move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 2, 1)], d[(3, 0, 1)]), ["D2"]+move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 1, 0)], d[(5, 1, 0)]), ["D"]+move_tbl_exchange_edge_r_D_F),
+
+                ((d[(2, 2, 1)], d[(1, 0, 1)]), ["D'"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(4, 1, 2)], d[(1, 1, 2)]), ["D2"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(3, 0, 1)], d[(1, 2, 1)]), ["D"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(5, 1, 0)], d[(1, 1, 0)]), move_tbl_exchange_edge_l_D_L),
+            ]),
+
+            ((d[(1, 0, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), [
+                ((d[(1, 0, 1)], d[(2, 2, 1)]), move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 1, 2)], d[(4, 1, 2)]), ["D'"]+move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 2, 1)], d[(3, 0, 1)]), ["D2"]+move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 1, 0)], d[(5, 1, 0)]), ["D"]+move_tbl_exchange_edge_r_D_F),
+
+                ((d[(2, 2, 1)], d[(1, 0, 1)]), ["D'"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(4, 1, 2)], d[(1, 1, 2)]), ["D2"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(3, 0, 1)], d[(1, 2, 1)]), ["D"]+move_tbl_exchange_edge_l_D_L),
+                ((d[(5, 1, 0)], d[(1, 1, 0)]), move_tbl_exchange_edge_l_D_L),
             ]),
         ]
 
