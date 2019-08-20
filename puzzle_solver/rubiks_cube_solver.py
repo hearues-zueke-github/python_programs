@@ -301,10 +301,13 @@ class RubiksCube(Exception):
         moving_dicts_basis = {
             "U":  {"U": "U", "D": "D", "F": "L", "R": "F", "B": "R", "L": "B"},
             "U'": {"U": "U", "D": "D", "F": "R", "R": "B", "B": "L", "L": "F"},
+            "U2": {"U": "U", "D": "D", "F": "B", "R": "L", "B": "F", "L": "R"},
             "F":  {"U": "R", "D": "L", "F": "F", "R": "D", "B": "B", "L": "U"},
             "F'": {"U": "L", "D": "R", "F": "F", "R": "U", "B": "B", "L": "D"},
+            "F2": {"U": "D", "D": "U", "F": "F", "R": "L", "B": "B", "L": "R"},
             "R":  {"U": "B", "D": "F", "F": "U", "R": "R", "B": "D", "L": "L"},
             "R'": {"U": "F", "D": "B", "F": "D", "R": "R", "B": "U", "L": "L"},
+            "R2": {"U": "D", "D": "U", "F": "B", "R": "R", "B": "F", "L": "L"},
         }
         
         moving_dicts_part = {
@@ -379,6 +382,17 @@ class RubiksCube(Exception):
             "Lw2": lambda: (self.rotate_ri(3), self.rotate_ri(3), self.rotate_ri(2), self.rotate_ri(2)),
         }
 
+        mt = self.moving_table
+        mt["x"] = lambda: mt["Uw"]()+mt["Dw'"]()
+        mt["x'"] = lambda: mt["Uw'"]()+mt["Dw"]()
+        mt["x2"] = lambda: mt["Uw2"]()+mt["Dw2"]()
+        mt["y"] = lambda: mt["Fw"]()+mt["Bw'"]()
+        mt["y'"] = lambda: mt["Fw'"]()+mt["Bw"]()
+        mt["y2"] = lambda: mt["Fw2"]()+mt["Bw2"]()
+        mt["z"] = lambda: mt["Rw"]()+mt["Lw'"]()
+        mt["z'"] = lambda: mt["Rw'"]()+mt["Lw"]()
+        mt["z2"] = lambda: mt["Rw2"]()+mt["Lw2"]()
+
         self.possible_moves = np.array([k for k in self.moving_table])
 
 
@@ -387,11 +401,11 @@ class RubiksCube(Exception):
 
 
     def __rotate_field_counter_clockwise_4x4(self, field):
-        field[RubiksCube.tpl] = field[RubiksCube.tpl_new_clockwise]
+        field[self.tpl] = field[self.tpl_new_clockwise]
 
 
     def __rotate_field_clockwise_4x4(self, field):
-        field[RubiksCube.tpl] = field[RubiksCube.tpl_new_counter_clockwise]
+        field[self.tpl] = field[self.tpl_new_counter_clockwise]
 
 
     def apply_move_lst(self, move_lst):
@@ -442,6 +456,8 @@ class RubiksCube(Exception):
         row_b[:] = row_o
         row_o[:] = np.flip(row_g)
         row_g[:] = temp
+        return "u{}".format(layer)
+
 
     def rotate_f(self, layer):
         # layer = 0..n-1
@@ -464,6 +480,7 @@ class RubiksCube(Exception):
         row_y[:] = np.flip(row_g)
         row_g[:] = row_w
         row_w[:] = temp
+        return "f{}".format(layer)
 
 
     def rotate_r(self, layer):
@@ -486,6 +503,7 @@ class RubiksCube(Exception):
         row_w[:] = row_o
         row_o[:] = row_y
         row_y[:] = temp
+        return "r{}".format(layer)
 
 
     def rotate_ui(self, layer):
@@ -509,6 +527,7 @@ class RubiksCube(Exception):
         row_g[:] = np.flip(row_o)
         row_o[:] = row_b
         row_b[:] = np.flip(temp)
+        return "ui{}".format(layer)
 
 
     def rotate_fi(self, layer):
@@ -532,6 +551,7 @@ class RubiksCube(Exception):
         row_w[:] = row_g
         row_g[:] = np.flip(row_y)
         row_y[:] = np.flip(temp)
+        return "fi{}".format(layer)
 
 
     def rotate_ri(self, layer):
@@ -554,14 +574,17 @@ class RubiksCube(Exception):
         row_y[:] = row_o
         row_o[:] = row_w
         row_w[:] = temp
+        return "ri{}".format(layer)
 
 
     def mix_cube(self):
         possible_moves = self.possible_moves
         random_move_lst = np.random.choice(possible_moves, size=(100, ))
-        print("random_move_lst: {}".format(random_move_lst))
+        print("random_move_lst: {}".format(random_move_lst.tolist()))
+        used_basic_moves = []
         for m in random_move_lst:
-            self.moving_table[m]()
+            used_basic_moves.extend(self.moving_table[m]())
+        return used_basic_moves
 
 
     def rotate_moves_lst(self, moves_lst, rotation):
@@ -577,6 +600,9 @@ class RubiksCube(Exception):
     def solve_cube(self):
         # TODO: !!!!!
         # WRITE THE MOST SIMPLEST WAY FOR SOLVING THE 4x4x4 CUBE!!!!
+
+        print("fields before solving the cube:")
+        self.print_field()
 
         moving_table_solve_centers = [
             (((0, 1, 1), ), [
@@ -1028,15 +1054,25 @@ class RubiksCube(Exception):
 
         f = self.fields
         while self.count_finished_pairs() <= 8:
+            moves_lst_applied = []
             while (0+np.all(f[0, -1, 1]==f[0, -1, 1:-1])+np.all(f[2, 0, 1]==f[2, 0, 1:-1]))==2:
-                self.apply_move_lst([lst_possible_moves_1[np.random.randint(0, len(lst_possible_moves_1))]])
+                new_moves = [lst_possible_moves_1[np.random.randint(0, len(lst_possible_moves_1))]]
+                moves_lst_applied.extend(new_moves)
+                self.apply_move_lst(new_moves)
             while ((f[0, 3, 1]!=f[3, 3, 2]) or (f[2, 0, 1]!=f[0, 0, 2])):
-                self.apply_move_lst([lst_possible_moves_2[np.random.randint(0, len(lst_possible_moves_2))]])
+                new_moves = [lst_possible_moves_2[np.random.randint(0, len(lst_possible_moves_2))]]
+                moves_lst_applied.extend(new_moves)
+                self.apply_move_lst(new_moves)
             while (0+np.all(f[0, 1, -1]==f[0, 1:-1, -1])+np.all(f[4, 1, 0]==f[4, 1:-1, 0]))==2:
-                self.apply_move_lst([lst_possible_moves_3[np.random.randint(0, len(lst_possible_moves_3))]])
+                new_moves = [lst_possible_moves_3[np.random.randint(0, len(lst_possible_moves_3))]]
+                moves_lst_applied.extend(new_moves)
+                self.apply_move_lst(new_moves)
             
-            self.apply_move_lst(["l'", "B'", "R", "B", "l"])
-            print("found one not a pair!")
+            new_moves = ["l'", "B'", "R", "B", "l"]
+            moves_lst_applied.extend(new_moves)
+            self.apply_move_lst(new_moves)
+
+            print("finished pairs: {}, moves_lst_applied: {}".format(self.count_finished_pairs(), moves_lst_applied))
         
         if self.count_finished_pairs() <= 10:
             while (0+np.all(f[0, -1, 1]==f[0, -1, 1:-1])+np.all(f[2, 0, 1]==f[2, 0, 1:-1]))==2:
@@ -1048,7 +1084,7 @@ class RubiksCube(Exception):
                 while (0+np.all(f[0, 1, -1]==f[0, 1:-1, -1])+np.all(f[4, 1, 0]==f[4, 1:-1, 0]))==2:
                     self.apply_move_lst([lst_possible_moves_3[np.random.randint(0, len(lst_possible_moves_3))]])
                 # self.apply_move_lst(["l'", "B'", "R", "B", "l"])
-                print("do the pairing of three pairs!")
+                # print("do the pairing of three pairs!")
                 if (f[0, 0, 1]==f[4, 1, 0]) and (f[3, 3, 1]==f[0, 1, 3]):
                     # do the first algo!
                     self.apply_move_lst(["l'", "B'", "R", "B", "l"])
@@ -1057,7 +1093,7 @@ class RubiksCube(Exception):
                     self.apply_move_lst(["r'", "F", "R'", "F'", "r"])
             elif self.count_finished_pairs() == 10:
                 # do the algorithm for pairing only 2 pairs together!
-                print("do the pairing of two pairs!")
+                # print("do the pairing of two pairs!")
                 self.apply_move_lst(["B'", "U", "R'", "f", "R'", "F'", "R", "f'", "U'", "R'", "U", "b", "U'", "F'", "U", "b'"])
 
         assert self.count_finished_pairs()==12
@@ -1065,107 +1101,56 @@ class RubiksCube(Exception):
 
         n = self.n
         # dict_nxn_to_3x3, dnt3
-        d = {
-            (0, 0, 0): (0, 0, 0),
-            (0, 0, 1): (0, 0, 1),
-            (0, 0, 2): (0, 0, n-1),
-            (0, 1, 0): (0, 1, 0),
-            (0, 1, 1): (0, 1, 1),
-            (0, 1, 2): (0, 1, n-1),
-            (0, 2, 0): (0, n-1, 0),
-            (0, 2, 1): (0, n-1, 1),
-            (0, 2, 2): (0, n-1, n-1),
-
-            (1, 0, 0): (1, 0, 0),
-            (1, 0, 1): (1, 0, 1),
-            (1, 0, 2): (1, 0, n-1),
-            (1, 1, 0): (1, 1, 0),
-            (1, 1, 1): (1, 1, 1),
-            (1, 1, 2): (1, 1, n-1),
-            (1, 2, 0): (1, n-1, 0),
-            (1, 2, 1): (1, n-1, 1),
-            (1, 2, 2): (1, n-1, n-1),
-
-            (2, 0, 0): (2, 0, 0),
-            (2, 0, 1): (2, 0, 1),
-            (2, 0, 2): (2, 0, n-1),
-            (2, 1, 0): (2, 1, 0),
-            (2, 1, 1): (2, 1, 1),
-            (2, 1, 2): (2, 1, n-1),
-            (2, 2, 0): (2, n-1, 0),
-            (2, 2, 1): (2, n-1, 1),
-            (2, 2, 2): (2, n-1, n-1),
-
-            (3, 0, 0): (3, 0, 0),
-            (3, 0, 1): (3, 0, 1),
-            (3, 0, 2): (3, 0, n-1),
-            (3, 1, 0): (3, 1, 0),
-            (3, 1, 1): (3, 1, 1),
-            (3, 1, 2): (3, 1, n-1),
-            (3, 2, 0): (3, n-1, 0),
-            (3, 2, 1): (3, n-1, 1),
-            (3, 2, 2): (3, n-1, n-1),
-
-            (4, 0, 0): (4, 0, 0),
-            (4, 0, 1): (4, 0, 1),
-            (4, 0, 2): (4, 0, n-1),
-            (4, 1, 0): (4, 1, 0),
-            (4, 1, 1): (4, 1, 1),
-            (4, 1, 2): (4, 1, n-1),
-            (4, 2, 0): (4, n-1, 0),
-            (4, 2, 1): (4, n-1, 1),
-            (4, 2, 2): (4, n-1, n-1),
-
-            (5, 0, 0): (5, 0, 0),
-            (5, 0, 1): (5, 0, 1),
-            (5, 0, 2): (5, 0, n-1),
-            (5, 1, 0): (5, 1, 0),
-            (5, 1, 1): (5, 1, 1),
-            (5, 1, 2): (5, 1, n-1),
-            (5, 2, 0): (5, n-1, 0),
-            (5, 2, 1): (5, n-1, 1),
-            (5, 2, 2): (5, n-1, n-1),
-        }
-
+        p = [0, 1, n-1]
+        d = {(f, y, x): (f, p[y], p[x]) for f in range(0, 6) for y in range(0, 3) for x in range(0, 3)}
         di = {v: k for k, v in d.items()}
 
         move_tbl_exchange_edge_left = ["U'", "L'", "U", "L", "U", "F", "U'", "F'"]
         move_tbl_exchange_edge_right = ["U", "R", "U'", "R'", "U'", "F'", "U", "F"]
-
-        move_tbl_exchange_edge_l_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_left, "F"), "F")
-        move_tbl_exchange_edge_r_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_right, "F"), "F")
-
-        move_tbl_exchange_edge_l_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_F, "U'")
-        move_tbl_exchange_edge_r_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_F, "U'")
-        
-        move_tbl_exchange_edge_l_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_R, "U'")
-        move_tbl_exchange_edge_r_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_R, "U'")
-
-        move_tbl_exchange_edge_l_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_B, "U'")
-        move_tbl_exchange_edge_r_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_B, "U'")
-
         move_tbl_exchange_edge_left_inv = self.inverse_moves_lst(move_tbl_exchange_edge_left)
         move_tbl_exchange_edge_right_inv = self.inverse_moves_lst(move_tbl_exchange_edge_right)
 
-        # print("move_tbl_exchange_edge_left: {}".format(move_tbl_exchange_edge_left))
-        # print("move_tbl_exchange_edge_right: {}".format(move_tbl_exchange_edge_right))
-        # print("move_tbl_exchange_edge_left_inv: {}".format(move_tbl_exchange_edge_left_inv))
-        # print("move_tbl_exchange_edge_right_inv: {}".format(move_tbl_exchange_edge_right_inv))
-        # print("move_tbl_exchange_edge_l_D_R: {}".format(move_tbl_exchange_edge_l_D_R))
-        # print("move_tbl_exchange_edge_r_D_R: {}".format(move_tbl_exchange_edge_r_D_R))
-        # sys.exit(-1234567)
-
+        move_tbl_exchange_edge_l_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_left, "F"), "F")
+        move_tbl_exchange_edge_r_D_F = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_right, "F"), "F")
         move_tbl_exchange_edge_l_D_F_inv = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_left_inv, "F"), "F")
         move_tbl_exchange_edge_r_D_F_inv = self.rotate_moves_lst(self.rotate_moves_lst(move_tbl_exchange_edge_right_inv, "F"), "F")
 
+        move_tbl_exchange_edge_l_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_F, "U'")
+        move_tbl_exchange_edge_r_D_R = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_F, "U'")
         move_tbl_exchange_edge_l_D_R_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_F_inv, "U'")
         move_tbl_exchange_edge_r_D_R_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_F_inv, "U'")
         
+        move_tbl_exchange_edge_l_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_R, "U'")
+        move_tbl_exchange_edge_r_D_B = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_R, "U'")
         move_tbl_exchange_edge_l_D_B_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_R_inv, "U'")
         move_tbl_exchange_edge_r_D_B_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_R_inv, "U'")
 
+        move_tbl_exchange_edge_l_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_B, "U'")
+        move_tbl_exchange_edge_r_D_L = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_B, "U'")
         move_tbl_exchange_edge_l_D_L_inv = self.rotate_moves_lst(move_tbl_exchange_edge_l_D_B_inv, "U'")
         move_tbl_exchange_edge_r_D_L_inv = self.rotate_moves_lst(move_tbl_exchange_edge_r_D_B_inv, "U'")
+
+
+        cross_alg_1_U_F = ["F", "R", "U", "R'", "U'", "F'"] # horizontal I
+        cross_alg_2_U_F = ["F", "U", "R", "U'", "R'", "F'"] # vertical mirror L
+
+        cross_alg_1_D_F = self.rotate_moves_lst(self.rotate_moves_lst(cross_alg_1_U_F, "F"), "F")
+        cross_alg_2_D_F = self.rotate_moves_lst(self.rotate_moves_lst(cross_alg_2_U_F, "F"), "F")
+        
+        cross_alg_1_D_L = self.rotate_moves_lst(cross_alg_1_D_F, "U")
+        cross_alg_2_D_L = self.rotate_moves_lst(cross_alg_2_D_F, "U")
+        
+        cross_alg_1_D_B = self.rotate_moves_lst(cross_alg_1_D_L, "U")
+        cross_alg_2_D_B = self.rotate_moves_lst(cross_alg_2_D_L, "U")
+        
+        cross_alg_1_D_R = self.rotate_moves_lst(cross_alg_1_D_B, "U")
+        cross_alg_2_D_R = self.rotate_moves_lst(cross_alg_2_D_B, "U")
+        
+
+        rotate_one_edge_D_F = self.rotate_moves_lst(self.rotate_moves_lst(["r2", "B2", "U2", "l", "U2", "r'", "U2", "r", "U2", "F2", "r", "F2", "l'", "B2", "r2"], "F"), "F")
+        rotate_one_edge_D_R = self.rotate_moves_lst(rotate_one_edge_D_F, "U'")
+        rotate_one_edge_D_B = self.rotate_moves_lst(rotate_one_edge_D_R, "U'")
+        rotate_one_edge_D_L = self.rotate_moves_lst(rotate_one_edge_D_B, "U'")
 
         moving_table_solve_3x3 = [
             ((d[(0, 2, 1)], d[(2, 0, 1)]), [
@@ -1473,19 +1458,29 @@ class RubiksCube(Exception):
             ]),
 
             ((d[(1, 0, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), [
-                ((d[(1, 0, 1)], d[(2, 2, 1)]), move_tbl_exchange_edge_r_D_F),
-                ((d[(1, 1, 2)], d[(4, 1, 2)]), ["D'"]+move_tbl_exchange_edge_r_D_F),
-                ((d[(1, 2, 1)], d[(3, 0, 1)]), ["D2"]+move_tbl_exchange_edge_r_D_F),
-                ((d[(1, 1, 0)], d[(5, 1, 0)]), ["D"]+move_tbl_exchange_edge_r_D_F),
+                ((d[(1, 0, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), []),
+                
+                ((d[(1, 0, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(5, 1, 0)]), rotate_one_edge_D_L),
+                ((d[(1, 0, 1)], d[(1, 1, 2)], d[(3, 0, 1)], d[(1, 1, 0)]), rotate_one_edge_D_B),
+                ((d[(1, 0, 1)], d[(4, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), rotate_one_edge_D_R),
+                ((d[(2, 2, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), rotate_one_edge_D_F),
 
-                ((d[(2, 2, 1)], d[(1, 0, 1)]), ["D'"]+move_tbl_exchange_edge_l_D_L),
-                ((d[(4, 1, 2)], d[(1, 1, 2)]), ["D2"]+move_tbl_exchange_edge_l_D_L),
-                ((d[(3, 0, 1)], d[(1, 2, 1)]), ["D"]+move_tbl_exchange_edge_l_D_L),
-                ((d[(5, 1, 0)], d[(1, 1, 0)]), move_tbl_exchange_edge_l_D_L),
+                ((d[(1, 0, 1)], d[(1, 1, 2)], d[(3, 0, 1)], d[(5, 1, 0)]), cross_alg_2_D_L),                                                                                                                                                                                                                                                                                                         
+                ((d[(1, 0, 1)], d[(4, 1, 2)], d[(1, 2, 1)], d[(5, 1, 0)]), cross_alg_1_D_L),
+                ((d[(2, 2, 1)], d[(1, 1, 2)], d[(1, 2, 1)], d[(5, 1, 0)]), cross_alg_2_D_F),
+                ((d[(1, 0, 1)], d[(4, 1, 2)], d[(3, 0, 1)], d[(1, 1, 0)]), cross_alg_2_D_B),
+                ((d[(2, 2, 1)], d[(1, 1, 2)], d[(3, 0, 1)], d[(1, 1, 0)]), cross_alg_1_D_B),
+                ((d[(2, 2, 1)], d[(4, 1, 2)], d[(1, 2, 1)], d[(1, 1, 0)]), cross_alg_2_D_R),
+
+                ((d[(2, 2, 1)], d[(4, 1, 2)], d[(3, 0, 1)], d[(1, 1, 0)]), rotate_one_edge_D_R+cross_alg_1_D_F),
+                ((d[(2, 2, 1)], d[(4, 1, 2)], d[(1, 2, 1)], d[(5, 1, 0)]), rotate_one_edge_D_F+cross_alg_1_D_R),
+                ((d[(2, 2, 1)], d[(1, 1, 2)], d[(3, 0, 1)], d[(5, 1, 0)]), rotate_one_edge_D_L+cross_alg_1_D_F),
+                ((d[(1, 0, 1)], d[(4, 1, 2)], d[(3, 0, 1)], d[(5, 1, 0)]), rotate_one_edge_D_B+cross_alg_1_D_R),
+                
+                ((d[(2, 2, 1)], d[(4, 1, 2)], d[(3, 0, 1)], d[(5, 1, 0)]), cross_alg_2_D_F+cross_alg_1_D_L),
             ]),
         ]
 
-        # TODO: add the asserts and solving algo for the 3x3x3 cube!
         f = self.fields
         cells_lst = []
         for cells, moving_lst in moving_table_solve_3x3:
@@ -1503,7 +1498,6 @@ class RubiksCube(Exception):
 
             try:
                 for cell in cells:
-                    # print("assertion for: f[cell]: {}, cell: {}".format(f[cell], cell))
                     assert f[cell]==cell[0]
             except Exception as e:
                 print(e)
@@ -1512,17 +1506,154 @@ class RubiksCube(Exception):
                 self.print_field()
                 sys.exit(-1)
 
-
-            # for cells in cells_lst:
-            #     for cell in cells:
-            #         assert f[cell]==cell[0]
             for cell in cells_lst:
                 assert f[cell]==cell[0]
             
             cells_lst.extend(cells)
 
+
+        # solve the OLL for the corners!
+        cells_lst.extend((d[(1, 0, 0)], d[(1, 0, 2)], d[(1, 2, 0)], d[(1, 2, 2)]))
+        corner_rotate_clockwise = ["U'", "F'", "U", "F"]*2
+        corner_rotate_counter_clockwise = ["F'", "U'", "F", "U"]*2
+
+        p1 = d[(4, 2, 2)]
+        p2 = d[(2, 2, 2)]
+        for _ in range(0, 4):
+            self.apply_move_lst(["D"])
+            if f[p1]==1:
+                self.apply_move_lst(corner_rotate_clockwise)
+            elif f[p2]==1:
+                self.apply_move_lst(corner_rotate_counter_clockwise)
+
+        for cell in cells_lst:
+            try:
+                assert f[cell]==cell[0]
+            except:
+                print("f[{}]={} != {}".format(cell, f[cell], cell[0]))
+                self.print_field()
+                sys.exit(-123)
+
+
+        # solve the 2nd cross
+        cells_lst.extend(((d[(2, 2, 1)], d[(4, 1, 2)], d[(3, 0, 1)], d[(5, 1, 0)])))
+
+        edges_rotate_U_F_counter_clockwise = ["R", "U'", "R", "U", "R", "U", "R", "U'", "R'", "U'", "R2"]
+        edges_rotate_U_F_clockwise = self.inverse_moves_lst(edges_rotate_U_F_counter_clockwise)
+
+        edges_rotate_D_F_counter_clockwise = self.rotate_moves_lst(edges_rotate_U_F_counter_clockwise, "F2")
+        edges_rotate_D_F_clockwise = self.rotate_moves_lst(edges_rotate_U_F_clockwise, "F2")
+
+        edges_rotate_D_R_counter_clockwise = self.rotate_moves_lst(edges_rotate_D_F_counter_clockwise, "U'")
+        edges_rotate_D_R_clockwise = self.rotate_moves_lst(edges_rotate_D_F_clockwise, "U'")
+
+        edges_rotate_D_B_counter_clockwise = self.rotate_moves_lst(edges_rotate_D_F_counter_clockwise, "U2")
+        edges_rotate_D_B_clockwise = self.rotate_moves_lst(edges_rotate_D_F_clockwise, "U2")
+
+        p1 = d[(4, 2, 2)]
+        p2 = d[(2, 2, 2)]
+
+        # first solve for orange PLL
+        if f[d[(4, 1, 2)]]==2:
+            print("Nr. 1 for orange!")
+            self.apply_move_lst(edges_rotate_D_F_counter_clockwise)
+        elif f[d[(3, 0, 1)]]==2:
+            print("Nr. 2 for orange!")
+            self.apply_move_lst(edges_rotate_D_R_clockwise)
+        elif f[d[(5, 1, 0)]]==2:
+            print("Nr. 3 for orange!")
+            self.apply_move_lst(edges_rotate_D_F_clockwise)
+
+        # then solve e.g. red PLL
+        if f[d[(4, 1, 2)]]==3:
+            self.apply_move_lst(edges_rotate_D_B_clockwise)
+        elif f[d[(5, 1, 0)]]==3:
+            self.apply_move_lst(edges_rotate_D_B_counter_clockwise)
+
+        exchange_two_edges_U_F = ["r2", "U2", "r2", "Uw2", "r2", "u2"]
+        exchange_two_edges_D_F = self.rotate_moves_lst(exchange_two_edges_U_F, "F2")
+        exchange_two_edges_D_R = self.rotate_moves_lst(exchange_two_edges_D_F, "U'")
+
+        # then last solve the last two 3x3x3 edges, parity
+        if f[d[(4, 1, 2)]]==5:
+            self.apply_move_lst(exchange_two_edges_D_R)
+
+        for cell in cells_lst:
+            try:
+                assert f[cell]==cell[0]
+            except:
+                print("f[{}]={} != {}".format(cell, f[cell], cell[0]))
+                self.print_field()
+                sys.exit(-123)
+
+
+        # solve the PLL for the corners!
+        cells_lst.extend((
+            d[(2, 2, 0)], d[(2, 2, 2)],
+            d[(4, 0, 2)], d[(4, 2, 2)],
+            d[(3, 0, 0)], d[(3, 0, 2)],
+            d[(5, 0, 0)], d[(5, 2, 0)]
+            
+            # d[(2, 2, 2)], d[(4, 2, 2)]
+        ))
+        corner_permutate_U_F_clockwise = ["Lw'", "U", "R'", "D2", "R", "U'", "R'", "D2", "R", "Lw"]
+        corner_permutate_U_F_counter_clockwise = self.inverse_moves_lst(corner_permutate_U_F_clockwise)
+
+        corner_permutate_D_F_clockwise = self.rotate_moves_lst(corner_permutate_U_F_clockwise, "F2")
+        corner_permutate_D_F_counter_clockwise = self.rotate_moves_lst(corner_permutate_U_F_counter_clockwise, "F2")
+
+        corner_permutate_D_R_clockwise = self.rotate_moves_lst(corner_permutate_D_F_clockwise, "U'")
+        corner_permutate_D_R_counter_clockwise = self.rotate_moves_lst(corner_permutate_D_F_counter_clockwise, "U'")
+
+        corner_permutate_D_B_clockwise = self.rotate_moves_lst(corner_permutate_D_F_clockwise, "U'")
+        corner_permutate_D_B_counter_clockwise = self.rotate_moves_lst(corner_permutate_D_F_counter_clockwise, "U'")
+
+        corner_permutate_D_L_clockwise = self.rotate_moves_lst(corner_permutate_D_B_clockwise, "U'")
+        corner_permutate_D_L_counter_clockwise = self.rotate_moves_lst(corner_permutate_D_B_counter_clockwise, "U'")
+
+        permutation_T_U_F = ["R", "U", "R'", "U'", "R'", "F", "R2", "U'", "R'", "U'", "R", "U", "R'", "F'"]
+        permutation_T_D_F = self.rotate_moves_lst(permutation_T_U_F, "F2")
+        # permutation_T_D_B = self.rotate_moves_lst(permutation_T_D_F, "U2")
+
+        if f[d[(5, 2, 0)]]==2:
+            print("corner permutation Nr 1.1")
+            self.apply_move_lst(corner_permutate_D_R_clockwise)
+        elif f[d[(3, 0, 0)]]==2:
+            print("corner permutation Nr 1.2")
+            self.apply_move_lst(corner_permutate_D_R_counter_clockwise)
+        elif f[d[(4, 0, 2)]]==2:
+            print("corner permutation Nr 1.3")
+            self.apply_move_lst(corner_permutate_D_L_counter_clockwise)
+        else:
+            print("no corner permutation needed!")
+
+        if f[d[(5, 0, 0)]]==3:
+            print("corner permutation Nr 2.1")
+            self.apply_move_lst(corner_permutate_D_F_counter_clockwise)
+        elif f[d[(2, 2, 0)]]==3:
+            print("corner permutation Nr 2.2")
+            self.apply_move_lst(corner_permutate_D_F_clockwise)
+        else:
+            print("no 2nd corner permutation needed!")
+
+        if f[d[(5, 2, 0)]]==3:
+            # do the T-permutation
+            print("corner permutation Nr 3.1")
+            self.apply_move_lst(permutation_T_D_F+exchange_two_edges_D_R)
+
+        # TODO: 2nd parity!
+
+        for cell in cells_lst:
+            try:
+                assert f[cell]==cell[0]
+            except:
+                print("f[{}]={} != {}".format(cell, f[cell], cell[0]))
+                self.print_field()
+                sys.exit(-123)
+
+
         print("finished solving:")
-        self.print_field()
+        # self.print_field()
         print("")
 
 
@@ -1548,45 +1679,78 @@ class RubiksCube(Exception):
         return s
 
 
+    def get_all_pairs(self):
+        f = self.fields
+        # TODO: prepare the pairs for better representation!
+        pairs_tpls = [
+            (f[3, -1, 1:-1], f[0, 0, 1:-1]),
+            (f[0, 1:-1, 0], f[5, 1:-1, -1]),
+            (f[0, -1, 1:-1], f[2, 0, 1:-1]),
+            (f[0, 1:-1, -1][::-1], f[4, 1:-1, 0][::-1]),
+            
+            (f[2, -1, 1:-1], f[1, 0, 1:-1]),
+            (f[1, 1:-1, 0], f[5, 1:-1, 0][::-1]),
+            (f[1, -1, 1:-1], f[3, 0, 1:-1]),
+            (f[1, 1:-1, -1][::-1], f[4, 1:-1, -1]),
+            
+            (f[2, 1:-1, -1][::-1], f[4, -1, 1:-1][::-1]),
+            (f[3, 1:-1, -1][::-1], f[4, 0, 1:-1]),
+            (f[3, 1:-1, 0], f[5, 0, 1:-1]),
+            (f[5, -1, 1:-1], f[2, 1:-1, 0][::-1]),
+        ]
+        dict_color = {0: "W", 1: "Y", 2: "O", 3: "R", 4: "G", 5: "B"}
+        pairs_str = "\n".join(["-".join(["{}/{}".format(dict_color[r[0]], dict_color[r[1]]) for r in np.vstack(t).T.tolist()]) for t in pairs_tpls])
+        print("pairs_str:\n{}".format(pairs_str))
+
+
+
 if __name__ == "__main__":
-    rc = RubiksCube(4)
-    print("rc: {}".format(rc))
+    rc = RubiksCube(4) # only 4x4x4 is solvable so far!
+    # print("rc: {}".format(rc))
 
-    print("Test some rotations!")
-    orig_fields = rc.fields.copy()
+    # print("Test some rotations!")
+    # orig_fields = rc.fields.copy()
 
-    # moves_lst = [
-    #     ["U", "R", "U'", "R'"]*6,
-    #     ["R", "U'", "R", "U", "R", "U", "R", "U'", "R'", "U'", "R2"]*3,
-    #     ["Rw", "Uw'", "Rw", "Uw", "Rw", "Uw", "Rw", "Uw'", "Rw'", "Uw'", "Rw2"],
-    # ]
+    # moves = ["U", "F", "R", "L", "D", "B"]+['r', 'l', 'd', 'b', 'f']+["Uw'", "Dw'", "Fw2", "Lw2", "Bw'", "Rw"]
+    # moves_lst = moves+[m if "2" in m else m+"'" if not "'" in m else m.replace("'", "") for m in moves[::-1]]
 
-    moves = ["U", "F", "R", "L", "D", "B"]+['r', 'l', 'd', 'b', 'f']+["Uw'", "Dw'", "Fw2", "Lw2", "Bw'", "Rw"]
-    moves_lst = moves+[m if "2" in m else m+"'" if not "'" in m else m.replace("'", "") for m in moves[::-1]]
-
-    # for moves in moves_lst:
-    #     print("moves: {}".format(moves))
-    #     for m in moves:
-    #         rc.moving_table[m]()
-
-    #     assert np.all(orig_fields==rc.fields)
-
-    # moves_lst = ["D", "f", "r", "U", "D", "f2"]
-    # rc.apply_move_lst(moves_lst)
-    # print("moves_lst: {}".format(moves_lst))
+    # while True:
+    #     rc.mix_cube()
+    #     rc.solve_cube()
+    #     break
     # rc.print_field()
 
-    while True:
-    # for i in range(0, 100):
-    #     print("i: {}".format(i))
-        rc.mix_cube()
-        rc.solve_cube()
-        # break
-    rc.print_field()
+    # find valid models of 4x4 rubiks cube of the sat solver!
+    with open(PATH_ROOT_DIR+"../sat_problems/found_valid_4x4_no_neightbor.txt", "r") as f:
+        lines = f.readlines()
+    lines = list(map(lambda x: list(map(int, x.replace("\n", ""))), lines))
+    arr = np.array(lines).reshape((-1, 6, 4, 4))
 
-    # # for moves in moves_lst:
-    #     # print("moves: {}".format(moves))
-    # for m in moves_lst:
-    #     rc.moving_table[m]()
+    solvable_fields = []
+    not_solvable_fields = []
 
-    # # assert np.all(orig_fields==rc.fields)
+    for f_orig in arr[:10]:
+        fields_str = "".join(map(str, f_orig.reshape((-1, )).tolist()))
+        rc.fields = f_orig.copy()
+
+        is_solvable = False
+        try:
+            rc.solve_cube()
+            is_solvable = True
+        except:
+            pass
+            print("Cannot solve for field: '{}'".format(fields_str))
+            not_solvable_fields.append(fields_str)
+
+        if is_solvable:
+            print("Solvable cube: '{}'".format(fields_str))
+            solvable_fields.append(fields_str)
+
+    print("len(solvable_fields): {}".format(len(solvable_fields)))
+    print("len(not_solvable_fields): {}".format(len(not_solvable_fields)))
+
+    def set_one_solvable_field():
+        rc.fields = np.array(list(map(int, solvable_fields[0]))).reshape((6, 4, 4))
+        rc.print_field()
+
+    set_one_solvable_field()

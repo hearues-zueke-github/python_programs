@@ -387,8 +387,18 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
     with Glucose3(bootstrap_with=cnfs) as m:
         print(m.solve())
         print(list(m.get_model()))
-        models = [m for m, _ in zip(m.enum_models(), range(0, 10000))]
+        models = [m for m, _ in zip(m.enum_models(), range(0, 30))]
     
+    # save the found models into a txt file!
+    with open("found_valid_4x4_no_neightbor.txt", "w") as f:
+        for model in models:
+            idxs = [i-1 for i in model if i > 0 and i < 577]
+            idxs = np.array(idxs)
+            color_map = np.array([(idxs//4//4//6)%6, (idxs//4//6)%4, (idxs//6)%4, (idxs)%6]).T
+            globals()["color_map"] = color_map
+            f.write("".join(map(str, color_map[:, -1].tolist()))+"\n")
+    sys.exit(-1)
+
     for i in np.random.permutation(np.arange(0, len(models)))[:5]:
         print("i: {}".format(i))
         model = models[i]
