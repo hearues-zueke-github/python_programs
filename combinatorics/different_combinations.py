@@ -99,6 +99,25 @@ def get_permutation_table(n, same_pos=True):
 
     return arr
 
+# n ... amount of numbers
+# m ... length of permutations
+def get_all_permutations_increment(n, m):
+    return get_all_combinations_increment(n-m+1, m)+np.arange(0, m)
+    
+
+# n ... amount of numbers
+# m ... length of permutations
+# instead of e.g. [1, 2, 3] it will also contain [2, 3, 1], [1, 3, 2], etc.
+# each permutation of [1, 2, 3] including!
+def get_all_permutations_parts(n, m):
+    arr = get_all_permutations_increment(n, m)
+    size = arr.shape[0]
+    perm_tbl = get_permutation_table(m)
+    big_arr = np.zeros((arr.shape[0]*perm_tbl.shape[0], m), dtype=np.int)
+    for i, row in enumerate(perm_tbl, 0):
+        big_arr[size*i:size*(i+1)] = arr[:, row]
+    return big_arr
+
 
 # m ... max num for state
 # n ... amount of states
@@ -230,6 +249,7 @@ def simple_example():
     print("arr_increment.shape:\n{}".format(arr_increment.shape))
     print("amount_arr_increment.shape: {}".format(amount_arr_increment.shape))
 
+
 # global simple tests
 arr_1_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]], dtype=np.uint8)
 arr_1_2 = get_all_combinations_repeat(2, 3)
@@ -238,6 +258,7 @@ assert np.all(arr_1_1==arr_1_2)
 arr_2_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1], [0, 1, 2], [0, 2, 2], [1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]])
 arr_2_2 = get_all_combinations_increment(3, 3)
 assert np.all(arr_2_1==arr_2_2)
+
 
 if __name__ == "__main__":
     # move_all_values_to_left()

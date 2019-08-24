@@ -21,6 +21,8 @@ import numpy as np
 
 from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 
+from utils_modulo_sequences import prettyprint_dict
+
 PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 from PIL import ImageTk
@@ -74,8 +76,8 @@ def get_full_cycles(m):
 
     # all_arrs = np.zeros((m**2, m+2), dtype=np.int)
     for i, a in enumerate(vals, 0):
-        # x_iter = vals
-        x_iter = zeros
+        x_iter = vals
+        # x_iter = zeros
         # x_iter = ((a*x_iter)+vals)%m
         arr[:, 0] = x_iter
         for l in range(1, m, 1):
@@ -84,7 +86,7 @@ def get_full_cycles(m):
         for k, row in enumerate(arr, 0):
             t = (a, k)
             if np.unique(row).shape[0]==m:
-                full_cycles[t] = row.tolist()
+                full_cycles[t] = np.roll(row, 1).tolist()
     return full_cycles
 
 
@@ -218,27 +220,27 @@ if __name__ == "__main__":
 
     nn = int(sys.argv[1])
 
-    lst_max_cycles = []
-    lst_amounts_a_c = []
-    lst_amounts_a_bigger_1 = []
+    # lst_max_cycles = []
+    # lst_amounts_a_c = []
+    # lst_amounts_a_bigger_1 = []
 
-    for m in range(1, nn+1):
-        arr = np.array(list(get_full_cycles_faster(m).keys())).T
-        lst_max_cycles.append(arr.shape[1])
-        amount_a = np.unique(arr[0]).shape[0]
-        amount_c = np.unique(arr[1]).shape[0]
-        lst_amounts_a_c.append((m, amount_a, amount_c))
-        if amount_a > 1:
-            lst_amounts_a_bigger_1.append((m, amount_a, amount_c))
+    # for m in range(1, nn+1):
+    #     arr = np.array(list(get_full_cycles_faster(m).keys())).T
+    #     lst_max_cycles.append(arr.shape[1])
+    #     amount_a = np.unique(arr[0]).shape[0]
+    #     amount_c = np.unique(arr[1]).shape[0]
+    #     lst_amounts_a_c.append((m, amount_a, amount_c))
+    #     if amount_a > 1:
+    #         lst_amounts_a_bigger_1.append((m, amount_a, amount_c))
 
-    print("lst_max_cycles: {}".format(lst_max_cycles))
-    # print("lst_amounts_a_c: {}".format(lst_amounts_a_c))
-    # print("lst_amounts_a_bigger_1: {}".format(lst_amounts_a_bigger_1))
+    # print("lst_max_cycles: {}".format(lst_max_cycles))
+    # # print("lst_amounts_a_c: {}".format(lst_amounts_a_c))
+    # # print("lst_amounts_a_bigger_1: {}".format(lst_amounts_a_bigger_1))
 
-    lst_amounts_c = reduce(lambda a, b: a+[b[2]], lst_amounts_a_c, [])
-    print("lst_amounts_c: {}".format(lst_amounts_c))
+    # lst_amounts_c = reduce(lambda a, b: a+[b[2]], lst_amounts_a_c, [])
+    # print("lst_amounts_c: {}".format(lst_amounts_c))
 
-    sys.exit(0)
+    # sys.exit(0)
 
     lista = []
     lista_sum = []
