@@ -31,7 +31,7 @@ from PIL import ImageTk
 from tkinter import Tk, Label, BOTH
 from tkinter.ttk import Frame, Style
 
-from pycryptosat import Solver
+# from pycryptosat import Solver
 
 
 def test_a_simple_expression_comparison():
@@ -140,10 +140,10 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_2x2():
         for clause in cnfs:
             f.write("{} 0\n".format(" ".join(map(str, clause))))
 
-    s = Solver()
-    random.shuffle(cnfs)
-    for clause in cnfs:
-        s.add_clause(clause)
+    # s = Solver()
+    # random.shuffle(cnfs)
+    # for clause in cnfs:
+    #     s.add_clause(clause)
 
     with Glucose3(bootstrap_with=cnfs) as m:
         print(m.solve())
@@ -181,6 +181,107 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_2x2():
     resize_factor = 20
     img = img.resize((img.width*resize_factor, img.height*resize_factor))
     img.show()
+
+
+def get_rubiks_image(idxs, n):
+    color_map = np.array([(idxs//n//n//6)%6, (idxs//n//6)%n, (idxs//6)%n, (idxs)%6]).T
+
+    fields = np.zeros((6, n, n), dtype=np.int)
+    for f, y, x, c in color_map:
+        fields[f, y, x] = c+1
+
+    colors_arr = np.array([
+        [0x00, 0x00, 0x00],
+        [0xFF, 0xFF, 0xFF],
+        [0xFF, 0xFF, 0x00],
+        [0xFF, 0xA5, 0x00],
+        [0xFF, 0x00, 0x00],
+        [0x00, 0x80, 0x00],
+        [0x00, 0x00, 0xFF],
+        [0x80, 0x80, 0x80],
+        [0xC0, 0xC0, 0xC0],
+    ], dtype=np.uint8)
+
+    resize_factor = 20
+    cell_space = 1
+    field_space = 2
+    arr_field_new = np.zeros((resize_factor*n*4+cell_space*(n-1)*4+field_space*2*4+cell_space*3, resize_factor*n*3+cell_space*(n-1)*3+field_space*2*3+cell_space*2), dtype=np.uint8)
+
+    field_size_px = resize_factor*n+cell_space*(n-1)+field_space*2
+    arr_field_new[field_size_px*1+cell_space*1:field_size_px*2+cell_space*1, field_size_px*0+cell_space*0:field_size_px*1+cell_space*0] = 7
+    arr_field_new[field_size_px*1+cell_space*1:field_size_px*2+cell_space*1, field_size_px*1+cell_space*1:field_size_px*2+cell_space*1] = 7
+    arr_field_new[field_size_px*1+cell_space*1:field_size_px*2+cell_space*1, field_size_px*2+cell_space*2:field_size_px*3+cell_space*2] = 7
+    arr_field_new[field_size_px*0+cell_space*0:field_size_px*1+cell_space*0, field_size_px*1+cell_space*1:field_size_px*2+cell_space*1] = 7
+    arr_field_new[field_size_px*2+cell_space*2:field_size_px*3+cell_space*2, field_size_px*1+cell_space*1:field_size_px*2+cell_space*1] = 7
+    arr_field_new[field_size_px*3+cell_space*3:field_size_px*4+cell_space*3, field_size_px*1+cell_space*1:field_size_px*2+cell_space*1] = 7
+
+    h = field_size_px-field_space*2
+    w = field_size_px-field_space*2
+    y = field_size_px*1+field_space+cell_space*1
+    x = field_size_px*0+field_space+cell_space*0
+    arr_field_new[y:y+h, x:x+w] = 8
+    x += field_size_px+cell_space*1
+    arr_field_new[y:y+h, x:x+w] = 8
+    x += field_size_px+cell_space*1
+    arr_field_new[y:y+h, x:x+w] = 8
+    y -= field_size_px+cell_space*1
+    x -= field_size_px+cell_space*1
+    arr_field_new[y:y+h, x:x+w] = 8
+    y += field_size_px*2+cell_space*2
+    arr_field_new[y:y+h, x:x+w] = 8
+    y += field_size_px*1+cell_space*1
+    arr_field_new[y:y+h, x:x+w] = 8
+
+    y = field_size_px*1+field_space+cell_space*1
+    x = field_size_px*0+field_space+cell_space*0
+    for j, row in enumerate(fields[5], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    x += field_size_px*1+cell_space*1
+    for j, row in enumerate(fields[0], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    x += field_size_px*1+cell_space*1
+    for j, row in enumerate(fields[4], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    y -= field_size_px*1+cell_space*1
+    x -= field_size_px*1+cell_space*1
+    for j, row in enumerate(fields[3], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    y += field_size_px*2+cell_space*2
+    for j, row in enumerate(fields[2], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    y += field_size_px*1+cell_space*1
+    for j, row in enumerate(fields[1], 0):
+        y2 = y+cell_space*j+resize_factor*j
+        for i, v in enumerate(row, 0):
+            x2 = x+cell_space*i+resize_factor*i
+            arr_field_new[y2:y2+resize_factor, x2:x2+resize_factor] = v
+
+    # TODO: add gray color for cell_space and other color for field_space!
+    pix2 = colors_arr[arr_field_new]
+    img2 = Image.fromarray(pix2)
+    img = img2
+
+    return img
 
 
 def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
@@ -368,6 +469,21 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
         cnfs.append(new_variables)
         cnfs.extend(new_cnfs)
 
+    # add for each corner the same color as the field number
+    cnfs.extend([[get_var_num([f, y, x, f])] for f in range(0, 6) for y in [0, 3] for x in [0, 3]])
+
+    # cnfs.extend([
+    #     [get_var_num([0, 3, 1, 2])],
+    #     [get_var_num([2, 0, 1, 1])],
+    #     [get_var_num([0, 3, 2, 3])],
+    #     [get_var_num([2, 0, 2, 0])],
+
+    #     # [get_var_num([0, 0, 1, 2])],
+    #     # [get_var_num([3, 3, 1, 0])],
+    #     # [get_var_num([0, 0, 2, 3])],
+    #     # [get_var_num([3, 3, 2, 1])],
+    # ])
+
     # write the sat problem as a dimacs format
     amount_variables = len(set([abs(i) for l in cnfs for i in l]))
     amount_clauses = len(cnfs)
@@ -379,15 +495,16 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
 
     globals()['cnfs'] = cnfs
 
-    s = Solver()
-    random.shuffle(cnfs)
-    for clause in cnfs:
-        s.add_clause(clause)
+    # s = Solver()
+    # random.shuffle(cnfs)
+    # for clause in cnfs:
+    #     s.add_clause(clause)
 
+    rubiks_cube_amount = 30
     with Glucose3(bootstrap_with=cnfs) as m:
         print(m.solve())
         print(list(m.get_model()))
-        models = [m for m, _ in zip(m.enum_models(), range(0, 30))]
+        models = [m for m, _ in zip(m.enum_models(), range(0, rubiks_cube_amount))]
     
     # save the found models into a txt file!
     with open("found_valid_4x4_no_neightbor.txt", "w") as f:
@@ -395,46 +512,256 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
             idxs = [i-1 for i in model if i > 0 and i < 577]
             idxs = np.array(idxs)
             color_map = np.array([(idxs//4//4//6)%6, (idxs//4//6)%4, (idxs//6)%4, (idxs)%6]).T
-            globals()["color_map"] = color_map
             f.write("".join(map(str, color_map[:, -1].tolist()))+"\n")
-    sys.exit(-1)
+    # sys.exit(-1)
 
-    for i in np.random.permutation(np.arange(0, len(models)))[:5]:
+    for i in np.random.permutation(np.arange(0, len(models)))[:1]:
         print("i: {}".format(i))
         model = models[i]
         idxs = [i-1 for i in model if i > 0 and i < 577]
         # idxs = [i-1 for i in models[np.random.randint(0, len(models))] if i > 0 and i < 577]
         idxs = np.array(idxs)
 
-        color_map = np.array([(idxs//4//4//6)%6, (idxs//4//6)%4, (idxs//6)%4, (idxs)%6]).T
-        # print("color_map:\n{}".format(color_map))
-
-        arr_field = np.zeros((16, 12), dtype=np.int)
-        field_pos = {0: (4, 4), 1: (12, 4), 2: (8, 4), 3: (0, 4), 4: (4, 8), 5: (4, 0)}
-
-        for f, y, x, c in color_map:
-            y1, x1 = field_pos[f]
-            arr_field[y1+y, x1+x] = c+1
-        # print("arr_field:\n{}".format(arr_field))
-
-        colors_arr = np.array([
-            [0x00, 0x00, 0x00],
-            [0xFF, 0xFF, 0xFF],
-            [0xFF, 0xFF, 0x00],
-            [0xFF, 0xA5, 0x00],
-            [0xFF, 0x00, 0x00],
-            [0x00, 0x80, 0x00],
-            [0x00, 0x00, 0xFF],
-        ], dtype=np.uint8)
-
-        pix = colors_arr[arr_field]
-        img = Image.fromarray(pix)
-        resize_factor = 20
-        img = img.resize((img.width*resize_factor, img.height*resize_factor))
+        img = get_rubiks_image(idxs, 4)
         img.show()
+
+
+def get_solution_plain_latin_square(n, k):
+    variables = [[[i1*n**2+i2*n+i3+1 for i3 in range(0, n)] for i2 in range(0, n)] for i1 in range(0, n)]
+    vars_dict = {variables[i1][i2][i3]: (i1, i2, i3) for i1 in range(0, n) for i2 in range(0, n) for i3 in range(0, n)}
+    globals()["variables"] = variables
+    globals()["vars_dict"] = vars_dict
+    last_new_var_num = variables[-1][-1][-1]+1
+
+    cnfs = []
+    
+    # add cell restriction, only one number per cell!
+    new_cnfs = []
+    for i1 in range(0, n):
+        for i2 in range(0, n):
+            vars_part = [variables[i1][i2][i3] for i3 in range(0, n)]
+            new_cnfs.append(vars_part)
+            new_cnfs.extend([[-j1, -j2] for k, j1 in enumerate(vars_part[:-1], 0) for j2 in vars_part[k+1:]])
+    cnfs.extend(new_cnfs)
+
+    # add row restriction, only one number per row!
+    new_cnfs = []
+    for i1 in range(0, n):
+        for i3 in range(0, n):
+            vars_part = [variables[i1][i2][i3] for i2 in range(0, n)]
+            new_cnfs.append(vars_part)
+            new_cnfs.extend([[-j1, -j2] for k, j1 in enumerate(vars_part[:-1], 0) for j2 in vars_part[k+1:]])
+    cnfs.extend(new_cnfs)
+
+    # add column restriction, only one number per column!
+    new_cnfs = []
+    for i2 in range(0, n):
+        for i3 in range(0, n):
+            vars_part = [variables[i1][i2][i3] for i1 in range(0, n)]
+            new_cnfs.append(vars_part)
+            new_cnfs.extend([[-j1, -j2] for k, j1 in enumerate(vars_part[:-1], 0) for j2 in vars_part[k+1:]])
+    cnfs.extend(new_cnfs)
+
+    # add exact amount of a certain number!
+    amount_bits = len(bin(n**2)[2:])
+    # i3 = 0 # the 0 can only appear n times! if n=4 -> it would be 4 times!
+    for i3 in range(0, n):
+        vars_s = [[last_new_var_num+i1*amount_bits+i2 for i2 in range(0, amount_bits)] for i1 in range(0, n**2+1)]
+        last_new_var_num = vars_s[-1][-1]+1
+        vars_r = [[last_new_var_num+i1*(amount_bits-1)+i2 for i2 in range(0, amount_bits-1)] for i1 in range(0, n**2)]
+        last_new_var_num = vars_r[-1][-1]+1
+
+        used_variables = [variables[i1][i2][i3] for i1 in range(0, n) for i2 in range(0, n)]
+        globals()['used_variables'] = used_variables
+        new_cnfs = []
+        for v, row_s1, row_s2, row_r in zip(used_variables, vars_s[:-1], vars_s[1:], vars_r):
+            s1 = row_s1[0]
+            s2 = row_s2[0]
+            r = row_r[0]
+            new_cnfs.extend([[-s1, -v, -s2], [s1, v, -s2], [-s1, v, s2], [s1, -v, s2]]) # xor
+            new_cnfs.extend([[-s1, -v, r], [s1, -r], [v, -r]]) # and
+            for s1, s2, r in zip(row_s1[1:], row_s2[1:], row_r):
+                new_cnfs.extend([[-s1, -r, -s2], [s1, r, -s2], [-s1, r, s2], [s1, -r, s2]]) # xor
+            for s1, r1, r2 in zip(row_s1[1:-1], row_r[:-1], row_r[1:]):
+                new_cnfs.extend([[-s1, -r1, r2], [s1, -r2], [r1, -r2]]) # and
+        cnfs.extend(new_cnfs)
+        
+        cnfs.extend([[-s] for s in vars_s[0]])
+
+        needed_bin_num = list(map(int, bin(n)[2:].zfill(amount_bits)))[::-1]
+        # needed_bin_num = list(map(int, bin(1)[2:].zfill(amount_bits)))[::-1]
+        # print("needed_bin_num: {}".format(needed_bin_num))
+        clause_end = [[s if i==1 else -s] for s, i in zip(vars_s[-1], needed_bin_num)]
+        # globals()['clause_end'] = clause_end
+        cnfs.extend(clause_end)
+
+    # add neighbor restrions
+    # 3x3 field need to add diagonals restrictions too! k=1 is 3x3, k=2 is 5x5 etc.
+    # k = 3
+    new_cnfs = []
+    for i3 in range(0, n):
+        for k1 in range(1, k+1):
+            for i1 in range(0, n-k1):
+                for i2 in range(0, n):
+                    new_cnfs.append([-variables[i1][i2][i3], -variables[i1+k1][i2][i3]])
+            for i1 in range(0, n):
+                for i2 in range(0, n-k1):
+                    new_cnfs.append([-variables[i1][i2][i3], -variables[i1][i2+k1][i3]])
+
+            for k2 in range(1, k+1):
+                for i1 in range(0, n-k1):
+                    for i2 in range(0, n-k2):
+                        new_cnfs.append([-variables[i1][i2][i3], -variables[i1+k1][i2+k2][i3]])
+                for i1 in range(k1, n):
+                    for i2 in range(0, n-k2):
+                        new_cnfs.append([-variables[i1][i2][i3], -variables[i1-k1][i2+k2][i3]])
+    cnfs.extend(new_cnfs)
+
+    new_cnfs = []
+    n_sqrt = int(np.sqrt(n))
+    if n_sqrt**2==n:
+        for i3 in range(0, n):
+            for j1 in range(0, n_sqrt):
+                for j2 in range(0, n_sqrt):
+                    variables_part = [variables[j1*n_sqrt+i1][j2*n_sqrt+i2][i3] for i1 in range(0, n_sqrt) for i2 in range(0, n_sqrt)]
+                    for i, v1 in enumerate(variables_part[:-1], 0):
+                        for v2 in variables_part[i+1:]:
+                            new_cnfs.append([-v1, -v2])
+
+            # only needed for a special sudoku type!
+            for j1 in range(0, n_sqrt):
+                for j2 in range(0, n_sqrt):
+                    variables_part = [variables[j1+i1*n_sqrt][j2+i2*n_sqrt][i3] for i1 in range(0, n_sqrt) for i2 in range(0, n_sqrt)]
+                    for i, v1 in enumerate(variables_part[:-1], 0):
+                        for v2 in variables_part[i+1:]:
+                            new_cnfs.append([-v1, -v2])
+    cnfs.extend(new_cnfs)
+
+    print("len(cnfs): {}".format(len(cnfs)))
+
+    with Glucose3(bootstrap_with=cnfs) as m:
+        print(m.solve())
+        print("len(list(m.get_model())): {}".format(len(list(m.get_model()))))
+        models = []
+        for i, m in zip(range(1, 1+1), m.enum_models()):
+            print("found model nr. i: {}".format(i))
+            models.append(m)
+        # models = [m for m, _ in zip(m.enum_models(), range(0, 1))]
+
+    def convert_model_to_field(m):
+        # arr = np.array(models[0])
+        arr = np.array(m)
+        arr = arr[(arr>0)&(arr<=n**3)]
+        field = np.zeros((n, n), dtype=np.int)
+        for v in arr:
+            tpl = vars_dict[v]
+            field[tpl[:2]] = tpl[2]
+        return field
+
+    for i, m in enumerate(models, 1):
+        field = convert_model_to_field(m)
+        # field = convert_model_to_field(models[0])
+        print("i: {}, field:\n{}".format(i, field))
+
+    return field
 
 
 if __name__ == "__main__":
     # test_a_simple_expression_comparison()
     # find_no_8_neighbor_same_color_for_rubiks_cube_2x2()
+
+    # get random 6xnxn cube!
+    # n = 10
+
+    # idxs = [6*n*n*f+6*n*y+6*x+int(np.random.randint(0, 6)) for f in range(0, 6) for y in range(0, n) for x in range(0, n)]
+    # idxs = np.array(idxs)
+
+    # img = get_rubiks_image(idxs, n)
+    # img.show()
+    # sys.exit(0)
+
     find_no_8_neighbor_same_color_for_rubiks_cube_4x4()
+    sys.exit(0)
+    # k=0, n=2
+    # k=1, n=5
+    # k=2, n=10
+    # k=3, n=17
+    # k=4, n=26
+
+    n_sqrt = 3
+    n = 9
+    k = 1
+
+    field = get_solution_plain_latin_square(n=n, k=k)
+
+    # check, if field is really a OK sudoku field?!
+    print("check rows: ")
+    set_lens_row = []
+    for j in range(0, n):
+        values = []
+        for i in range(0, n):
+            values.append(field[j, i])
+        vals_set = set(values)
+        set_lens_row.append((j, len(vals_set)))
+
+    print("check cols: ")
+    set_lens_col = []
+    for i in range(0, n):
+        values = []
+        for j in range(0, n):
+            values.append(field[j, i])
+        vals_set = set(values)
+        set_lens_col.append((i, len(vals_set)))
+
+    print("check sqrt block: ")
+    set_lens_sqrt_block = []
+    for j1 in range(0, n_sqrt):
+        for i1 in range(0, n_sqrt):
+            values = []
+            for j2 in range(0, n_sqrt):
+                for i2 in range(0, n_sqrt):
+                    values.append(field[j1*n_sqrt+j2, i1*n_sqrt+i2])
+            vals_set = set(values)
+            set_lens_sqrt_block.append((j1*n_sqrt+i1, len(vals_set)))
+
+    print("check sqrt 1 cell: ")
+    set_lens_sqrt_1_cell = []
+    for j1 in range(0, n_sqrt):
+        for i1 in range(0, n_sqrt):
+            values = []
+            for j2 in range(0, n_sqrt):
+                for i2 in range(0, n_sqrt):
+                    values.append(field[j1+j2*n_sqrt, i1+i2*n_sqrt])
+            vals_set = set(values)
+            set_lens_sqrt_1_cell.append((j1*n_sqrt+i1, len(vals_set)))
+
+    print("check neighbor (k*2+1)x(k*2+1): ")
+    field_neighbor_check = np.zeros((n, n), dtype=np.int)
+    for j in range(k, n-k):
+        for i in range(k, n-k):
+            f_part = field[j-k:j+k+1, i-k:i+k+1]
+            field_neighbor_check[j, i] = np.sum(f_part==field[j, i])
+
+    print("set_lens_row: {}".format(set_lens_row))
+    print("set_lens_col: {}".format(set_lens_col))
+    print("set_lens_sqrt_block: {}".format(set_lens_sqrt_block))
+    print("set_lens_sqrt_1_cell: {}".format(set_lens_sqrt_1_cell))
+
+    idxs_x = np.zeros((n, n), dtype=np.int)+np.arange(0, n)
+    idxs_y = idxs_x.T
+    idxs = np.dstack((idxs_y, idxs_x))
+
+    idxs1 = idxs-k
+    idxs2 = idxs+k+1
+
+    idxs1[idxs1<0] = 0
+    idxs2[idxs2>=n] = n
+
+    for yxs, yxs1, yxs2 in zip(idxs, idxs1, idxs2):
+        for (y, x), (y1, x1), (y2, x2) in zip(yxs, yxs1, yxs2):
+            # print("y1: {}, x1: {}, y2: {}, x2: {}".format(y1, x1, y2, x2))
+            field_part = field[y1:y2, x1:x2]
+            field_neighbor_check[y, x] = np.sum(field_part==field[y, x])
+            # print(" - field_part:\n{}".format(field_part))
+    print("field_neighbor_check:\n{}".format(field_neighbor_check))
+    

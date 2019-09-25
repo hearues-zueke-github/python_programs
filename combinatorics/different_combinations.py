@@ -113,7 +113,7 @@ def get_all_permutations_parts(n, m):
     arr = get_all_permutations_increment(n, m)
     size = arr.shape[0]
     perm_tbl = get_permutation_table(m)
-    big_arr = np.zeros((arr.shape[0]*perm_tbl.shape[0], m), dtype=np.int)
+    big_arr = np.zeros((size*perm_tbl.shape[0], m), dtype=np.int)
     for i, row in enumerate(perm_tbl, 0):
         big_arr[size*i:size*(i+1)] = arr[:, row]
     return big_arr

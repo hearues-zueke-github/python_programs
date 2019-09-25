@@ -39,6 +39,21 @@ def get_primes(n):
     # return ps
 
 
+def prime_factorization(n, ps):
+    lst = []
+
+    for p in ps:
+        count = 0
+        while n%p==0:
+            count += 1
+            n //= p
+        lst.append((p, count))
+        if n==1:
+            break
+
+    return lst
+
+
 def get_prime_amount_timetable(n, ps):
     timetable = np.zeros((len(ps), )).astype(np.int)
 
@@ -53,18 +68,41 @@ def get_prime_amount_timetable(n, ps):
     return timetable
 
 
+def sequence_1():
+    n_max = 100
+    lst = []
+
+    for n in range(1, n_max+1):
+        ps = list(get_primes(n))
+        timetable = get_prime_amount_timetable(n, ps).astype(object)
+        ps_pow = ps**timetable
+        biggest_n_number = np.prod(ps_pow)
+        lst.append(biggest_n_number)
+
+    # sequence A003418
+    print("lst: {}".format(lst))
+
+
+def sequence_2():
+    n_max = 100
+    lst = []
+
+    ps = list(get_primes(n_max))
+    for n in range(1, n_max+1):
+        prime_factors = np.array(prime_factorization(n, ps))
+        print("n: {}".format(n))
+        n_mult = np.sum(np.multiply.reduce(prime_factors, axis=1))
+        print("n_mult: {}".format(n_mult))
+        lst.append(n_mult)
+
+    # sequence A001414
+    print("lst: {}".format(lst))
+
+
+def sequence_3():
+    pass
+
+
 if __name__ == "__main__":
-    n = 100
-    print("n: {}".format(n))
-
-    ps = get_primes(n)
-    print("ps: {}".format(ps))
-
-    timetable = get_prime_amount_timetable(n, ps).astype(object)
-    print("timetable: {}".format(timetable))
-
-    ps_pow = ps**timetable
-    print("ps_pow: {}".format(ps_pow))
-
-    biggest_n_number = np.prod(ps_pow)
-    print("biggest_n_number: {}".format(biggest_n_number))
+    # sequence_1()
+    sequence_2()

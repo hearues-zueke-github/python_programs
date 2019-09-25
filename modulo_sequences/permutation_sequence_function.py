@@ -28,27 +28,40 @@ PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 
 if __name__ == "__main__":
-    n = 3
+    m = 5
+    a, b = np.random.randint(0, m, (2, ))
+    l = []
+    for x in range(0, m):
+        l.append(a+b*x+x)
+
+    sys.exit(0)
+
+    n = 2
+    print("n: {}".format(n))
 
     xs = np.arange(0, n)
-    choosen_fs = get_permutation_table(n)[1:]
-    perm_parts_tbl = different_combinations.get_all_permutations_parts(choosen_fs.shape[0], 3)
+    choosen_fs_base = get_permutation_table(n)[1:]
+    perm_parts_tbl = different_combinations.get_all_permutations_parts(choosen_fs_base.shape[0], 1)
 
-    def mix_choosen_fs():
-        choosen_fs[:] = choosen_fs[np.random.permutation(np.arange(0, factorial(n)-1))]
+    # TODO: fix this whole process with a recursion search for the smallest amount
+    # of needed functions to create a whole loop of distinct permutations with length n!
+
+    # def mix_choosen_fs():
+    #     choosen_fs[:] = choosen_fs[np.random.permutation(np.arange(0, factorial(n)-1))]
     
     def get_perm_parts_gen():
         for row in perm_parts_tbl:
             yield row
 
     different_working_tpls = []
-    # for nr_iter, row in enumerate(get_perm_parts_gen()):
-    #     print("nr_iter: {}, row: {}".format(nr_iter, row))
-    for nr_iter in range(0, 1000):
-        if nr_iter%1000==0:
-            print("nr_iter: {}".format(nr_iter))
-            print(" - len(different_working_tpls): {}".format(len(different_working_tpls)))
-        while True:
+    for nr_iter, row in enumerate(get_perm_parts_gen()):
+
+        # print("nr_iter: {}, row: {}".format(nr_iter, row))
+    # for nr_iter in range(0, 1000):
+    #     if nr_iter%1000==0:
+    #         print("nr_iter: {}".format(nr_iter))
+    #         print(" - len(different_working_tpls): {}".format(len(different_working_tpls)))
+        # while True:
             # get_new_perm = lambda: np.random.permutation(xs)
 
             # k = 20
@@ -69,60 +82,62 @@ if __name__ == "__main__":
             # print("len(choosen_fs): {}".format(len(choosen_fs)))
             # print("choosen_fs: {}".format(choosen_fs))
 
-            mix_choosen_fs()
+            # mix_choosen_fs()
             # print("choosen_fs: {}".format(choosen_fs))
 
-            current_x = xs
-            lst_tpls = [tuple(current_x)]
-            lst_fs_num = []
+        current_x = xs
+        lst_tpls = [tuple(current_x)]
+        lst_fs_num = []
 
-            n_max = factorial(n)
-            for i in range(1, n_max):
-                # print("i: {}".format(i))
-                found_f = False
-                for j, f in enumerate(choosen_fs, 0):
-                    new_x = f[current_x]
-                    t = tuple(new_x)
-                    if not t in lst_tpls:
-                        found_f = True
-                        break
+        choosen_fs = choosen_fs_base[row]
 
-                if not found_f:
+        n_max = factorial(n)
+        for i in range(1, n_max):
+            # print("i: {}".format(i))
+            found_f = False
+            for j, f in enumerate(choosen_fs, 0):
+                new_x = f[current_x]
+                t = tuple(new_x)
+                if not t in lst_tpls:
+                    found_f = True
                     break
 
+            if not found_f:
+                break
+
+            lst_tpls.append(t)
+            lst_fs_num.append(j)
+            current_x = new_x.copy()
+
+        if i==n_max-1:
+            found_f = False
+            for j, f in enumerate(choosen_fs, 0):
+                new_x = f[current_x]
+                t = tuple(new_x)
+                if t==lst_tpls[0]:
+                    found_f = True
+                    break
+
+            if found_f:
                 lst_tpls.append(t)
                 lst_fs_num.append(j)
-                current_x = new_x.copy()
+                current_x = new_x
 
-            if i==n_max-1:
-                found_f = False
-                for j, f in enumerate(choosen_fs, 0):
-                    new_x = f[current_x]
-                    t = tuple(new_x)
-                    if t==lst_tpls[0]:
-                        found_f = True
-                        break
+        if len(lst_tpls)<n_max+1:
+            # print("Not a cyclic of functions found!")
+            # print("len(lst_tpls): {}".format(len(lst_tpls)))
+            continue
 
-                if found_f:
-                    lst_tpls.append(t)
-                    lst_fs_num.append(j)
-                    current_x = new_x
-
-            if len(lst_tpls)<n_max+1:
-                # print("Not a cyclic of functions found!")
-                # print("len(lst_tpls): {}".format(len(lst_tpls)))
-                continue
-
-            # print("best: i: {}, len(lst_tpls): {}".format(i, len(lst_tpls)))
-            # print("lst_tpls: {}".format(lst_tpls))
-            # print("lst_fs_num: {}".format(lst_fs_num))
-            # print("current_x: {}".format(current_x))
-            unique, counts = np.unique(lst_fs_num, return_counts=True)
-            # print("")
-            # print("unique: {}".format(unique))
-            # print("counts: {}".format(counts))
-            # print("unique.shape[0]: {}".format(unique.shape[0]))
-            break
+        # print("best: i: {}, len(lst_tpls): {}".format(i, len(lst_tpls)))
+        # print("lst_tpls: {}".format(lst_tpls))
+        # print("lst_fs_num: {}".format(lst_fs_num))
+        # print("current_x: {}".format(current_x))
+        unique, counts = np.unique(lst_fs_num, return_counts=True)
+        # print("")
+        # print("unique: {}".format(unique))
+        # print("counts: {}".format(counts))
+        # print("unique.shape[0]: {}".format(unique.shape[0]))
+        # break
 
         working_tpl = tuple(tuple(choosen_fs[i]) for i in unique)
 
@@ -130,7 +145,7 @@ if __name__ == "__main__":
             different_working_tpls.append(working_tpl)
 
     different_working_tpls = sorted(different_working_tpls)
-    print("different_working_tpls: {}".format(different_working_tpls))
+    # print("different_working_tpls: {}".format(different_working_tpls))
 
     lengths = [len(t) for t in different_working_tpls]
     u2, c2 = np.unique(lengths, return_counts=True)
