@@ -39,13 +39,18 @@ if __name__ == "__main__":
     # for page_num in range(100*n, 100*(n+1)):
     # 1237
     # n = 1000
-    n1 = 3800
-    n2 = 4200
+    n1 = 4200
+    n2 = 4600
+    page_html_file_name = "page_{:08X}.html".format(np.random.randint(0, 2**32))
+    print("page_html_file_name: {}".format(page_html_file_name))
+    # sys.exit()
+
     for page_num in range(n1, n2):
         print("page_num: {}".format(page_num))
-        os.system("curl https://pixabay.com/images/search/?pagi={} > page.html".format(page_num))
+        os.system("curl https://pixabay.com/images/search/?pagi={page_num} > {page_html_file_name}".format(
+            page_num=page_num, page_html_file_name=page_html_file_name))
         
-        f = open("page.html", "r")
+        f = open(page_html_file_name, "r")
         lines = f.readlines()
         f.close()
 
@@ -59,7 +64,7 @@ if __name__ == "__main__":
         print("len(img_links): {}".format(len(img_links)))
         # print("img_links: {}".format(img_links))
 
-        images_path = ROOT_PATH+"images/pixabay_com_9/"
+        images_path = ROOT_PATH+"images/pixabay_com_11/"
         if not os.path.exists(images_path):
             os.makedirs(images_path)
 
@@ -94,3 +99,5 @@ if __name__ == "__main__":
         os.chdir(current_path)
 
         # break
+
+    os.system("rm {}".format(page_html_file_name))

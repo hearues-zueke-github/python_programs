@@ -19,6 +19,11 @@ from multiprocessing import Process, Pipe, Lock
 
 import utils_sequence
 
+sys.path.append("../math_numbers")
+import prime_numbers_fun
+
+
+np.set_printoptions(threshold=sys.maxsize)
 
 def get_arr_shifts(arr, length):
     arr_length = arr.shape[0]
@@ -850,13 +855,17 @@ def do_1_2d_sequence(suffix_dir_name='', nr=1, start_acc=0):
 
 def do_generic_1d_sequence(n, m, funcs_amount=1):
     def fa_primitive(n):
+        if n == 1:
+            return 1
         return 0
 
-    def count_a6():
-        pass
-    count_a6.counter = 0
+    # def count_a6():
+    #     pass
+    # count_a6.counter = 0
 
-    def get_fa_fan(fa2, num=0):
+    using_numbers = [1, 1, 1, 1, 1, 1]
+
+    def get_fa_fan(fa2, fa3, num=0):
         def fan(n, i, j):
             fan.counter += 1
 
@@ -867,16 +876,23 @@ def do_generic_1d_sequence(n, m, funcs_amount=1):
 
             v = 0
             if n >= 1:
-                a1 = fan(n-1, 0, 0)
-                a2 = fan(n-1-i-1, i+1, j)
-                a3 = fan(n-1-j-1, i, j+1)
-                a4 = fan(n-1-i-j-1, i+1, j+1)
-                a5 = fan(n-1-i-i-1-(i+j+i*j), i+1, j+1)
-                a6 = 0
-                if a1 == 0 or a2 == 0: # or a3 != 0:
-                    a6 = fa2(n)
-                    count_a6.counter += 1
+                a1, a2, a3, a4, a5, a6 = (0, )*6
+                if using_numbers[0]:
+                    a1 = fan(n-1, i, j)
+                if using_numbers[1]:
+                    a2 = fan(n-1-i-1, i+1, j)
+                if using_numbers[2]:
+                    a3 = fan(n-1-j-1, i, j+1)
+                if using_numbers[3]:
+                    a4 = fa2(n)
+                if using_numbers[4]:
+                    a5 = fa3(n)
+                if using_numbers[5]:
+                    a6 = fan(n-1-a4-1, i+1, j+1)
+                # v = (a1+a2+a3+a4+a5) % m
                 v = (a1+a2+a3+a4+a5+a6) % m
+                # v = (a1+a4+a5+a6) % m
+                # v = (a1+a2+a3+a4+a5+a6) % m
             fan.vals[t] = v
             fan.vals_count[t] = 1
             return v
@@ -887,69 +903,175 @@ def do_generic_1d_sequence(n, m, funcs_amount=1):
         def fa(n):
             fa.counter += 1
             if n in fa.vals:
+                fa.vals_count[n] += 1
                 return fa.vals[n]
 
             v = fan(n, 0, 0)
+            fa.vals_count[n] = 0
             fa.vals[n] = v
             return v
 
-        fa.vals = {1: 1}
+        # fa.vals = {0: 0, 1: fa2(num)}
+        # fa.vals_count = {0: 0, 1: 0}
+        # fa.vals = {0: 0, 1: fa2(num%m+1), 2: fa3((num+1)%m+1)}
+        # fa.vals = {0: 0, 1: 1}
+        fa.vals = {0: 0, 1: (fa2(num%m+1)+fa3(num%m+1))%m}
+        fa.vals_count = {0: 0, 1: 0}
         fa.num = num
         fa.counter = 0
         fa.fa2 = fa2
         fa.fan = fan
 
-        return fa
+        def fstart(n):
+            # fa.counter2 = 0
+            val = fa(n)
+            # fa.vals_count[n] = fa.counter2
+            return val
 
-    fa_prev = fa_primitive
-    fa_lst = []
+        fstart.fa = fa
+        fstart.fan = fan
+
+        return fstart
+
+    fstart_prev2 = fa_primitive
+    fstart_prev = fa_primitive
+    fstart_lst = []
 
     for num in range(1, funcs_amount+1):
-        fa = get_fa_fan(fa_prev, num=num)
-        for i in range(1, n+1): fa(i)
-        print("func num: {} finished!".format(num))
+        fa = get_fa_fan(fstart_prev2, fstart_prev, num=num)
+        for i in range(1, n): fa(i)
 
-        fa_lst.append(fa)
-        fa_prev = fa
+        print(' '*20, end='\r', flush=True)
+        print('num: {}'.format(num), end='\r', flush=True)
+
+        fstart_lst.append(fa)
+        fstart_prev2 = fstart_prev
+        fstart_prev = fa
         num += 1
+    print()
 
-    # fa2 = get_fa_fan(fa1)
-    # fa3 = get_fa_fan(fa2)
-    # fa4 = get_fa_fan(fa3)
-
-    # for i in range(1, n): fa1(i)
-    # for i in range(1, n): fa4(i)
-    
-    # fa_last = fa_lst[-1]
-    # for i in range(1, n+1): fa_last(i)
+    # for index, fa in enumerate(fstart_lst, 0):
+    #     fan_counter = fa.fan.counter
+    #     print("index: {}, fan_counter: {}".format(index, fan_counter))
 
     # print("count_a6.counter: {}".format(count_a6.counter))
 
-    # fa_lst = [fa1]
-    # fa_lst = [fa1, fa2, fa3, fa4]
+    return fstart_lst
 
-    return fa_lst
 
+def van_eck_sequence(n):
+    numbers = {0: 0}
+    lst = [0, 0, 1]
+    for j in range(2, n):
+        v = lst[j]
+        if not v in numbers:
+            lst.append(0)
+            numbers[v] = 0
+        else:
+            for k in range(1, j+1):
+                if lst[-1-k]==v:
+                    lst.append(k)
+                    break
+    return lst
+
+
+def van_eck_sequence_2(n):
+    numbers = {0: 0}
+    lst = [0, 0, 1]
+    j = 2
+    while j < n:
+        v = lst[j]
+        if not v in numbers:
+            lst.append(0)
+            numbers[v] = 0
+            j += 1
+        else:
+            for k in range(1, j+1):
+                if lst[-1-k]==v:
+                    lst.append(k)
+                    j += 1
+                    break
+    return lst
  
-if __name__ == "__main__":
-    n = 100
-    # lst = f_mult_1(n)
-    m = 10
-    # lst = f_jumping_modulo(n, m=m)
 
-    lst = get_sequence_A322670(n)
-    print("lst: {}".format(lst))
-    sys.exit(0)
+def n3p1_sequence(n):
+    lengths = {1: 0, 2: 0, 4: 0}
+    new_lengths = []
+
+    for i in range(3, n+1):
+        if not i in lengths:
+            v = i        
+            counts = [v]
+            while not v in lengths:
+                if v % 2 != 0:
+                    v = (v*3)+1
+                    counts.append(v)
+                v //= 2
+                counts.append(v)
+            c_prev = counts[-1]
+            for c in counts[:-1][::-1]:
+                lengths[c] = lengths[c_prev]+1
+                c_prev = c
+            # print("counts: {}".format(counts))
+            new_lengths.append(len(counts)-1)
+
+    return lengths, new_lengths
+
+
+if __name__ == "__main__":
+    lst = van_eck_sequence_2(10000)
+    arr = np.array(lst)
+    print("len(lst): {}".format(len(lst)))
+
+    max_n = np.max(arr)
+
+    print("max_n: {}".format(max_n))
+
+    n = 10**7
+    lengths, new_lengths = n3p1_sequence(n)
+    nl_u, nl_uc = np.unique(new_lengths, return_counts=True)
+    print("n: {}".format(n))
+    print("nl_uc: {}".format(nl_uc))
+    sys.exit(-1234567)
+    # ps = prime_numbers_fun.get_primes(100)
+    # print("ps: {}".format(ps))
+
+    # print("np.cumsum(ps): {}".format(np.cumsum(ps).tolist()))
+
+    # lst = [1]
+    # for _ in range(1, 100):
+    #     i = len(lst)-1
+    #     j = 0
+    #     s = 0
+    #     while i >= 0:
+    #         s += lst[i]
+    #         i -= ps[j]
+    #         j += 1
+    #     # s %= 10
+    #     lst.append(s)
+    # print("lst: {}".format(lst))
+
+    # sys.exit(0)
+
+
+    n = 20
+    m = 10
 
     # testing other 1d sequences!
-    fa_lst = do_generic_1d_sequence(n, m, funcs_amount=20)
-    for i, fa in enumerate(fa_lst, 1):
-    # for i, fa in enumerate(fa_lst[::10], 1):
-        print("i: {}".format(i))
-        # print("fa.vals:\n{}".format(fa.vals))
-        print("list(fa.vals.values()):\n{}".format(list(fa.vals.values())))
-        print("fa.num: {}".format(fa.num))
-        # print("fa.counter: {}, fa.fan.counter: {}".format(fa.counter, fa.fan.counter))
+    fstart_lst = do_generic_1d_sequence(n, m, funcs_amount=150)
+
+    vals_lst = [list(fstart.fa.vals.values()) for fstart in fstart_lst]
+    arr_orig = np.array(vals_lst, dtype=np.uint8).T
+    print("arr_orig[:4]:\n{}".format(arr_orig[:4]))
+    print("arr_orig[-4:]:\n{}".format(arr_orig[-4:]))
+
+    arr = arr_orig.T.copy()
+    arr *= 28
+
+    resize = 1
+    img = Image.fromarray(arr)
+    img = img.resize((img.width*resize, img.height*resize))
+    img.show()
 
     sys.exit(0)
 

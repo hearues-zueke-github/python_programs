@@ -389,17 +389,12 @@ class ImagesObjectConversion(Exception):
         self.save_pixs_object(self.pixs_obj, self.obj_template_path.format(self.amount_parts[0]))
 
 
-if __name__ == "__main__":   
-    images_path = ROOT_PATH+'images/pixabay_com_3/'
+if __name__ == "__main__":
+    # images_path = ROOT_PATH+'images/pixabay_com_3/'
 
     # images_path_pngs = images_path+'pngs/'
     # if not os.path.exists(images_path_pngs):
     #     os.makedirs(images_path_pngs)
-
-    obj_path = ROOT_PATH+"datas/objects_2_hex_digits/"
-    # obj_path = images_path+"picture_dict_objs/"
-    if not os.path.exists(obj_path):
-        os.makedirs(obj_path)
 
     # root_path_dir, dir_names, file_names = next(os.walk(images_path), range(0, 1))
     # print("root_path_dir: {}".format(root_path_dir))
@@ -524,7 +519,11 @@ if __name__ == "__main__":
 
     sys.exit(-2)
 
-
+    obj_path = ROOT_PATH+"datas/objects_2_hex_digits/"
+    # obj_path = images_path+"picture_dict_objs/"
+    if not os.path.exists(obj_path):
+        os.makedirs(obj_path)
+    
     img_obj_hash_conv = ImagesObjectHashConversion(images_path, obj_path, "pixabay_com_2hex_obj_data_{:02X}.pkl.gz")
     img_obj_hash_conv.save_pixs_to_objects()
     # TODO: create a function/class for creating the mosaic pixses!

@@ -14,8 +14,6 @@ from dotmap import DotMap
 from PIL import Image
 
 path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
-sys.path.append(path_dir_root+"../combinatorics/")
-import different_combinations
 # from ..combinatorics import different_combinations
 
 def write_dm_obj_txt(dm):
@@ -87,10 +85,10 @@ def create_lambda_functions_with_matrices(dm_params):
         dm_params = DotMap(dm_params)
 
     assert dm_params.ft
-    assert dm_params.path_dir
-    assert dm_params.save_data
-    assert dm_params.file_name_dm
-    assert dm_params.file_name_txt
+    # assert dm_params.path_dir
+    # assert dm_params.save_data
+    # assert dm_params.file_name_dm
+    # assert dm_params.file_name_txt
     assert dm_params.min_or
     assert dm_params.max_or
     assert dm_params.min_and
@@ -99,10 +97,10 @@ def create_lambda_functions_with_matrices(dm_params):
     assert dm_params.max_n  
 
     ft = dm_params.ft
-    path_dir = dm_params.path_dir
-    save_data = dm_params.save_data
-    file_name_dm = dm_params.file_name_dm
-    file_name_txt = dm_params.file_name_txt
+    # path_dir = dm_params.path_dir
+    # save_data = dm_params.save_data
+    # file_name_dm = dm_params.file_name_dm
+    # file_name_txt = dm_params.file_name_txt
     min_or = dm_params.min_or
     max_or = dm_params.max_or
     min_and = dm_params.min_and
@@ -166,6 +164,7 @@ def create_lambda_functions_with_matrices(dm_params):
 
     
     dm_params.functions_str_lst = functions_str_lst
+    print("functions_str_lst: {}".format(functions_str_lst))
     dm_params.idx_choosen_params_lst = idx_choosen_params_lst
     dm_params.idx_inv_params_lst = idx_inv_params_lst
 

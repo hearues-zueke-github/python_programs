@@ -3,6 +3,15 @@
 import numpy as np
 
 def get_primes(n):
+    if n < 2:
+        return
+    yield 2
+    if n < 3:
+        return
+    yield 3
+    if n < 5:
+        return
+    yield 5
     ps = [2, 3, 5]
     d = [4, 2]
 
@@ -21,12 +30,29 @@ def get_primes(n):
             k += 1
 
         if is_prime:
+            yield i
             ps.append(i)
 
         i += d[j]
         j = (j+1) % 2 
 
-    return ps
+    # return ps
+
+
+def prime_factorization(n, ps):
+    lst = []
+
+    for p in ps:
+        count = 0
+        while n%p==0:
+            count += 1
+            n //= p
+        lst.append((p, count))
+        if n==1:
+            break
+
+    return lst
+
 
 def get_prime_amount_timetable(n, ps):
     timetable = np.zeros((len(ps), )).astype(np.int)
@@ -41,17 +67,42 @@ def get_prime_amount_timetable(n, ps):
 
     return timetable
 
-n = 100
-print("n: {}".format(n))
 
-ps = get_primes(n)
-print("ps: {}".format(ps))
+def sequence_1():
+    n_max = 100
+    lst = []
 
-timetable = get_prime_amount_timetable(n, ps).astype(object)
-print("timetable: {}".format(timetable))
+    for n in range(1, n_max+1):
+        ps = list(get_primes(n))
+        timetable = get_prime_amount_timetable(n, ps).astype(object)
+        ps_pow = ps**timetable
+        biggest_n_number = np.prod(ps_pow)
+        lst.append(biggest_n_number)
 
-ps_pow = ps**timetable
-print("ps_pow: {}".format(ps_pow))
+    # sequence A003418
+    print("lst: {}".format(lst))
 
-biggest_n_number = np.prod(ps_pow)
-print("biggest_n_number: {}".format(biggest_n_number))
+
+def sequence_2():
+    n_max = 100
+    lst = []
+
+    ps = list(get_primes(n_max))
+    for n in range(1, n_max+1):
+        prime_factors = np.array(prime_factorization(n, ps))
+        print("n: {}".format(n))
+        n_mult = np.sum(np.multiply.reduce(prime_factors, axis=1))
+        print("n_mult: {}".format(n_mult))
+        lst.append(n_mult)
+
+    # sequence A001414
+    print("lst: {}".format(lst))
+
+
+def sequence_3():
+    pass
+
+
+if __name__ == "__main__":
+    # sequence_1()
+    sequence_2()

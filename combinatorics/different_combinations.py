@@ -1,4 +1,4 @@
-#! /usr/bin/python3.6
+#! /usr/bin/python3.7
 
 # -*- coding: utf-8 -*-
 
@@ -28,6 +28,24 @@ def get_all_combinations_repeat(m, n):
             arr[r*j:r*(j+1), -i:] = first_col
 
     return arr
+
+
+def get_all_combinations_repeat_generator(m, n):
+    arr = np.zeros((n, ), dtype=np.uint8).copy()
+    yield arr.copy()
+
+    i_start = arr.shape[0]-1
+    while True:
+        i = i_start
+        while i >= 0:
+            arr[i] += 1
+            if arr[i] < m:
+                break
+            arr[i] = 0
+            i -= 1
+        if i < 0:
+            break
+        yield arr.copy()
 
 
 # m ... max num for state
@@ -80,6 +98,25 @@ def get_permutation_table(n, same_pos=True):
         arr = arr[~np.any(arr == np.arange(0, n), axis=1)]
 
     return arr
+
+# n ... amount of numbers
+# m ... length of permutations
+def get_all_permutations_increment(n, m):
+    return get_all_combinations_increment(n-m+1, m)+np.arange(0, m)
+    
+
+# n ... amount of numbers
+# m ... length of permutations
+# instead of e.g. [1, 2, 3] it will also contain [2, 3, 1], [1, 3, 2], etc.
+# each permutation of [1, 2, 3] including!
+def get_all_permutations_parts(n, m):
+    arr = get_all_permutations_increment(n, m)
+    size = arr.shape[0]
+    perm_tbl = get_permutation_table(m)
+    big_arr = np.zeros((size*perm_tbl.shape[0], m), dtype=np.int)
+    for i, row in enumerate(perm_tbl, 0):
+        big_arr[size*i:size*(i+1)] = arr[:, row]
+    return big_arr
 
 
 # m ... max num for state
@@ -211,6 +248,16 @@ def simple_example():
     print("arr_repeat.shape:\n{}".format(arr_repeat.shape))
     print("arr_increment.shape:\n{}".format(arr_increment.shape))
     print("amount_arr_increment.shape: {}".format(amount_arr_increment.shape))
+
+
+# global simple tests
+arr_1_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]], dtype=np.uint8)
+arr_1_2 = get_all_combinations_repeat(2, 3)
+assert np.all(arr_1_1==arr_1_2)
+
+arr_2_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1], [0, 1, 2], [0, 2, 2], [1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]])
+arr_2_2 = get_all_combinations_increment(3, 3)
+assert np.all(arr_2_1==arr_2_2)
 
 
 if __name__ == "__main__":

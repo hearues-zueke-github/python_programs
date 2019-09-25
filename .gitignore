@@ -26,12 +26,17 @@ picture_diff/images
 picture_manipulation/*.png
 picture_manipulation/images
 picture_manipulation/lambda_functions
+
 puzzle_solver/*.png
+puzzle_solver/images/
+
 bytes_io/some_random_data.hex
 picture_manipulation/lambdas.txt
 test_programs/recursive_imports/num.bin
 
 java/myJar.jar
+
+image_resizing/*.png
 
 random_pictures/images
 random_pictures/datas
