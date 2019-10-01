@@ -22,6 +22,7 @@ import utils_sequence
 sys.path.append("../math_numbers")
 import prime_numbers_fun
 
+PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 np.set_printoptions(threshold=sys.maxsize)
 
