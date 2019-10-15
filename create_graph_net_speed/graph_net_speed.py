@@ -41,6 +41,7 @@ def time_measure(f, args):
 if __name__ == '__main__':
     print('Hello World!')
     with open('saved_rx_tx_2019.10.10_13:06:17.txt', 'r') as f:
+    # with open('saved_rx_tx_2019.10.10_13:13:22.txt', 'r') as f:
     # with open('saved_rx_tx_2019.10.09_19:36:02.txt', 'r') as f:
         lines = f.readlines()
 
@@ -95,7 +96,8 @@ if __name__ == '__main__':
     
     max_y = np.max((np.max(ys_speed_rxs), np.max(ys_speed_rxs)))
     plt.xlim([-1, 60*60*24])
-    plt.ylim([0, max_y+0.5])
+    plt.ylim([0, 8.0])
+    # plt.ylim([0, max_y+0.5])
 
     plt.title('Date Time Range\nFrom: {}\nTo: {}'.format(dts[0], dts[-1]))
     
@@ -118,7 +120,79 @@ if __name__ == '__main__':
     lgnd.legendHandles[0]._legmarker.set_markersize(8)
     lgnd.legendHandles[1]._legmarker.set_markersize(8)
 
+    plt.savefig('speedtest_average_all_values_{}.png'.format(dt_str), dpi=dpi)
+    
+
+
+    # create histogram_values
+    xs_sec_new = (xs_sec).astype(np.int)
+    # xs_sec_new = (xs_sec*10).astype(np.int)
+    x_ticks = 60*60*24
+    range_sec = 60
+    d_rx = {i: [] for i in range(-range_sec, x_ticks+range_sec)}
+    d_tx = {i: [] for i in range(-range_sec, x_ticks+range_sec)}
+    xs_sec_2 = np.array(list(range(0, x_ticks)))
+    # d_rx = {i: [] for i in range(-range_sec*10, x_ticks+range_sec*10)}
+    # d_tx = {i: [] for i in range(-range_sec*10, x_ticks+range_sec*10)}
+    # xs_sec_2 = np.array(list(range(0, x_ticks)))/10
+
+    for x, y_rx, y_tx in zip(xs_sec_new, ys_speed_rxs, ys_speed_txs):
+        d_rx[x].append(y_rx)
+        d_tx[x].append(y_tx)
+        if x<range_sec:
+        # if x<range_sec*10:
+            d_rx[x+x_ticks].append(y_rx)
+            d_tx[x+x_ticks].append(y_tx)
+        elif x>=x_ticks-range_sec:
+        # elif x>=x_ticks-range_sec*10:
+            d_rx[x-x_ticks].append(y_rx)
+            d_tx[x-x_ticks].append(y_tx)
+
+    # now calculate for each second +-range_sec the median!
+    ys_speed_rxs_median = []
+    ys_speed_txs_median = []
+    for x in range(0, x_ticks):
+        l_rx = []
+        l_tx = []
+        for i in range(-range_sec, range_sec, 1):
+        # for i in range(-range_sec*10, range_sec*10, 1):
+            l_rx.extend(d_rx[x+i])
+            l_tx.extend(d_tx[x+i])
+        ys_speed_rxs_median.append(np.median(l_rx))
+        ys_speed_txs_median.append(np.median(l_tx))
+
+
+    fig = plt.figure(figsize=(13, 8))
+    
+    max_y = np.max((np.max(ys_speed_rxs), np.max(ys_speed_rxs)))
+    plt.xlim([-1, 60*60*24])
+    plt.ylim([0, 4.0])
+    # plt.ylim([0, max_y+0.5])
+
+    plt.title('Date Time Range (Median values of +-{} sec)\nFrom: {}\nTo: {}'.format(range_sec, dts[0], dts[-1]))
+    
+    plt.xlabel('Time of day')
+    plt.ylabel('Download/Upload Speed [MiB/s]')
+
+    ax = plt.gca()
+    ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+    plt.grid(b=True, which='minor', axis='y', color='k', linewidth=0.1, linestyle='-')
+    plt.grid(b=True, which='major', axis='x', color='k', linewidth=0.1, linestyle='-')
+
+    plt.xticks([i*60*60 for i in range(0, 25)], ['{:02}:00:00'.format(i) for i in range(0, 25)], rotation=60)
+    fig.subplots_adjust(left=0.06, bottom=0.14, right=0.98, top=0.91)
+    
+    p_rxs = plt.plot(xs_sec_2, ys_speed_rxs_median, 'b.', markersize=0.5)[0]
+    p_txs = plt.plot(xs_sec_2, ys_speed_txs_median, 'g.', markersize=0.5)[0]
+
+    lgnd = plt.legend((p_rxs, p_txs), ('Download Speed (median +-{} sec) [MiB/s]'.format(range_sec), 'Upload Speed (median +-{} sec) [MiB/s]'.format(range_sec)), loc='upper right')
+
+    lgnd.legendHandles[0]._legmarker.set_markersize(8)
+    lgnd.legendHandles[1]._legmarker.set_markersize(8)
+
+    plt.savefig('speedtest_average_all_values_median_range_{}_sec_{}.png'.format(range_sec, dt_str), dpi=dpi)
+    
+
     # plt.savefig('speedtest_average_all_values_{}.eps'.format(dt_str))
     
     # plt.show(block=False)
-    plt.savefig('speedtest_average_all_values_{}.png'.format(dt_str), dpi=dpi)
