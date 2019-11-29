@@ -7,46 +7,34 @@ from PIL import Image, ImageTk
 
 class App(tk.Frame):
     def __init__( self, parent):
-        self.current_x = 0
-        self.current_y = 0
-
-        # create an arrow!
-        # self.arr = np.zeros((10, 10, 4), dtype=np.uint8)
-        # # self.arr[..., 3] = 255
-        # self.arr[4:6, 2:8] = (0x80, 0x00, 0x00, 255)
-        # self.arr[3:7, 6:7] = (0x80, 0x00, 0x00, 255)
-        # self.arr[2:8, 5:6] = (0x80, 0x00, 0x00, 255)
-
-        # self.img = Image.fromarray(self.arr)
-        # self.img = self.img.resize((self.img.width*5, self.img.height*5))        
-
-        # self.arr_new = np.array(self.img)
-
-        # self.arr_right = self.arr_new.copy()
-        # self.arr_left = np.flip(self.arr_new, axis=1).copy()
-        # self.arr_up = self.arr_left.transpose(1, 0, 2)
-        # self.arr_down = self.arr_right.transpose(1, 0, 2)
+        # position...(y, x)
+        self.l_positions = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)]
         
-        # self.img_right = Image.fromarray(self.arr_right)
-        # self.img_left = Image.fromarray(self.arr_left)
-        # self.img_up = Image.fromarray(self.arr_up)
-        # self.img_down = Image.fromarray(self.arr_down)
-        
-        # self.pht_right = ImageTk.PhotoImage(self.img_right)
-        # self.pht_left = ImageTk.PhotoImage(self.img_left)
-        # self.pht_up = ImageTk.PhotoImage(self.img_up)
-        # self.pht_down = ImageTk.PhotoImage(self.img_down)
+        first_pos = self.l_positions[-1]
 
-
-        # self.arr_blank = np.zeros((60, 40, 4), dtype=np.uint8)
-        # self.arr_blank[..., 3] = 255
-        # self.pht_blank = ImageTk.PhotoImage(Image.fromarray(self.arr_blank))
-
+        self.current_x = first_pos[1]
+        self.current_y = first_pos[0]
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        # self.prev_direction = 'E'
+        self.current_direction = 'E'
 
         self.box_width = 50
         self.box_height = 50
         self.x_amount = 400//self.box_width
         self.y_amount = 400//self.box_height
+
+
+        while True:
+            food_x = np.random.randint(0, self.x_amount)
+            food_y = np.random.randint(0, self.y_amount)
+            food_pos = (food_y, food_x)
+
+            if not food_pos in self.l_positions:
+                break
+        self.food_x = food_x
+        self.food_y = food_y
+
 
         self.color_idx = 0
         self.colors = [
@@ -59,10 +47,12 @@ class App(tk.Frame):
         self.img_arrow_up = Image.open('arrow_up_10x10.png')
         self.img_line_ver = Image.open('line_streight_vertical_10x10.png')
         self.img_line_dl = Image.open('line_down_left_10x10.png')
+        self.img_food = Image.open('food.png')
 
         self.img_arrow_up = self.img_arrow_up.resize((self.box_width, self.box_height))
         self.img_line_ver = self.img_line_ver.resize((self.box_width, self.box_height))
         self.img_line_dl = self.img_line_dl.resize((self.box_width, self.box_height))      
+        self.img_food = self.img_food.resize((self.box_width, self.box_height))      
         
 
         self.arr_arrow_up = np.array(self.img_arrow_up)
@@ -92,6 +82,7 @@ class App(tk.Frame):
         self.imgtk_line_ul = ImageTk.PhotoImage(Image.fromarray(self.arr_line_ul))
         self.imgtk_line_ur = ImageTk.PhotoImage(Image.fromarray(self.arr_line_ur))
 
+        self.imgtk_food = ImageTk.PhotoImage(self.img_food)
 
         tk.Frame.__init__(self, parent)
         self.canvas_bg = '#F0FFFF'
@@ -110,54 +101,157 @@ class App(tk.Frame):
         self.parent.bind('<Up>', self.move_up)
         self.parent.bind('<Down>', self.move_down)
 
-        self.canvas.create_image(0, 0, image=self.imgtk_arrow_up, anchor=tk.NW)
-        self.canvas.create_image(0, 50, image=self.imgtk_line_ver, anchor=tk.NW)
-        self.canvas.create_image(0, 100, image=self.imgtk_line_dl, anchor=tk.NW)
+        self.parent.bind('<space>', self.print_infos)
 
-        # self.canvas.create_image(0, 0, image=self.pht_blank, anchor=tk.NW)
+        for i in range(0, len(self.l_positions)-1):
+            self.canvas.create_image(self.box_width*i, 0, image=self.imgtk_line_hor, anchor=tk.NW)
+        self.canvas.create_image(self.box_width*(len(self.l_positions)-1), 0, image=self.imgtk_arrow_right, anchor=tk.NW)
 
-        # self.canvas.create_image(50, 50, image=self.pht_right, anchor=tk.NW)
-        # self.canvas.create_image(50, 100, image=self.pht_left, anchor=tk.NW)
+        self.canvas.create_image(self.box_width*self.food_x, self.box_height*self.food_y, image=self.imgtk_food, anchor=tk.NW)
+
+
+    def print_infos(self, event):
+        print("self.l_positions: {}".format(self.l_positions))
 
 
     def move_left(self, event):
-        self.current_x -= 1
-        if self.current_x<0:
-            self.current_x = 0
+        if self.current_direction=='E':
+            return
 
-        self.color_idx = (self.color_idx+1)%len(self.colors)
-        self.draw_current_box_in_canvas()
-        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.pht_left, anchor=tk.NW)
+        if self.current_x<=0:
+            return
+        
+        new_x = self.current_x-1
+        new_y = self.current_y
+
+        new_pos = (new_y, new_x)
+        if new_pos in self.l_positions:
+            return
+
+        self.current_x -= 1
+
+        self.draw_blank_previuos(x=self.prev_x, y=self.prev_y)
+        if self.current_direction=='S':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ul, anchor=tk.NW)
+        elif self.current_direction=='N':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_dl, anchor=tk.NW)
+        else:
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_hor, anchor=tk.NW)
+
+        if self.current_x==self.food_x and self.current_y==self.food_y:
+            self.draw_blank_previuos(x=self.food_x, y=self.food_y)
+            self.l_positions.append((self.food_y, self.food_x))
+        else:
+            last_y, last_x = self.l_positions.pop(0)
+            self.draw_blank_previuos(x=last_x, y=last_y)
+            self.l_positions.append((self.current_y, self.current_x))
+
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        self.current_direction = 'W'
+        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.imgtk_arrow_left, anchor=tk.NW)
 
 
     def move_right(self, event):
-        self.current_x += 1
-        if self.current_x>=self.x_amount:
-            self.current_x = self.x_amount-1
+        if self.current_direction=='W':
+            return
 
-        self.color_idx = (self.color_idx+1)%len(self.colors)
-        self.draw_current_box_in_canvas()
-        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.pht_right, anchor=tk.NW)
+        if self.current_x>=self.x_amount-1:
+            return
+        
+        new_x = self.current_x+1
+        new_y = self.current_y
+
+        new_pos = (new_y, new_x)
+        if new_pos in self.l_positions:
+            return
+
+        self.current_x += 1
+
+        self.draw_blank_previuos(x=self.prev_x, y=self.prev_y)
+        if self.current_direction=='S':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ur, anchor=tk.NW)
+        elif self.current_direction=='N':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_dr, anchor=tk.NW)
+        else:
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_hor, anchor=tk.NW)
+
+        last_y, last_x = self.l_positions.pop(0)
+        self.draw_blank_previuos(x=last_x, y=last_y)
+        self.l_positions.append((self.current_y, self.current_x))
+
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        self.current_direction = 'E'
+        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.imgtk_arrow_right, anchor=tk.NW)
 
 
     def move_up(self, event):
-        self.current_y -= 1
-        if self.current_y<0:
-            self.current_y = 0
+        if self.current_direction=='S':
+            return
 
-        self.color_idx = (self.color_idx+1)%len(self.colors)
-        self.draw_current_box_in_canvas()
-        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.pht_up, anchor=tk.NW)
+        if self.current_y<=0:
+            return
+        
+        new_x = self.current_x
+        new_y = self.current_y-1
+
+        new_pos = (new_y, new_x)
+        if new_pos in self.l_positions:
+            return
+
+        self.current_y -= 1
+
+        self.draw_blank_previuos(x=self.prev_x, y=self.prev_y)
+        if self.current_direction=='W':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ur, anchor=tk.NW)
+        elif self.current_direction=='E':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ul, anchor=tk.NW)
+        else:
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ver, anchor=tk.NW)
+
+        last_y, last_x = self.l_positions.pop(0)
+        self.draw_blank_previuos(x=last_x, y=last_y)
+        self.l_positions.append((self.current_y, self.current_x))
+        
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        self.current_direction = 'N'
+        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.imgtk_arrow_up, anchor=tk.NW)
 
 
     def move_down(self, event):
-        self.current_y += 1
-        if self.current_y>=self.y_amount:
-            self.current_y = self.y_amount-1
+        if self.current_direction=='N':
+            return
 
-        self.color_idx = (self.color_idx+1)%len(self.colors)
-        self.draw_current_box_in_canvas()
-        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.pht_down, anchor=tk.NW)
+        if self.current_y>=self.y_amount-1:
+            return
+        
+        new_x = self.current_x
+        new_y = self.current_y+1
+
+        new_pos = (new_y, new_x)
+        if new_pos in self.l_positions:
+            return
+
+        self.current_y += 1
+
+        self.draw_blank_previuos(x=self.prev_x, y=self.prev_y)
+        if self.current_direction=='W':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_dr, anchor=tk.NW)
+        elif self.current_direction=='E':
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_dl, anchor=tk.NW)
+        else:
+            self.canvas.create_image(self.prev_x*self.box_width, self.prev_y*self.box_height, image=self.imgtk_line_ver, anchor=tk.NW)
+
+        last_y, last_x = self.l_positions.pop(0)
+        self.draw_blank_previuos(x=last_x, y=last_y)
+        self.l_positions.append((self.current_y, self.current_x))
+        
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        self.current_direction = 'S'
+        self.canvas.create_image(self.current_x*self.box_width, self.current_y*self.box_height, image=self.imgtk_arrow_down, anchor=tk.NW)
         
 
     def draw_current_box_in_canvas(self):
@@ -173,6 +267,18 @@ class App(tk.Frame):
         # colors = ['#00FF00', '#808000', '#00FF80']
         self.rectid = self.canvas.create_rectangle(
             x1, y1, x2, y2, fill=current_color, width=0, # disabledoutline=tk.DISABLED,
+        )
+
+
+    def draw_blank_previuos(self, x, y):
+        # x = self.prev_x
+        # y = self.prev_y
+        x1 = self.box_width*x
+        y1 = self.box_height*y
+        x2 = x1+self.box_width
+        y2 = y1+self.box_height
+        self.rectid = self.canvas.create_rectangle(
+            x1, y1, x2, y2, fill=self.canvas_bg, width=0,
         )
 
 
