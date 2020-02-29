@@ -64,3 +64,6 @@ puzzle_solver/figures
 math_numbers/objs
 
 venv
+
+math_games/objects/*
+math_games/pictures/*

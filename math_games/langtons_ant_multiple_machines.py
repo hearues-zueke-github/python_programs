@@ -229,101 +229,94 @@ def find_best_next_move_for_x_and_o(l_stats, s_used_cells, s_x_cells, s_o_cells,
 
 
 if __name__=='__main__':
-    PATH_DIR_PICTURES = PATH_ROOT_DIR+'pictures/'
+    PATH_DIR_PICTURES = PATH_ROOT_DIR+'pictures/langtons_ant_multiple_machines/'
     if not os.path.exists(PATH_DIR_PICTURES):
         os.makedirs(PATH_DIR_PICTURES)
 
-    PATH_DIR_OBJECTS = PATH_ROOT_DIR+'objects/'
+    PATH_DIR_OBJECTS = PATH_ROOT_DIR+'objects/langtons_ant_multiple_machines/'
     if not os.path.exists(PATH_DIR_OBJECTS):
         os.makedirs(PATH_DIR_OBJECTS)
 
     argv = sys.argv
 
-    if len(argv)==1:
-        max_depth = 1
-        iter_rounds = 100
-    elif len(argv)!=3:
-        print('Wrong amount of parameters!')
-        print('program call: ./<script_name> <max_depth> <iter_rounds>')
-        sys.exit(-1)
-    else:
-        max_depth = int(argv[1])
-        iter_rounds = int(argv[2])
+    # (y, x)
+    d_field = {(0, 0): 0}
+    d_field_count = {(0, 0): 1}
+    l_moves = []
+    l_directions = []
+    l_states = []
+    l_tpls = []
+    cell_now = (0, 0)
+    direction = 'U'
 
-    # max_depth = 3
-    # iter_rounds = 200
+    """
+    directions:
+    0,UP,NORTH,N
+    1,RIGHT,EAST,E
+    2,DOWN,SOUTH,S
+    3,LEFT,WEST,W
+    """
 
-    OBJ_FILE_PATH = PATH_DIR_OBJECTS+'objects_tictactoe_max_depth_{}.pkl.gz'.format(max_depth)
+    # (direction, state) -> (delta y, delta x, new direction, new_state), where the delta values are:
+    # (1, 0), (-1, 0), (0, 1), (0, -1)
+    # 4 neighborhood
+    # d_next_state = {0: 1, 1: 0}
+    POSSIBLE_DIRECTIONS = ['U', 'R', 'D', 'L']
+    d_dir_turn_next_pos_dir_move = {
+        ('U', 'R'): (0, 1, 'R', 'R'), ('R', 'R'): (-1, 0, 'D', 'R'), ('D', 'R'): (0, -1, 'L', 'R'), ('L', 'R'): (1, 0, 'U', 'R'),
+        ('U', 'L'): (0, -1, 'L', 'L'), ('R', 'L'): (1, 0, 'U', 'L'), ('D', 'L'): (0, 1, 'R', 'L'), ('L', 'L'): (-1, 0, 'D', 'L'),
+    }
+    
+    argv = sys.argv
+    str_moves = argv[1]
+    max_iterations = int(argv[2])
+    # str_moves = 'LLLRRRLRLRLRLLR'
+    # max_iterations = 2000000
+    
+    l_moves = list(str_moves)
+    # l_moves = list('LRRRRRLLR')
 
-    if not os.path.exists(OBJ_FILE_PATH):
-        s_used_cells = set()
-        s_x_cells = set()
-        s_o_cells = set()
-        rounds_now = 0
-        s_used_cells.add((0, 0))
-        s_x_cells.add((0, 0))
-    else:
-        with gzip.open(OBJ_FILE_PATH, 'rb') as f:
-            d_objs = dill.load(f)
-            rounds_now = d_objs['rounds_now']
-            s_used_cells = d_objs['s_used_cells']
-            s_x_cells = d_objs['s_x_cells']
-            s_o_cells = d_objs['s_o_cells']
+    l_states_nums = np.arange(0, len(l_moves))
+    l_states_nums_next = np.roll(l_states_nums, -1)
+    d_state_next_state_turn = {state_now: (state_next, move) for move, state_now, state_next in zip(l_moves, l_states_nums, l_states_nums_next)}
+    
+    d_next_position_dir_move_state = {}
+    for state, (next_state, next_turn) in d_state_next_state_turn.items():
+        for direction in POSSIBLE_DIRECTIONS:
+            d_next_position_dir_move_state[(direction, state)] = d_dir_turn_next_pos_dir_move[(direction, next_turn)]+(next_state, )
+    # d_next_position_dir_state_2 = {
+    #     (0, 0): (0, 1, 1, 1), (1, 0): (-1, 0, 2, 1), (2, 0): (0, -1, 3, 1), (3, 0): (1, 0, 0, 1),
+    #     (0, 1): (0, -1, 3, 0), (1, 1): (1, 0, 0, 0), (2, 1): (0, 1, 1, 0), (3, 1): (-1, 0, 2, 0),
+    # }
+    # assert d_next_position_dir_state_2==d_next_position_dir_move_state
 
-    # starting with the x at the cell (0, 0)==(y, x)
+    for i_step in range(1, max_iterations+1):
+        state_now = d_field[cell_now]
+        dy, dx, new_dir, move, new_state = d_next_position_dir_move_state[(direction, state_now)]
+        cell_new = (cell_now[0]+dy, cell_now[1]+dx)
+        
+        y, x = cell_new
+        if y<-300 or y>300 or x<-300 or x>300:
+            break
 
-    # s_used_cells.add((0, 1))
-    # s_o_cells.add((0, 1))
+        # print("cell_new: {}".format(cell_new))
+        d_field[cell_now] = new_state
+        # d_field[cell_now] = d_next_state[state_now]
+        if not cell_new in d_field:
+            d_field[cell_new] = 0
+            d_field_count[cell_new] = 0
 
-    # for each move of placing 'o', do a deep analyse search where the most 'x'
-    # clusters are blocked at move 1, 2 etc.
+        l_moves.append(move)
+        l_directions.append(new_dir)
+        l_states.append(new_state)
+        l_tpls.append((move, new_dir, new_state))
 
-    for i_round in range(rounds_now, rounds_now+iter_rounds):
-        print("i_round: {}".format(i_round))
-        l_stats = []
-        find_best_next_move_for_x_and_o(l_stats, s_used_cells, s_x_cells, s_o_cells, max_depth=max_depth)
-        l_stats_sorted = sorted(l_stats, key=lambda x: x[1], reverse=True)
-        l_cells_o_x, l_length_amount = l_stats_sorted[0]
+        direction = new_dir
+        cell_now = cell_new
+        d_field_count[cell_new] += 1
 
-        o_cell, x_cell = l_cells_o_x[0]
-        s_used_cells.add(o_cell)
-        s_used_cells.add(x_cell)
-        s_x_cells.add(x_cell)
-        s_o_cells.add(o_cell)
+    print("d_field: {}".format(d_field))
 
-        # print("s_used_cells: {}".format(s_used_cells))
-        # print("s_x_cells: {}".format(s_x_cells))
-        # print("s_o_cells: {}".format(s_o_cells))
-
-        print("len(l_stats): {}".format(len(l_stats)))
-
-        print("l_cells_o_x: {}".format(l_cells_o_x))
-        print("l_length_amount: {}".format(l_length_amount))
-
-    # create a dirty solution for showing a picture!
-
-    d_objs = {}
-    d_objs['rounds_now'] = rounds_now+iter_rounds
-    d_objs['s_used_cells'] = s_used_cells
-    d_objs['s_x_cells'] = s_x_cells
-    d_objs['s_o_cells'] = s_o_cells
-    with gzip.open(OBJ_FILE_PATH, 'wb') as f:
-        dill.dump(d_objs, f)
-
-    l_lengths = []
-    max_length = 0
-    for x_cell in s_x_cells:
-        t = get_amount_of_lengths(x_cell, s_x_cells)
-        length = max(t)
-        l_lengths.append(length)
-        if max_length<length:
-            max_length = length
-    print("\nmax_length: {}\n".format(max_length))
-
-    u, c = np.unique(l_lengths, return_counts=True)
-    print("u: {}".format(u))
-    print("c: {}".format(c))
-    print()
 
     # find the needed size for the picture!
     min_y = 0
@@ -331,7 +324,7 @@ if __name__=='__main__':
     max_y = 0
     max_x = 0
 
-    for y, x in s_used_cells:
+    for y, x in d_field.keys():
         if y<min_y:
             min_y = y
         if x<min_x:
@@ -352,51 +345,69 @@ if __name__=='__main__':
     size_h = max_y-min_y+1
 
     pix = np.zeros((size_h, size_w, 3), dtype=np.uint8)
+    pix[:] = (128, 128, 128)
 
-    for y, x in s_x_cells:
-        pix[y-min_y, x-min_x] = (255, 0, 0)
-    for y, x in s_o_cells:
-        pix[y-min_y, x-min_x] = (0, 0, 255)
+    arr_colors = np.array([
+        [0, 0, 0],
+        [255, 255, 255],
+        [0, 0, 255],
+        [0, 255, 0],
+        [255, 0, 0],
+        [0, 255, 255],
+        [255, 255, 0],
+        [255, 0, 255],
+        [128, 128, 255],
+        [128, 255, 128],
+        [255, 128, 128],
+        [128, 255, 255],
+        [255, 255, 128],
+        [255, 128, 255],
+    ], dtype=np.uint8)
 
-    # create a pix with grid
-    cell_width = 8
-    pix2 = np.zeros((size_h*cell_width+size_h+1, size_w*cell_width+size_w+1, 3), dtype=np.uint8)
-
-    pix2[:] = (128, 128, 128)
-    for i in range(0, pix2.shape[1], cell_width+1):
-        pix2[:, i] = (0, 0, 0)
-    for i in range(0, pix2.shape[0], cell_width+1):
-        pix2[i, :] = (0, 0, 0)
-
-    for y, x in s_x_cells:
-        y1 = 1+(cell_width+1)*(y-min_y)
-        x1 = 1+(cell_width+1)*(x-min_x)
-        pix2[y1:y1+cell_width, x1:x1+cell_width] = (255, 0, 0)
-    for y, x in s_o_cells:
-        y1 = 1+(cell_width+1)*(y-min_y)
-        x1 = 1+(cell_width+1)*(x-min_x)
-        pix2[y1:y1+cell_width, x1:x1+cell_width] = (0, 0, 255)
-
-    if min_y<=0 and min_x<=0:
-        y1 = -min_y*(cell_width+1)+1
-        x1 = -min_x*(cell_width+1)+1
-        y2 = y1+cell_width-1
-        x2 = x1+cell_width-1
-
-        pix2[y1, x1:x2] = (0, 255, 0)
-        pix2[y2, x1:x2] = (0, 255, 0)
-        pix2[y1:y2, x1] = (0, 255, 0)
-        pix2[y1:y2+1, x2] = (0, 255, 0)
+    # for y, x in s_x_cells:
+    #     pix[y-min_y, x-min_x] = (255, 0, 0)
+    for (y, x), state in d_field.items():
+        pix[y-min_y, x-min_x] = arr_colors[state]
 
     img = Image.fromarray(pix)
-    img.save(PATH_DIR_PICTURES+'tik_tak_toe_1x1_pixels_depth_search_{}_iteration_{}.png'.format(max_depth, d_objs['rounds_now'])) 
-    # resize_factor = 4
-    # resize_factor = 10
-    # img = img.resize((size_w*resize_factor, size_h*resize_factor))
-    # img.show()
+    img.save(PATH_DIR_PICTURES+'langtons_ant_1x1_pixels_states_{}_iterations_{}.png'.format(str_moves, max_iterations)) 
     
-    resize_factor = 1
-    img2 = Image.fromarray(pix2)
-    img2.save(PATH_DIR_PICTURES+'tik_tak_toe_depth_search_{}_iteration_{}.png'.format(max_depth, d_objs['rounds_now'])) 
-    img2 = img2.resize((img2.width*resize_factor, img2.height*resize_factor))
-    # img2.show()
+
+    pix_count = np.zeros((size_h, size_w, 3), dtype=np.uint8)
+    pix_count[:] = (64, 128, 192)
+
+    max_count = 0
+    for count in d_field_count.values():
+        if max_count<count:
+            max_count = count
+    print("max_count: {}".format(max_count))
+
+    arr_colors = np.zeros((max_count+1, 3), dtype=np.uint8)
+    for i in range(0, max_count+1):
+        arr_colors[i] = int(i*255/max_count)
+
+    for (y, x), count in d_field_count.items():
+        pix_count[y-min_y, x-min_x] = arr_colors[count]
+
+    img_count = Image.fromarray(pix_count)
+    img_count.save(PATH_DIR_PICTURES+'langtons_ant_1x1_pixels_count_{}_iterations_{}.png'.format(str_moves, max_iterations)) 
+
+    sys.exit(0)
+
+    max_len_repeat = len(l_directions)//2
+    len_repeat = 1
+    is_found_repeat = False
+    while len_repeat<max_len_repeat:
+        l_dir_repeat = l_tpls[-len_repeat:]
+        if l_dir_repeat==l_tpls[-2*len_repeat:-len_repeat]:
+            is_found_repeat = True
+            break
+        len_repeat += 1
+
+    if is_found_repeat:
+        print("l_dir_repeat: {}".format(l_dir_repeat))
+        print("len_repeat: {}".format(len_repeat))
+    else:
+        print("No repeat found!")
+
+    # print("l_len_repeat: {}".format(l_len_repeat))
