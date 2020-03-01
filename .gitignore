@@ -67,3 +67,4 @@ venv
 
 math_games/objects/*
 math_games/pictures/*
+math_games/output_*.txt

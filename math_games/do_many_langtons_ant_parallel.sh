@@ -5,7 +5,7 @@
 # l=[''.join(l) for l in np.array(['R', 'L'])[(lambda x: np.hstack(((x[:, :1]^x[:, :1])+1, x[:, 1:])))(np.cumsum(np.random.randint(0, 2, (12, 8)), axis=1)%2)].tolist()]
 # print('\n'.join([" ".join(["'"+v.rstrip('L')+"'" for v in l]) for l in np.array(l).reshape((-1, 4)).tolist()]))
 
-MAX_ITERS=2000000
+MAX_ITERS=10000000
 # ARR_MOVES=(
 # 'LR' 'LRR' 'LRRR' 'LRRRR'
 # 'LLR' 'LLRR' 'LLRRR' 'LLRRRR'
@@ -98,14 +98,18 @@ MAX_ITERS=2000000
 # 'LLLRLRLLRLR' 'LRRRRLRLLRLR' 'LLLLRLLRR' 'LLLRRLLRRLLR'
 # 'LRRRLLRRRLRR' 'LRRRLLRRLLLR' 'LLLLLRLRLLRR' 'LLRLRLRLRRRR'
 # )
-read_string=$(./generate_LR_combinations.py)
-IFS=';' read -ra ARR_MOVES <<< "$read_string"
+ARR_MOVES=(
+'LRLRLRR' 'LRLRRLR' 'LRRLRLR' 'LR'
+)
+# read_string=$(./generate_LR_combinations.py)
+# IFS=';' read -ra ARR_MOVES <<< "$read_string"
+
 ARR_LEN=${#ARR_MOVES[@]}
 CORE_AMOUNT=4
 MAX_ITERATIONS=$(($ARR_LEN - $ARR_LEN % $CORE_AMOUNT))
 
 printf "ARR_LEN: ${ARR_LEN}\n"
-exit
+# exit
 
 i=0
 run_nr=1

@@ -229,15 +229,21 @@ def find_best_next_move_for_x_and_o(l_stats, s_used_cells, s_x_cells, s_o_cells,
 
 
 if __name__=='__main__':
-    PATH_DIR_PICTURES = PATH_ROOT_DIR+'pictures/langtons_ant_multiple_machines/'
-    if not os.path.exists(PATH_DIR_PICTURES):
-        os.makedirs(PATH_DIR_PICTURES)
 
-    PATH_DIR_OBJECTS = PATH_ROOT_DIR+'objects/langtons_ant_multiple_machines/'
-    if not os.path.exists(PATH_DIR_OBJECTS):
-        os.makedirs(PATH_DIR_OBJECTS)
+    # PATH_DIR_OBJECTS = PATH_ROOT_DIR+'objects/langtons_ant_multiple_machines/'
+    # if not os.path.exists(PATH_DIR_OBJECTS):
+    #     os.makedirs(PATH_DIR_OBJECTS)
 
     argv = sys.argv
+    str_moves = argv[1]
+    max_iterations = int(argv[2])
+    
+    print("str_moves: {}, max_iterations: {}".format(str_moves, max_iterations))
+
+    PATH_DIR_PICTURES = '/tmp/ram/'+'pictures/langtons_ant_multiple_machines_iters_{}/'.format(max_iterations)
+    # PATH_DIR_PICTURES = PATH_ROOT_DIR+'pictures/langtons_ant_multiple_machines_iters_{}/'.format(max_iterations)
+    if not os.path.exists(PATH_DIR_PICTURES):
+        os.makedirs(PATH_DIR_PICTURES)
 
     # (y, x)
     d_field = {(0, 0): 0}
@@ -267,9 +273,6 @@ if __name__=='__main__':
         ('U', 'L'): (0, -1, 'L', 'L'), ('R', 'L'): (1, 0, 'U', 'L'), ('D', 'L'): (0, 1, 'R', 'L'), ('L', 'L'): (-1, 0, 'D', 'L'),
     }
     
-    argv = sys.argv
-    str_moves = argv[1]
-    max_iterations = int(argv[2])
     # str_moves = 'LLLRRRLRLRLRLLR'
     # max_iterations = 2000000
     
@@ -315,7 +318,7 @@ if __name__=='__main__':
         cell_now = cell_new
         d_field_count[cell_new] += 1
 
-    print("d_field: {}".format(d_field))
+    # print("d_field: {}".format(d_field))
 
 
     # find the needed size for the picture!
@@ -334,10 +337,10 @@ if __name__=='__main__':
         if x>max_x:
             max_x = x
 
-    print("min_y: {}".format(min_y))
-    print("min_x: {}".format(min_x))
-    print("max_y: {}".format(max_y))
-    print("max_x: {}".format(max_x))
+    # print("min_y: {}".format(min_y))
+    # print("min_x: {}".format(min_x))
+    # print("max_y: {}".format(max_y))
+    # print("max_x: {}".format(max_x))
 
     # convert s_x_cells and s_o_cells to list first!
 
@@ -349,23 +352,44 @@ if __name__=='__main__':
 
     arr_colors = np.array([
         [0, 0, 0],
-        [255, 255, 255],
         [0, 0, 255],
         [0, 255, 0],
         [255, 0, 0],
         [0, 255, 255],
-        [255, 255, 0],
         [255, 0, 255],
+        [255, 255, 0],
+        [255, 255, 255],
+
+        [128, 128, 128],
         [128, 128, 255],
         [128, 255, 128],
         [255, 128, 128],
         [128, 255, 255],
-        [255, 255, 128],
         [255, 128, 255],
+        [255, 255, 128],
+        [255, 255, 255],
+
+        [64, 64, 64],
+        [64, 64, 255],
+        [64, 255, 64],
+        [255, 64, 64],
+        [64, 255, 255],
+        [255, 64, 255],
+        [255, 255, 64],
+        [255, 255, 255],
+
+        [64, 64, 64],
+        [64, 64, 128],
+        [64, 128, 64],
+        [128, 64, 64],
+        [64, 128, 128],
+        [128, 64, 128],
+        [128, 128, 64],
+        [128, 128, 128],
     ], dtype=np.uint8)
 
     # for y, x in s_x_cells:
-    #     pix[y-min_y, x-min_x] = (255, 0, 0)
+    #     pix[y-min_y, x-min_x] = (255, 128, 0)
     for (y, x), state in d_field.items():
         pix[y-min_y, x-min_x] = arr_colors[state]
 
@@ -380,7 +404,7 @@ if __name__=='__main__':
     for count in d_field_count.values():
         if max_count<count:
             max_count = count
-    print("max_count: {}".format(max_count))
+    # print("max_count: {}".format(max_count))
 
     arr_colors = np.zeros((max_count+1, 3), dtype=np.uint8)
     for i in range(0, max_count+1):
