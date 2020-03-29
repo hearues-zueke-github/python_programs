@@ -6,6 +6,7 @@
 #include <mutex>
 #include <numeric>
 #include <stdint.h>
+#include <string>
 #include <fstream>
 #include <iterator>
 
@@ -17,6 +18,9 @@ using std::thread;
 using std::ofstream;
 using std::ifstream;
 using std::ios;
+using std::stoll;
+using std::string;
+using std::to_string;
 
 void doSomething(int& a, std::mutex& mutex) {
     for (int i = 0; i < 10+a; ++i) {
@@ -68,6 +72,20 @@ void createIncrementVector(const vector<uint64_t>& primes_part, vector<uint64_t>
     // cout << "increments: " << increments << endl;
 }
 
+inline uint64_t intSqrt(const uint64_t n) {
+  uint64_t n_1 = (n + 1) / 2;
+  uint64_t n_2 = (n_1 + n / n_1) / 2;
+
+  while (true) {
+    uint64_t n_3 = (n_2 + n / n_2) / 2;
+    if (n_3 == n_1) {
+      return n_1;
+    }
+    n_1 = n_2;
+    n_2 = n_3;
+  }
+}
+
 void generatePrimes(vector<uint64_t>& primes, const uint64_t max_n) {
     const vector<uint64_t> start_primes = {2, 3, 5};
     primes.resize(0);
@@ -78,11 +96,58 @@ void generatePrimes(vector<uint64_t>& primes, const uint64_t max_n) {
     int increment_index = 0;
     for (uint64_t i = 7; i < max_n;) {
         bool is_prime = true;
+        const uint64_t max_p = intSqrt(i);
         for (uint64_t j = 0; j < primes_size; ++j) {
             uint64_t p = primes[j];
-            uint64_t div = i / p;
+            if (p >= max_p) {
+                break;
+            }
 
-            if (div < p) {
+            if (i % p == 0) {
+                is_prime = false;
+                break;
+            }
+        }
+
+        if (is_prime) {
+            primes.push_back(i);
+            ++primes_size;
+        }
+
+        i += increments[increment_index];
+        increment_index = (increment_index + 1) % 2;
+    }
+}
+
+void generatePrimesNew(vector<uint64_t>& primes, const uint64_t max_n) {
+    const vector<uint64_t> start_primes = {2, 3, 5};
+    primes.resize(0);
+    primes.insert(primes.end(), start_primes.begin(), start_primes.end());
+
+    uint64_t primes_size = primes.size();
+    uint64_t increments[] = {4, 2};
+    uint64_t starting_n = 7;
+    
+    uint64_t p_idx = 0;
+    uint64_t i_sqrt = 2;
+    uint64_t i_sqrt_pow2 = i_sqrt * i_sqrt;
+    uint64_t increment = 5;
+
+    int increment_index = 0;
+    for (uint64_t i = starting_n; i < max_n;) {
+        bool is_prime = true;
+        if (i_sqrt_pow2 <= i) {
+            // p_idx += 1
+            // const uint64_t p = primes[p_idx];
+            i_sqrt += 1;
+            i_sqrt_pow2 += increment;
+            increment += 2;
+        }
+
+        for (uint64_t j = 0; j < primes_size; ++j) {
+            uint64_t p = primes[j];
+            // if (p >= max_p) {
+            if (p >= i_sqrt) {
                 break;
             }
 
@@ -122,41 +187,41 @@ void generateNextPrimes(const vector<uint64_t>& primes, vector<uint64_t>& next_p
 
     // find the prime size, which is needed for calculating the next prime starting from
     // start_n number!
-    const uint64_t smallest_prime_test = sqrt(start_n) + 1ULL;
+    // const uint64_t smallest_prime_test = sqrt(start_n) + 1ULL;
     const size_t primes_size = primes.size();
-    uint64_t primes_size_check = 0;
-    for (; primes_size_check < primes_size; ++primes_size_check) {
-        if (primes[primes_size_check] >= smallest_prime_test) {
-            break;
-        }
-    }
+    // uint64_t primes_size_check = 0;
+    // for (; primes_size_check < primes_size; ++primes_size_check) {
+    //     if (primes[primes_size_check] >= smallest_prime_test) {
+    //         break;
+    //     }
+    // }
     
-    if (primes[primes_size_check] < smallest_prime_test) {
-        assert(0);
-    }
-    uint64_t biggest_prime_for_check = primes[primes_size_check];
-    ++primes_size_check;
+    // if (primes[primes_size_check] < smallest_prime_test) {
+    //     assert(0);
+    // }
+    // uint64_t biggest_prime_for_check = primes[primes_size_check];
+    // ++primes_size_check;
 
     uint64_t increments[] = {4, 2};
     for (uint64_t i = true_start_n; i < end_n;) {
-        if (i / biggest_prime_for_check > biggest_prime_for_check) {
-            biggest_prime_for_check = primes[primes_size_check];
-            ++primes_size_check;
-        }
+        // if (i / biggest_prime_for_check > biggest_prime_for_check) {
+        //     biggest_prime_for_check = primes[primes_size_check];
+        //     ++primes_size_check;
+        // }
+        const uint64_t max_p = intSqrt(i);
 
-        // bool is_prime = true;
-        for (uint64_t j = 0; j < primes_size_check; ++j) {
+        for (uint64_t j = 0; j < primes_size; ++j) {
             uint64_t p = primes[j];
+            if (p >= max_p) {
+                break;
+            }
+
             if (i % p == 0) {
                 goto BREAK_FOR_LOOP;
-                // is_prime = false;
-                // break;
             }
         }
 
-        // if (is_prime) {
         next_primes.push_back(i);
-        // }
         BREAK_FOR_LOOP:
         i += increments[increment_index];
         increment_index = (increment_index + 1) % 2;
@@ -250,7 +315,24 @@ int main(int argc, char* argv[]) {
     // primes.resize(size_read);
     // fin.read(reinterpret_cast<char*>(&primes[0]), size_read*sizeof(uint64_t));
 
-    generatePrimes(primes, 100000);
+    uint64_t n_max = 1000000ULL;
+    if (argc >= 2) {
+        n_max = stoll(argv[1]);
+    }
+    cout << "Generating primes until n_max: " << n_max << endl;
+    // generatePrimes(primes, n_max);
+    generatePrimesNew(primes, n_max);
+    // generatePrimesNew
+    cout << "Finished." << endl;
+
+    string file_path = "/tmp/primes_new_" + to_string(n_max) + ".dat";
+    ofstream fout_old(file_path, ios::out | ios::binary);
+    uint64_t size_primes = primes.size();
+    fout_old.write((char*)&size_primes, sizeof(uint64_t));
+    fout_old.write((char*)&primes[0], primes.size() * sizeof(uint64_t));
+    fout_old.close();
+
+    exit(0);
 
     // // useful for writting the prime numbers to the file!
     // ofstream fout("/tmp/primes_data.dat", ios::out | ios::binary);
@@ -260,8 +342,8 @@ int main(int argc, char* argv[]) {
     // fout.close();
     
     vector<uint64_t> primes_new;
-    for (int i = 0; i < 4; ++i) {
-        generateNextPrimesMultithreaded(primes, 10, 100000, primes_new);
+    for (int i = 0; i < 5; ++i) {
+        generateNextPrimesMultithreaded(primes, 5, 1000000, primes_new);
 
         cout << "primes_new.size(): " << primes_new.size() << endl;
         primes.insert(primes.end(), primes_new.begin(), primes_new.end());
@@ -270,7 +352,7 @@ int main(int argc, char* argv[]) {
         cout << "primes[primes.size()-1]: " << primes[primes.size()-1] << endl;
     }
 
-    ofstream fout("/tmp/primes_data_test_3.dat", ios::out | ios::binary);
+    ofstream fout("/tmp/primes_data_test_4.dat", ios::out | ios::binary);
     uint64_t size = primes.size();
     fout.write((char*)&size, sizeof(uint64_t));
     fout.write((char*)&primes[0], primes.size() * sizeof(uint64_t));
