@@ -1,7 +1,9 @@
 .DEFAULT_GOAL := default
 .PHONY: default
+# CC=clang++
 CC=g++
-CFLAGS=-Wall -std=c++17
+# CFLAGS=-Wall -std=c++17
+CFLAGS=-O3 -Wall -std=c++17
 
 utils_primes:
 	$(CC) $(CFLAGS) utils_primes.cpp -c
