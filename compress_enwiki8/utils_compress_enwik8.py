@@ -1,4 +1,5 @@
 import os
+import sys
 
 from os.path import expanduser
 PATH_HOME = expanduser("~")+'/'
@@ -12,6 +13,9 @@ from tkinter import Tk, Label, BOTH
 from tkinter.ttk import Frame, Style
 
 from copy import deepcopy
+
+sys.path.append("../")
+import global_object_getter_setter
 
 def time_measure(f, args):
     start_time = time()
@@ -33,7 +37,7 @@ class ShowImg(Frame, object):
         parent.mainloop()
 
 
-def get_arr():
+def get_arr(used_length=5000000):
     file_path_enwik8 = PATH_HOME+'Downloads/enwik8'
 
     print("file_path_enwik8: {}".format(file_path_enwik8))
@@ -45,13 +49,16 @@ def get_arr():
     with open(file_path_enwik8, 'rb') as f:
         data = f.read()
 
-    used_length = 5000000
-    # used_length = 3000000
-    data_str = data.decode('utf-8')[:used_length]
-    lst_data = list(data)[:used_length]
-    arr = np.array(lst_data, dtype=object)
+    if used_length==-1:
+        arr = np.array(list(data), dtype=np.uint8)
+    elif used_length>=0:
+        arr = np.array(list(data[:used_length]), dtype=np.uint8)
+    else:
+        assert False=='used_length<0 !'
+    # arr = np.array(list(data[:used_length]), dtype=object)
+    # global_object_getter_setter.save_object('data', data)
 
-    print("used_length: {}".format(used_length))
+    print("arr.shape: {}".format(arr.shape))
 
     return arr
 

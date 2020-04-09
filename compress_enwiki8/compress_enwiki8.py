@@ -23,13 +23,36 @@ import numpy as np
 
 sys.path.append("../")
 from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
+import global_object_getter_setter
 
 import utils_compress_enwik8
 
 PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 if __name__ == "__main__":
-    arr = utils_compress_enwik8.get_arr()
+    arr = utils_compress_enwik8.get_arr(used_length=-1)
+    
+    d_arr_comb = {}
+    d_arr_comb_unique = {}
+    arr1 = arr.copy()
+
+    print('comb_nr: 1')
+    arr_comb = arr.copy().reshape((-1, 1))
+    d_arr_comb[1] = arr_comb
+    arr_comb_view = arr_comb.reshape((-1, )).view(dtype=[('f{}'.format(i), '<u1') for i in range(0, 1)])
+    u, c = np.unique(arr_comb_view, return_counts=True)
+    d_arr_comb_unique[1] = {'u': u, 'c': c}
+
+    for comb_nr in range(2, 4):
+        print("comb_nr: {}".format(comb_nr))
+        arr_comb = np.hstack((arr_comb[:-1], arr1[comb_nr-1:].reshape((-1, 1))))
+        d_arr_comb[comb_nr] = arr_comb
+        arr_comb_view = arr_comb.reshape((-1, )).view(dtype=[('f{}'.format(i), '<u1') for i in range(0, 2)])
+        u, c = np.unique(arr_comb_view, return_counts=True)
+        d_arr_comb_unique[comb_nr] = {'u': u, 'c': c}
+
+    sys.exit()
+
     length = arr.shape[0]
     
     def find_most_common_combinations(arr):
