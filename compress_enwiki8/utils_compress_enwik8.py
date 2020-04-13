@@ -308,7 +308,7 @@ def do_some_simple_tests():
         [21, 24],
         [26, 29],
     ]))
-    print("l: {}".format(l))
+    # print("l: {}".format(l))
 
 
 do_some_simple_tests()

@@ -6,8 +6,10 @@ import dill
 import gzip
 import os
 import sys
+import tempfile
 
 from collections import defaultdict
+from copy import deepcopy
 from dotmap import DotMap
 from operator import itemgetter
 # from sortedcontainers import SortedSet
@@ -35,7 +37,7 @@ def create_dict_word_count_for_arr(arr, max_byte_length=10):
     d_arr_comb_unique = {}
     arr_comb = arr.copy().reshape((-1, 1))
     for comb_nr in range(1, max_byte_length+1):
-        print("comb_nr: {}".format(comb_nr))
+        print("creating comb_nr: {}".format(comb_nr))
         d_arr_comb[comb_nr] = arr_comb
         arr_comb_view = arr_comb.reshape((-1, )).view(dtype=[('f{}'.format(i), '<u1') for i in range(0, comb_nr)])
         u, c = np.unique(arr_comb_view, return_counts=True)
@@ -58,7 +60,8 @@ def create_dict_word_count_for_arr(arr, max_byte_length=10):
 
 if __name__ == "__main__":
 
-    arr = utils_compress_enwik8.get_arr(used_length=2**19)
+    # arr = utils_compress_enwik8.get_arr(used_length=2**21)
+    arr = utils_compress_enwik8.get_arr(used_length=2**18)
     # arr = utils_compress_enwik8.get_arr(used_length=2**23)
     bytes_starting_size = arr.shape[0]
     # arr = utils_compress_enwik8.get_arr(used_length=2**22+1)
@@ -76,11 +79,12 @@ if __name__ == "__main__":
     # LEN_BITS_CHOSEN_INDEX = 2
     LEN_CHOSEN_INDEX = 2**LEN_BITS_CHOSEN_INDEX
 
-    MAX_BYTE_LENGTH = 16
+    MAX_BYTE_LENGTH = 8
+    MAX_FIRST_POS = 10
     OBJ_NAME_D_ARR_COMB = 'd_arr_comb_size_arr_{}_max_byte_length_{}'.format(arr.shape[0], MAX_BYTE_LENGTH)
     OBJ_NAME_D_ARR_COMB_UNIQUE = 'd_arr_comb_unique_size_arr_{}_max_byte_length_{}'.format(arr.shape[0], MAX_BYTE_LENGTH)
 
-    ROUNDS_AMOUNT = 2
+    ROUNDS_AMOUNT = 5
 
     l_content_bits_compressed = []
     l_arr_content_compressed_uint8 = []
@@ -88,7 +92,7 @@ if __name__ == "__main__":
     l_len_compressed_bits = []
     for round_nr in range(0, ROUNDS_AMOUNT):
         print("round_nr: {}".format(round_nr))
-        round_nr = 0
+        # round_nr = 0
         if round_nr==0:
             if not global_object_getter_setter.do_object_exist(OBJ_NAME_D_ARR_COMB) or \
               not global_object_getter_setter.do_object_exist(OBJ_NAME_D_ARR_COMB_UNIQUE):
@@ -101,6 +105,10 @@ if __name__ == "__main__":
                 d_arr_comb_unique = global_object_getter_setter.load_object(OBJ_NAME_D_ARR_COMB_UNIQUE)
         else:
             d_arr_comb, d_arr_comb_unique = create_dict_word_count_for_arr(arr, max_byte_length=MAX_BYTE_LENGTH)
+
+        if all([d_arr_comb_unique[i]['u'].shape[0]==0 for i in range(2, MAX_BYTE_LENGTH+1)]):
+            print("All arr_comb unique empty!")
+            break
 
         d_word_occurences = {}
         d_word_weight = {}
@@ -117,118 +125,281 @@ if __name__ == "__main__":
                 # d_word_weight[t] = amount*2**len(t)
                 # d_word_weight[t] = amount*2**(len(bin(len(t))[2:])-1)
                 # d_word_weight[t] = amount*2**len(bin(len(t))[2:])
-                # d_word_weight[t] = amount*len(t)
-                d_word_weight[t] = amount*len(bin(len(t))[2:])
+                d_word_weight[t] = amount*len(t)
+                # d_word_weight[t] = amount*len(bin(len(t))[2:])
 
-        # l_occurences_sorted = sorted([(v, k) for k, v in d_word_occurences.items()], reverse=True)
-        # l_weight_sorted = sorted([(v, k) for k, v in d_word_weight.items()], reverse=True)
+        d_saved_compressions = {}
+        for first_pos in range(0, MAX_FIRST_POS):
+            print("first_pos: {}".format(first_pos))
 
+            unique_bytes_index = 0
+            l_chosen_unique_bytes_index = []
+            l_chosen_unique_bytes_diff = []
+            l_chosen_unique_bytes_ranges = []
+            d_chosen_unique_bytes_to_index = {}
+            length = arr.shape[0]
+            pos = first_pos
+            last_pos = 0
+            while pos < length:
+                l_tpls = []
+                l_weights = []
+                for j in range(2, MAX_BYTE_LENGTH):
+                    t = tuple(arr[pos:pos+j].tolist())
+                    if t in d_word_weight:
+                        l_weights.append(d_word_weight[t])
+                        l_tpls.append(t)
 
-        unique_bytes_index = 0
-        # l_chosen_unique_bytes_prev = []
-        l_chosen_unique_bytes_index = []
-        l_chosen_unique_bytes_diff = []
-        l_chosen_unique_bytes_ranges = []
-        d_chosen_unique_bytes_to_index = {}
-        l_used_idxs_bool = []
-        last_index = 0
-        length = arr.shape[0]
-        pos = 0
-        while pos < length:
-            # print("pos: {}".format(pos))
-
-            # find the best unique byte for the next occurence!
-            l_tpls = []
-            l_weights = []
-            for j in range(2, MAX_BYTE_LENGTH):
-                t = tuple(arr[pos:pos+j].tolist())
-                if t in d_word_weight:
-                    l_weights.append(d_word_weight[t])
-                    l_tpls.append(t)
-
-            if len(l_weights)==0:
-                pos += 1
-                continue
-            
-            # best_word_length = np.argmax(l_weights)+2
-            # t = tuple(arr[pos:pos+best_word_length].tolist())
-            t = l_tpls[np.argmax(l_weights)]
-
-            if not t in d_chosen_unique_bytes_to_index:
-                if unique_bytes_index<LEN_CHOSEN_INDEX:
-                    d_chosen_unique_bytes_to_index[t] = unique_bytes_index
-                    # l_chosen_unique_bytes_prev.append(t)
-                    unique_bytes_index += 1
-                else:
+                if len(l_weights)==0:
                     pos += 1
                     continue
+                
+                t = l_tpls[np.argmax(l_weights)]
 
-            len_t = len(t)
-            l_chosen_unique_bytes_index.append(d_chosen_unique_bytes_to_index[t])
-            l_chosen_unique_bytes_diff.append(pos-last_index)
-            l_chosen_unique_bytes_ranges.append((pos, pos+len_t))
-            last_index = pos+len_t
-            pos = last_index
+                if not t in d_chosen_unique_bytes_to_index:
+                    if unique_bytes_index<LEN_CHOSEN_INDEX:
+                        d_chosen_unique_bytes_to_index[t] = unique_bytes_index
+                        unique_bytes_index += 1
+                    else:
+                        pos += 1
+                        continue
 
-        assert unique_bytes_index==LEN_CHOSEN_INDEX
+                len_t = len(t)
+                l_chosen_unique_bytes_index.append(d_chosen_unique_bytes_to_index[t])
+                l_chosen_unique_bytes_diff.append(pos-last_pos)
+                l_chosen_unique_bytes_ranges.append((pos, pos+len_t))
+                last_pos = pos+len_t
+                pos = last_pos
 
-        # assert check
-        # d_chosen_unique_bytes_from_index = {v: k for k, v in d_chosen_unique_bytes_to_index.items()}
-        l_chosen_unique_bytes = [v for _, v in sorted([(v, k) for k, v in d_chosen_unique_bytes_to_index.items()])]
-        # assert l_chosen_unique_bytes==l_chosen_unique_bytes_prev
-        pos = 0
-        for i in range(0, len(l_chosen_unique_bytes_index)):
-            ub_index = l_chosen_unique_bytes_index[i]
-            ub_tpl = l_chosen_unique_bytes[ub_index]
-            # ub_tpl = d_chosen_unique_bytes_from_index[ub_index]
+            # assert unique_bytes_index==LEN_CHOSEN_INDEX
+            if unique_bytes_index!=LEN_CHOSEN_INDEX:
+                continue
 
-            ub_diff = l_chosen_unique_bytes_diff[i]
-            pos += ub_diff
-            length = len(ub_tpl)
+            # # assert check
+            # pos = 0
+            # l_chosen_unique_bytes = [v for _, v in sorted([(v, k) for k, v in d_chosen_unique_bytes_to_index.items()])]
+            # for i in range(0, len(l_chosen_unique_bytes_index)):
+            #     ub_index = l_chosen_unique_bytes_index[i]
+            #     ub_tpl = l_chosen_unique_bytes[ub_index]
 
-            ub_arr = arr[pos:pos+length]
-            assert tuple(ub_arr.tolist())==ub_tpl
-            pos += len(ub_tpl)
+            #     ub_diff = l_chosen_unique_bytes_diff[i]
+            #     pos += ub_diff
+            #     length = len(ub_tpl)
 
-        l_diff_bits_amount = [len(bin(v)[2:]) if v>0 else 0 for v in l_chosen_unique_bytes_diff]
+            #     ub_arr = arr[pos:pos+length]
+            #     assert tuple(ub_arr.tolist())==ub_tpl
+            #     pos += len(ub_tpl)
 
-        length = len(l_chosen_unique_bytes_index)
-        length_needed_bytes = (lambda x: (x+x%2)//2)(len(hex(length)[2:]))
+            l_diff_bits_amount = [len(bin(v)[2:]) if v>0 else 0 for v in l_chosen_unique_bytes_diff]
 
-        content_bits_compressed_str = (
-            bin(MAX_BYTE_LENGTH)[2:].zfill(8)+
-            ''.join([bin(len(v)-1)[2:].zfill(4) for v in l_chosen_unique_bytes])+
-            ''.join([bin(v)[2:].zfill(8) for v in np.hstack(l_chosen_unique_bytes)])+
-            bin(length_needed_bytes-1)[2:].zfill(2)+
-            bin(length)[2:].zfill(8*length_needed_bytes)+
-            ''.join([bin(i)[2:].zfill(LEN_BITS_CHOSEN_INDEX) for i in l_chosen_unique_bytes_index])+
-            ''.join([bin(i)[2:].zfill(4) for i in l_diff_bits_amount])+
-            ''.join([bin(v)[2:] for v in l_chosen_unique_bytes_diff if v>0])
-        )
+            # TODO 2020.04.13: find a better way for representing the compressed data
+            u_index_orig, c_index_orig = np.unique(l_chosen_unique_bytes_index, return_counts=True)
+            idxs_index = [v[2] for v in sorted(list(zip(c_index_orig, u_index_orig, range(0, len(u_index_orig)))), reverse=True)]
+            u_index = u_index_orig[idxs_index]
+            c_index = c_index_orig[idxs_index]
 
-        len_bytes_raw = sum([len(l_chosen_unique_bytes[i]) for i in l_chosen_unique_bytes_index])
-        len_bits_raw = len_bytes_raw*8
+            u_diff_orig, c_diff_orig = np.unique(l_chosen_unique_bytes_diff, return_counts=True)
+            idxs_diff = [v[2] for v in sorted(list(zip(c_diff_orig, u_diff_orig, range(0, len(u_diff_orig)))), reverse=True)]
+            u_diff = u_diff_orig[idxs_diff]
+            c_diff = c_diff_orig[idxs_diff]
 
-        print("l_chosen_unique_bytes: {}".format(l_chosen_unique_bytes))
-        l_lens = list(map(len, l_chosen_unique_bytes))
-        print("l_lens: {}".format(l_lens))
+            assert np.sum(c_index)==np.sum(c_diff)
+
+            # l_chosen_unique_bytes = [word for _, word in sorted([(v, k) for k, v in d_chosen_unique_bytes_to_index.items()])]
+            # l_chosen_unique_bytes_cpy = deepcopy(l_chosen_unique_bytes)
+            # print("before: l_chosen_unique_bytes: {}".format(l_chosen_unique_bytes))
+
+            # change all content of index and diff to the new sorted by occurences one!
+            # d_index = {i_new: i_prev for i_prev, i_new in zip(u_index_orig, u_index)}
+            # d_index = {i_prev: i_new for i_prev, i_new in zip(u_index_orig, u_index)}
+            d_index = dict([(v, i) for i, v in enumerate(idxs_index, 0)])
+
+            # l_chosen_unique_bytes = [l_chosen_unique_bytes[i] for i in np.argsort(u_index)]
+            # l_chosen_unique_bytes = [l_chosen_unique_bytes[d_index[i]] for i in np.argsort(u_index)]
+            # l_chosen_unique_bytes = [l_chosen_unique_bytes[d_index[i]] for i in range(0, len(u_index))]
+            # print("after: l_chosen_unique_bytes: {}".format(l_chosen_unique_bytes))
+            
+            # print("before: l_chosen_unique_bytes_index: {}".format(l_chosen_unique_bytes_index[:100]))
+            # l_chosen_unique_bytes_index_cpy = deepcopy(l_chosen_unique_bytes_index)
+            # l_chosen_unique_bytes_index = [idxs_index[i] for i in l_chosen_unique_bytes_index]
+            l_chosen_unique_bytes_index = [d_index[i] for i in l_chosen_unique_bytes_index]
+            # print("after: l_chosen_unique_bytes_index: {}".format(l_chosen_unique_bytes_index[:100]))
+            d_chosen_unique_bytes_to_index = {k: d_index[v] for k, v in d_chosen_unique_bytes_to_index.items()}
+            l_chosen_unique_bytes = [word for _, word in sorted([(v, k) for k, v in d_chosen_unique_bytes_to_index.items()])]
+
+            u, c = np.unique(l_chosen_unique_bytes_index, return_counts=True)
+            assert np.all(u_index_orig==u)
+            assert np.all(c_index==c)
+
+            d_diff_to_idx = {k: i for i, k in enumerate(u_diff, 0)}
+            l_chosen_unique_bytes_diff_tbl = u_diff.tolist()
+            l_chosen_unique_bytes_diff_idx = [d_diff_to_idx[i] for i in l_chosen_unique_bytes_diff]
+
+            length = len(l_chosen_unique_bytes_index)
+            length_needed_bytes = (lambda x: (x+x%2)//2)(len(hex(length)[2:]))
+
+            length_diff_tbl = len(l_chosen_unique_bytes_diff_tbl)
+            length_diff_tbl_needed_bytes = (lambda x: (x+x%2)//2)(len(hex(length_diff_tbl)[2:]))
+            
+            assert len(l_chosen_unique_bytes_index)==len(l_chosen_unique_bytes_diff_idx)
+
+            # assert check
+            pos = 0
+            # l_chosen_unique_bytes = [v for _, v in sorted([(v, k) for k, v in d_chosen_unique_bytes_to_index.items()])]
+            for i in range(0, len(l_chosen_unique_bytes_index)):
+                ub_index = l_chosen_unique_bytes_index[i]
+                ub_tpl = l_chosen_unique_bytes[ub_index]
+
+                ub_diff = l_chosen_unique_bytes_diff[i]
+                pos += ub_diff
+                length = len(ub_tpl)
+
+                # print("ub_index: {}, ub_tpl: {}".format(ub_index, ub_tpl))
+                # print("ub_diff: {}, pos: {}".format(ub_diff, pos))
+                # print("length: {}".format(length))
+
+                ub_arr = arr[pos:pos+length]
+                # print("ub_arr: {}, ub_tpl: {}".format(ub_arr, ub_tpl))
+                assert tuple(ub_arr.tolist())==ub_tpl
+                pos += len(ub_tpl)
+
+            needed_bits_idx_index = np.sum(c_index*[k for j in [(2*i, )*2**i for i in range(1, 12)] for k in j][:u_index.shape[0]])
+            needed_bits_idx_diff = np.sum(c_diff*[k for j in [(2*i, )*2**i for i in range(1, 12)] for k in j][:u_diff.shape[0]])
+            # print("needed_bits_idx_index: {}".format(needed_bits_idx_index))
+            # print("needed_bits_idx_diff: {}".format(needed_bits_idx_diff))
+
+            needed_bits_word_tbl = 8+4*len(u_index)+8*sum(map(len, l_chosen_unique_bytes))
+            needed_bits_diff_tbl = 2+length_diff_tbl_needed_bytes*8+4*len(u_diff)+sum(map(lambda x: len(bin(x)[2:]), l_chosen_unique_bytes_diff_tbl))
+            needed_bits_idx_word_diff = 2+length_needed_bytes*8+needed_bits_idx_index+needed_bits_idx_diff
+
+            # print("- needed_bits_word_tbl: {}".format(needed_bits_word_tbl))
+            # print("- needed_bits_diff_tbl: {}".format(needed_bits_diff_tbl))
+            # print("- needed_bits_idx_word_diff: {}".format(needed_bits_idx_word_diff))
+            print("- needed bits: (word_tbl, diff_tbl, idx_word_diff): {}".format((needed_bits_word_tbl, needed_bits_diff_tbl, needed_bits_idx_word_diff)))
+
+            # # old variant
+            # content_bits_compressed_str = (
+            #     bin(MAX_BYTE_LENGTH)[2:].zfill(8)+
+            #     ''.join([bin(len(v)-1)[2:].zfill(4) for v in l_chosen_unique_bytes])+
+            #     ''.join([bin(v)[2:].zfill(8) for v in np.hstack(l_chosen_unique_bytes)])+
+            #     bin(length_needed_bytes-1)[2:].zfill(2)+
+            #     bin(length)[2:].zfill(8*length_needed_bytes)+
+            #     ''.join([bin(i)[2:].zfill(LEN_BITS_CHOSEN_INDEX) for i in l_chosen_unique_bytes_index])+
+            #     ''.join([bin(i)[2:].zfill(4) for i in l_diff_bits_amount])+
+            #     ''.join([bin(v)[2:] for v in l_chosen_unique_bytes_diff if v>0])
+            # )
 
 
-        if len(content_bits_compressed_str)%8!=0:
-            length_content = len(content_bits_compressed_str)
-            content_bits_compressed_str += '0'*(8-(length_content%8))
-        len_bits_compressed = len(content_bits_compressed_str)
+            # first, create the corresponding str_bits for the number in a list!
+            max_len = max([u_index.shape[0], u_diff.shape[0]])
+            l_bits_coding_basic = ['00', '01']
+            l_bits_coding_accumulative = deepcopy(l_bits_coding_basic)
+            l_bits_coding = deepcopy(l_bits_coding_basic)
+            l_bits_coding_extend = ['10', '11']
+            while len(l_bits_coding)<max_len:
+                l_bits_coding_accumulative = [b1+b2 for b1 in l_bits_coding_extend for b2 in l_bits_coding_accumulative]
+                l_bits_coding += l_bits_coding_accumulative
+            l_bits_coding = l_bits_coding[:max_len]
+            # sys.exit()
+
+            # new variant
+            content_bits_compressed_str_word_tbl = (
+                bin(MAX_BYTE_LENGTH)[2:].zfill(8)+
+                ''.join([bin(len(v)-1)[2:].zfill(4) for v in l_chosen_unique_bytes])+
+                ''.join([bin(v)[2:].zfill(8) for v in np.hstack(l_chosen_unique_bytes)])
+            )
+            content_bits_compressed_str_diff_tbl = (
+                bin(length_diff_tbl_needed_bytes-1)[2:].zfill(2)+
+                bin(length_diff_tbl)[2:].zfill(8*length_diff_tbl_needed_bytes)+
+                ''.join([bin(len(bin(v)[2:])-1)[2:].zfill(4) for v in l_chosen_unique_bytes_diff_tbl])+
+                ''.join([bin(v)[2:] for v in l_chosen_unique_bytes_diff_tbl])
+            )
+            content_bits_compressed_str_idx_word_diff = (
+                bin(length_needed_bytes-1)[2:].zfill(2)+
+                bin(length)[2:].zfill(8*length_needed_bytes)+
+                ''.join([l_bits_coding[i_index]+l_bits_coding[i_diff_idx] for i_index, i_diff_idx in zip(l_chosen_unique_bytes_index, l_chosen_unique_bytes_diff_idx)])
+            )
+
+            assert needed_bits_word_tbl==len(content_bits_compressed_str_word_tbl)
+            assert needed_bits_diff_tbl==len(content_bits_compressed_str_diff_tbl)
+            assert needed_bits_idx_word_diff==len(content_bits_compressed_str_idx_word_diff)
+
+            content_bits_compressed_str = (
+                content_bits_compressed_str_word_tbl+
+                content_bits_compressed_str_diff_tbl+
+                content_bits_compressed_str_idx_word_diff
+            )
+
+
+
+            len_bytes_raw = sum([len(l_chosen_unique_bytes[i]) for i in l_chosen_unique_bytes_index])
+            len_bits_raw = len_bytes_raw*8
+
+            # print("l_chosen_unique_bytes: {}".format(l_chosen_unique_bytes))
+            l_lens = list(map(len, l_chosen_unique_bytes))
+            # print("l_lens: {}".format(l_lens))
+
+
+            if len(content_bits_compressed_str)%8!=0:
+                length_content = len(content_bits_compressed_str)
+                content_bits_compressed_str += '0'*(8-(length_content%8))
+            len_bits_compressed = len(content_bits_compressed_str)
+            
+            print("- bits: raw: {} compressed: {}, percent: {:.06f}%".format(len_bits_raw, len_bits_compressed, (len_bits_raw-len_bits_compressed)/len_bits_raw*100))
+
+            arr_content_compressed = np.sum(np.array(list(map(int, list(content_bits_compressed_str)))).reshape((-1, 8))*2**np.arange(7, -1, -1), axis=1)
+            arr_content_compressed_uint8 = arr_content_compressed.astype(np.uint8)
+
+            d_saved_compressions[first_pos] = dict(
+                l_chosen_unique_bytes_index=l_chosen_unique_bytes_index,
+                l_chosen_unique_bytes_diff=l_chosen_unique_bytes_diff,
+                l_chosen_unique_bytes_diff_tbl=l_chosen_unique_bytes_diff_tbl,
+                l_chosen_unique_bytes_diff_idx=l_chosen_unique_bytes_diff_idx,
+                l_chosen_unique_bytes_ranges=l_chosen_unique_bytes_ranges,
+                d_chosen_unique_bytes_to_index=d_chosen_unique_bytes_to_index,
+                content_bits_compressed_str=content_bits_compressed_str,
+                arr_content_compressed_uint8=arr_content_compressed_uint8,
+                len_bits_raw=len_bits_raw,
+                len_bits_compressed=len_bits_compressed,
+                l_lens=l_lens,
+                percent_compression=(len_bits_raw-len_bits_compressed)/len_bits_raw,
+                max_diff=max(l_chosen_unique_bytes_diff),
+                max_diff_bits=len(bin(max(l_chosen_unique_bytes_diff))[2:]),
+            )
+
+        if len(d_saved_compressions)==0:
+            print("No more valid d_saved_compressions found!")
+            break
+
+        l_lens_table = [(k2, [len(v) for _, v in sorted([(v, k) for k, v in d_saved_compressions[k2]['d_chosen_unique_bytes_to_index'].items()])]) for k2 in sorted(d_saved_compressions.keys())]
+        # print("l_lens_table: {}".format(l_lens_table))
+        print("l_lens_table:")
+        for k, v in l_lens_table:
+            print("k: {}, v: {}".format(k, v))
+        l_percent_compressed = [(k2, d_saved_compressions[k2]['percent_compression'], '{:.06f}%'.format(d_saved_compressions[k2]['percent_compression']*100)) for k2 in sorted(d_saved_compressions.keys())]
+        # TODO 2020.04.12: add a simple check, where the best percentage is used!
+        print("l_percent_compressed: {}".format(l_percent_compressed))
+        best_pos_start = sorted(l_percent_compressed, key=lambda x: (x[1], ), reverse=True)[0][0]
+        print("best_pos_start: {}".format(best_pos_start))
+        print("- l_percent_compressed[best_pos_start]: {}".format(l_percent_compressed[best_pos_start]))
         
-        print("len_bits_compressed: {}".format(len_bits_compressed))
-        print("len_bits_raw: {}".format(len_bits_raw))
+        # sys.exit()
+        d = d_saved_compressions[best_pos_start]
+        len_bits_raw = d['len_bits_raw']
+        len_bits_compressed = d['len_bits_compressed']
+        # l_chosen_unique_bytes_index = d['l_chosen_unique_bytes_index']
+        # l_chosen_unique_bytes_diff = d['l_chosen_unique_bytes_diff']
+        l_chosen_unique_bytes_ranges = d['l_chosen_unique_bytes_ranges']
+        content_bits_compressed_str = d['content_bits_compressed_str']
+        arr_content_compressed_uint8 = d['arr_content_compressed_uint8']
+
+        if LEN_CHOSEN_INDEX!=len(l_chosen_unique_bytes):
+            break
+        # assert LEN_CHOSEN_INDEX==len(l_chosen_unique_bytes)
 
         l_len_raw_bits.append(len_bits_raw)
         l_len_compressed_bits.append(len_bits_compressed)
 
-        arr_content_compressed = np.sum(np.array(list(map(int, list(content_bits_compressed_str)))).reshape((-1, 8))*2**np.arange(7, -1, -1), axis=1)
-        arr_content_compressed_uint8 = arr_content_compressed.astype(np.uint8)
-
-        arr_content_compressed_uint8.tofile('content_compressed_round_nr_{}.hex'.format(round_nr))
+        # arr_content_compressed_uint8.tofile('content_compressed_round_nr_{}.hex'.format(round_nr))
 
         idxs_rest = ~np.isin(np.arange(0, len(arr)), np.hstack([np.arange(i1, i2) for i1, i2 in l_chosen_unique_bytes_ranges]))
         # idxs_rest = ~np.isin(np.arange(0, len(arr)), np.hstack([np.arange(i1, i2) for i1, i2 in idxs_ranges_sorted]))
@@ -236,6 +407,8 @@ if __name__ == "__main__":
 
         l_content_bits_compressed.append(content_bits_compressed_str)
         l_arr_content_compressed_uint8.append(arr_content_compressed_uint8)
+
+        # sys.exit()
 
     print()
     print("bytes_starting_size: {}".format(bytes_starting_size))
@@ -253,7 +426,35 @@ if __name__ == "__main__":
 
     print("sum_raw_bits: {}".format(sum_raw_bits))
     print("sum_compressed_bits: {}".format(sum_compressed_bits))
-    print("percent_compression: {:.06f} %".format(percent_compression))
+    missing_raw_bits = bytes_starting_size*8-sum_raw_bits
+    print("missing_raw_bits: {}".format(missing_raw_bits))
+    print("percent_compression (without rest raw): {:.06f} %".format(percent_compression))
+    
+
+    # save first the rest raw bytes then afterwards the compressed one!
+    arr_len = np.array((arr.shape[0], ), dtype=np.uint32)
+    arr_compressed_full = np.hstack([arr_len.view(dtype=np.uint8), arr]+l_arr_content_compressed_uint8)
+    
+    TMP_PATH_DIR = tempfile.gettempdir()
+    tmp_hex_dir = os.path.join(TMP_PATH_DIR, 'compressed_files_enwik8/')
+    if not os.path.exists(tmp_hex_dir):
+        os.makedirs(tmp_hex_dir)
+
+    arr_compressed_full.tofile(
+        (tmp_hex_dir+'content_compressed_size_orig_{size_orig}_size_comp_{size_comp}_round_nr_{round_nr}'+
+        '_max_idx_{LEN_CHOSEN_INDEX}_max_word_len_{MAX_BYTE_LENGTH}_max_first_pos_{MAX_FIRST_POS}.hzzv2.hex').format(
+            size_orig=bytes_starting_size,
+            size_comp=arr_compressed_full.shape[0],
+            round_nr=round_nr,
+            LEN_CHOSEN_INDEX=LEN_CHOSEN_INDEX,
+            MAX_BYTE_LENGTH=MAX_BYTE_LENGTH,
+            MAX_FIRST_POS=MAX_FIRST_POS,
+        )
+    )
+    
+    perc_comp_with_rest_raw = (bytes_starting_size-arr_compressed_full.shape[0])/bytes_starting_size*100
+    print("perc_comp_with_rest_raw: {:.06f} %".format(perc_comp_with_rest_raw))
+
     sys.exit()
 
 
