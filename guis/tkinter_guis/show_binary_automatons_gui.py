@@ -238,17 +238,55 @@ class MainWindow(tk.Frame):
 
         self.pixel = tk.PhotoImage(master=self, name='test_photo', width=1, height=1)
 
-        self.btn_increase_x_image = tk.Button(self, text='Increase x images')
+        btn_color_normal = '#40FF80'
+        btn_color_hover = '#30FFA0'
+        # btn_color_hover = '#FF4080'
+        # btn_color_hover = '#FF4080'
+        kwargs = dict(bg=btn_color_normal, image=self.pixel, compound=tk.CENTER, highlightthickness=0, bd=1, relief=tk.GROOVE)
+        # kwargs = dict(bg=btn_color_normal, image=self.pixel, compound=tk.CENTER, highlightthickness=0, bd=1, relief=tk.GROOVE)
+        kwargs_config = dict(width=150-4, height=30-4, padx=0, pady=0)
+
+        def create_functions_for_hover_button_color_change(btn):
+            def on_enter(e):
+                btn['activebackground'] = btn_color_hover
+                # print("btn.keys(): {}".format(btn.keys()))
+
+            def on_leave(e):
+                # btn['background'] = btn_color_normal
+                pass
+
+            return on_enter, on_leave
+
+        self.btn_increase_x_image = tk.Button(self, text='Increase x images', **kwargs)
+        # self.btn_increase_x_image = tk.Button(self, text='Increase x images', bg='#40FF80', image=self.pixel, compound=tk.CENTER, highlightthickness=0, bd=1, relief=tk.FLAT)
+        self.btn_increase_x_image.config(**kwargs_config)
+        # self.btn_increase_x_image.config(width=150-4, height=30-4, padx=0, pady=0)
         self.btn_increase_x_image.place(x=20+300+20, y=20)
 
-        self.btn_increase_y_image = tk.Button(self, text='Increase y images')
-        self.btn_increase_y_image.place(x=20+300+20, y=50)
+        self.btn_decrease_x_image = tk.Button(self, text='Decrease x images', **kwargs)
+        self.btn_decrease_x_image.config(**kwargs_config)
+        self.btn_decrease_x_image.place(x=20+300+20, y=50)
 
-        self.btn_decrease_x_image = tk.Button(self, text='Decrease x images')
-        self.btn_decrease_x_image.place(x=20+300+20, y=80)
+        self.btn_increase_y_image = tk.Button(self, text='Increase y images', **kwargs)
+        self.btn_increase_y_image.config(**kwargs_config)
+        self.btn_increase_y_image.place(x=20+300+20, y=80)
 
-        self.btn_decrease_y_image = tk.Button(self, text='Decrease y images')
+        self.btn_decrease_y_image = tk.Button(self, text='Decrease y images', **kwargs)
+        self.btn_decrease_y_image.config(**kwargs_config)
         self.btn_decrease_y_image.place(x=20+300+20, y=110)
+
+        on_enter, on_leave = create_functions_for_hover_button_color_change(self.btn_increase_x_image)
+        self.btn_increase_x_image.bind("<Enter>", on_enter)
+        self.btn_increase_x_image.bind("<Leave>", on_leave)
+        on_enter, on_leave = create_functions_for_hover_button_color_change(self.btn_decrease_x_image)
+        self.btn_decrease_x_image.bind("<Enter>", on_enter)
+        self.btn_decrease_x_image.bind("<Leave>", on_leave)
+        on_enter, on_leave = create_functions_for_hover_button_color_change(self.btn_increase_y_image)
+        self.btn_increase_y_image.bind("<Enter>", on_enter)
+        self.btn_increase_y_image.bind("<Leave>", on_leave)
+        on_enter, on_leave = create_functions_for_hover_button_color_change(self.btn_decrease_y_image)
+        self.btn_decrease_y_image.bind("<Enter>", on_enter)
+        self.btn_decrease_y_image.bind("<Leave>", on_leave)
 
         # TODOs at 2019.12.06
         # TODO: add buttons for adding in x and y direction more labels with images!
@@ -272,19 +310,20 @@ class MainWindow(tk.Frame):
         fo.lst_lbl_image_animation = []
         
         class LabelImageAnimation:
-        # class LabelImageAnimation(RecordClass):
             __slots__ = (
-                'idx_i',  'idx_j',
+                'idx_i',  'idx_j', 'str_rnd_seed',
                 'x_lbl', 'y_lbl', 'w_lbl', 'h_lbl',
                 'x_lbl_inner', 'y_lbl_inner', 'w_lbl_inner', 'h_lbl_inner',
-                'idx_img', 'l_imgtk', 'lock', 'lbl', 'lbl_inner',
-                'is_animation_on', 'time_elapse',
+                'idx_img', 'l_imgtk', 'l_img', 'lock', 'lbl', 'lbl_inner',
+                'is_animation_on', 'time_elapse', 'len_l_imgtk'
             )
 
             def __init__(self, idx_i, idx_j,  x_lbl,  y_lbl,  w_lbl,  h_lbl, 
                   x_lbl_inner,  y_lbl_inner,  w_lbl_inner,  h_lbl_inner,  idx_img, 
-                  l_imgtk,  lock=None,  lbl=None,  lbl_inner=None, 
+                  l_img, l_imgtk,  lock=None,  lbl=None,  lbl_inner=None, 
                   is_animation_on=None,  time_elapse=None, ):
+                self.str_rnd_seed = hex(np.random.randint(0, 0x100000000))[2:].upper()
+
                 self.idx_i: int = idx_i
                 self.idx_j: int = idx_j
 
@@ -299,6 +338,7 @@ class MainWindow(tk.Frame):
                 self.h_lbl_inner: int = h_lbl_inner
 
                 self.idx_img: int = idx_img
+                self.l_img: list = l_img
                 self.l_imgtk: list = l_imgtk
 
                 self.lock: Lock = None
@@ -319,11 +359,9 @@ class MainWindow(tk.Frame):
                 if is_animation_on is not None:
                     self.is_animation_on = is_animation_on
 
-                self.time_elapse: int = 500 # ms
+                self.time_elapse: int = 100 # ms
                 if time_elapse is not None:
                     self.time_elapse = time_elapse
-
-        # self.imgstk = []
 
         fo.w_img = 90
         fo.h_img = 80
@@ -331,10 +369,43 @@ class MainWindow(tk.Frame):
         fo.y_img = (fo.h-fo.h_img)//2
 
 
-        def define_new_def_for_print(x, y):
+        def define_new_def_for_print(x, y, o):
+            # o...LabelImageAnimation
             def new_def(event):
                 print("event: {}, (x, y): {}".format(event, (x, y)))
+                with o.lock:
+                    if o.is_animation_on:
+                        print('Animation is on, will be set to off!')
+                    else:
+                        print('Animation is off, will be set to on!')
+
+                    o.is_animation_on = not o.is_animation_on
             return new_def
+
+
+        def create_button_animation_functions(o):
+            def do_the_animation():
+                print("o.idx_i: {}, o.idx_j: {}, o.idx_img: {}".format(o.idx_i, o.idx_j, o.idx_img))
+                lock = o.lock
+                lock.acquire()
+                is_animation_on = o.is_animation_on
+                lock.release()
+                if is_animation_on:
+                    o.idx_img = (o.idx_img+1)%o.len_l_imgtk
+                    o.lbl_inner.configure(image=o.l_imgtk[o.idx_img])
+                    o.lbl_inner.image = o.l_imgtk[o.idx_img]
+                    o.lbl_inner.after(o.time_elapse, do_the_animation)
+
+
+            def toggle_animation(event):
+                lock = o.lock
+                lock.acquire()
+                o.is_animation_on = not o.is_animation_on
+                if o.is_animation_on:
+                    o.lbl_inner.after(0, do_the_animation)
+                lock.release()
+
+            return do_the_animation, toggle_animation
 
 
         def create_new_label_with_image(i, j):
@@ -344,7 +415,7 @@ class MainWindow(tk.Frame):
                 w_lbl=fo.w, h_lbl=fo.h,
                 x_lbl_inner=fo.x_img, y_lbl_inner=fo.y_img,
                 w_lbl_inner=fo.w_img, h_lbl_inner=fo.h_img,
-                idx_img=0, l_imgtk=[],
+                idx_img=0, l_imgtk=[], l_img=[],
             )
 
             l = tk.Label(
@@ -354,51 +425,54 @@ class MainWindow(tk.Frame):
             )
             l.place(x=o.x_lbl, y=o.y_lbl)
 
+            amount_images = 80
             pix = np.random.randint(0, 256, (o.h_lbl_inner, o.w_lbl_inner), dtype=np.uint8)
-            # pix = np.random.randint(0, 256, (fo.h_img, fo.w_img), dtype=np.uint8)
-            img = Image.fromarray(pix)
-            imgtk = ImageTk.PhotoImage(img, name='img_{}_{}'.format(j, i))
-            # self.imgstk.append(imgtk)
-            o.l_imgtk.append(imgtk)
+            pix[-1] = 0
+            for i_iter in range(0, amount_images):
+                # pix = np.random.randint(0, 256, (o.h_lbl_inner, o.w_lbl_inner), dtype=np.uint8)
+                # pix[i_iter] = 0
+                pix = np.roll(pix, 1, axis=0)
+                img = Image.fromarray(pix)
+                o.l_img.append(img)
+                imgtk = ImageTk.PhotoImage(img, name='img_{}_{}_{}_{}'.format(o.str_rnd_seed, i_iter, j, i))
+                o.l_imgtk.append(imgtk)
+            o.len_l_imgtk = len(o.l_imgtk)
+            # print("o.len_l_imgtk: {}".format(o.len_l_imgtk))
 
             bg_li = '#000000'
-            # bg_li = '#FF00FF'
-            li = tk.Label(master=l, text='inner', bg=bg_li, image=imgtk, borderwidth=0)
+            li = tk.Label(master=l, text='inner', bg=bg_li, image=o.l_imgtk[0], borderwidth=0)
+            # li = tk.Label(master=l, text='inner', bg=bg_li, image=imgtk, borderwidth=0)
             li.place(x=o.x_lbl_inner, y=o.y_lbl_inner)
-            # li.place(x=fo.x_img, y=fo.y_img)
-            li.bind("<Button-1>", define_new_def_for_print(i, j))
+            # li.bind("<Button-1>", define_new_def_for_print(i, j, o))
 
             # TODO: add a function for animation on/off!
+            do_the_animation, toggle_animation = create_button_animation_functions(o)
+            # def change_image(event):
+            #     print('Image changed!')
+            #     o.lbl_inner.configure(image=o.l_imgtk[0])
+            #     o.lbl.update()
+
+            # li.bind("<Button-1>", change_image)
+            li.bind("<Button-1>", toggle_animation)
 
             o.lbl = l
             o.lbl_inner = li
 
             return o
 
-            # return l, li
-
 
         def create_new_col_labels():
             if fo.rows==0:
                 assert fo.cols==0
                 fo.rows = 1
-                # assert len(fo.lst_lbls)==0
-                # assert len(fo.lst_lbls_inner)==0
                 assert len(fo.lst_lbl_image_animation)==0
 
-
-                # fo.lst_lbls.append([])
-                # fo.lst_lbls_inner.append([])
                 fo.lst_lbl_image_animation.append([])
 
             i = fo.cols
             for j in range(0, fo.rows):
                 o = create_new_label_with_image(i, j)
-                # l, li = create_new_label_with_image(i, j)
-
                 fo.lst_lbl_image_animation[j].append(o)
-                # fo.lst_lbls[j].append(l)
-                # fo.lst_lbls_inner[j].append(li)
 
             fo.cols += 1
 
@@ -406,30 +480,61 @@ class MainWindow(tk.Frame):
         def create_new_row_labels():
             if fo.cols==0:
                 assert fo.rows==0
-
                 fo.cols = 1
                 assert len(fo.lst_lbl_image_animation)==0
 
-                # assert len(fo.lst_lbls)==0
-                # assert len(fo.lst_lbls_inner)==0
-
             lst_lbl_image_animation_row = []
-            # lst_lbls_row = []
-            # lst_lbls_inner_row = []
             j = fo.rows
             for i in range(0, fo.cols):
                 o = create_new_label_with_image(i, j)
-                # l, li = create_new_label_with_image(i, j)
-
                 lst_lbl_image_animation_row.append(o)
-                # lst_lbls_row.append(l)
-                # lst_lbls_inner_row.append(li)
-
             fo.lst_lbl_image_animation.append(lst_lbl_image_animation_row)
-            # fo.lst_lbls.append(lst_lbls_row)
-            # fo.lst_lbls_inner.append(lst_lbls_inner_row)
 
             fo.rows += 1
+
+
+        def delete_col_labels():
+            if fo.cols==0:
+                assert fo.rows==0
+                assert len(fo.lst_lbl_image_animation)==0
+                return
+
+            fo.cols -= 1
+            i = fo.cols
+            for j in range(0, fo.rows):
+                l_row = fo.lst_lbl_image_animation[j]
+                o = l_row.pop()
+                lock = o.lock
+                lock.acquire()
+                o.is_animation_on = False
+                lock.release()
+                del o
+
+            if fo.cols==0:
+                fo.rows = 0
+                assert np.all(np.array([len(l) for l in fo.lst_lbl_image_animation])==0)
+                fo.lst_lbl_image_animation = []
+
+
+        def delete_row_labels():
+            if fo.cols==0:
+                assert fo.rows==0
+                assert len(fo.lst_lbl_image_animation)==0
+                return
+
+            fo.rows -= 1
+            j = fo.rows
+            l_objects = fo.lst_lbl_image_animation[j]
+            for o in fo.lst_lbl_image_animation.pop():
+                lock = o.lock
+                lock.acquire()
+                o.is_animation_on = False
+                lock.release()
+                del o
+
+            if fo.rows==0:
+                fo.cols = 0
+                assert len(fo.lst_lbl_image_animation)==0
 
 
         def func_btn_create_new_col(event):
@@ -446,19 +551,26 @@ class MainWindow(tk.Frame):
 
         def func_btn_delete_col(event):
             delete_col_labels()
-            fo.innerframe.config(width=fo.w*fo.cols, height=fo.h*fo.rows)
+            if fo.rows==0:
+                fo.innerframe.config(width=1, height=1)
+            else:
+                fo.innerframe.config(width=fo.w*fo.cols, height=fo.h*fo.rows)
             fo.update_viewport()
 
 
         def func_btn_delete_row(event):
             delete_row_labels()
-            fo.innerframe.config(width=fo.w*fo.cols, height=fo.h*fo.rows)
+            if fo.cols==0:
+                fo.innerframe.config(width=1, height=1)
+            else:
+                fo.innerframe.config(width=fo.w*fo.cols, height=fo.h*fo.rows)
             fo.update_viewport()
-
 
 
         self.btn_increase_x_image.bind('<Button-1>', func_btn_create_new_col)
         self.btn_increase_y_image.bind('<Button-1>', func_btn_create_new_row)
+        self.btn_decrease_x_image.bind('<Button-1>', func_btn_delete_col)
+        self.btn_decrease_y_image.bind('<Button-1>', func_btn_delete_row)
 
 
         for _ in range(0, 4):
@@ -469,6 +581,9 @@ class MainWindow(tk.Frame):
 
         fo.innerframe.config(width=fo.w*fo.cols, height=fo.h*fo.rows)
         fo.update_viewport()
+
+        print("fo.rows: {}".format(fo.rows))
+        print("fo.cols: {}".format(fo.cols))
 
         # 2019.10.15, TODO: add animation of random pictures first!
         # TODO: print the information of the labels info!
