@@ -43,11 +43,11 @@ if __name__ == "__main__":
     u, c = np.unique(arr_comb_view, return_counts=True)
     d_arr_comb_unique[1] = {'u': u, 'c': c}
 
-    for comb_nr in range(2, 4):
+    for comb_nr in range(2, 7):
         print("comb_nr: {}".format(comb_nr))
         arr_comb = np.hstack((arr_comb[:-1], arr1[comb_nr-1:].reshape((-1, 1))))
         d_arr_comb[comb_nr] = arr_comb
-        arr_comb_view = arr_comb.reshape((-1, )).view(dtype=[('f{}'.format(i), '<u1') for i in range(0, 2)])
+        arr_comb_view = arr_comb.reshape((-1, )).view(dtype=[('f{}'.format(i), '<u1') for i in range(0, comb_nr)])
         u, c = np.unique(arr_comb_view, return_counts=True)
         d_arr_comb_unique[comb_nr] = {'u': u, 'c': c}
 
