@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
+import datetime
 import dill
 import gzip
 import os
@@ -13,7 +14,7 @@ import numpy as np
 from dotmap import DotMap
 from PIL import Image
 
-path_dir_root = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+ROOT_PATH_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 # from ..combinatorics import different_combinations
 
 def write_dm_obj_txt(dm):
@@ -21,7 +22,7 @@ def write_dm_obj_txt(dm):
 
     print("dm.functions_str_lst: {}".format(dm.functions_str_lst))
     assert dm.path_dir
-    assert dm.save_data
+    assert isinstance(dm.save_data, bool)
     assert dm.functions_str_lst
     assert dm.file_name_dm
     assert dm.file_name_txt
@@ -73,7 +74,7 @@ def get_params_arr(ft):
 
 
 def create_lambda_functions_with_matrices(dm_params):
-    print("Now in def 'create_lambda_functions_with_matrices'")
+    # print("Now in def 'create_lambda_functions_with_matrices'")
 
     assert not ( isinstance(dm_params, DotMap) and
                  isinstance(dm_params, list) and
@@ -85,10 +86,10 @@ def create_lambda_functions_with_matrices(dm_params):
         dm_params = DotMap(dm_params)
 
     assert dm_params.ft
-    # assert dm_params.path_dir
-    # assert dm_params.save_data
-    # assert dm_params.file_name_dm
-    # assert dm_params.file_name_txt
+    assert isinstance(dm_params.save_data, bool)
+    assert True if dm_params.save_data==False else dm_params.path_dir is not None
+    assert dm_params.file_name_dm
+    assert dm_params.file_name_txt
     assert dm_params.min_or
     assert dm_params.max_or
     assert dm_params.min_and
@@ -136,7 +137,7 @@ def create_lambda_functions_with_matrices(dm_params):
 
     def get_random_disjunctions(params, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_and = np.random.randint(min_and, max_and+1)
-        and_values = [get_random_conjuctions(params, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
+        and_values = [get_random_conjuctions(params=params, min_n=min_n, max_n=max_n) for _ in range(0, amount_and)]
 
         and_lst, idx_choosen_params, idx_inv_params = list(zip(*and_values))
 
@@ -147,7 +148,7 @@ def create_lambda_functions_with_matrices(dm_params):
 
     def get_random_lambdas(params, min_or=1, max_or=8, min_and=1, max_and=4, min_n=1, max_n=3):
         amount_or = np.random.randint(min_or, max_or+1)
-        or_lst = [get_random_disjunctions(params, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n) for _ in range(0, amount_or)]
+        or_lst = [get_random_disjunctions(params=params, min_and=min_and, max_and=max_and, min_n=min_n, max_n=max_n) for _ in range(0, amount_or)]
 
         return or_lst
 
@@ -164,7 +165,7 @@ def create_lambda_functions_with_matrices(dm_params):
 
     
     dm_params.functions_str_lst = functions_str_lst
-    print("functions_str_lst: {}".format(functions_str_lst))
+    # print("functions_str_lst: {}".format(functions_str_lst))
     dm_params.idx_choosen_params_lst = idx_choosen_params_lst
     dm_params.idx_inv_params_lst = idx_inv_params_lst
 
@@ -566,9 +567,12 @@ if __name__ == "__main__":
     var_val_lst = list(map(lambda x: x.split("="), value_str_split))
     print("var_val_lst:\n{}".format(var_val_lst))
 
+    dt_now = datetime.datetime.now()
+    dt_now_str = dt_now.strftime('%Y.%m.%d_%H:%M:%S.%f')
+    
     ft = 1
     max_n = 5
-    path_dir = "lambda_functions/"
+    path_dir = "lambda_functions/dm_params_{dt_now_str}/".format(dt_now_str=dt_now_str)
     file_name_dm = "dm.pkl.gz"
     file_name_txt = "lambdas.txt"
     save_data = True
@@ -630,14 +634,14 @@ if __name__ == "__main__":
                     var=var, type_var=type_var, val=val))
 
     print("Values for variables after input:")
+    print(" - path_dir: {}".format(path_dir))
     print(" - ft: {}".format(ft))
-    print(" - min_and: {}".format(min_and))
-    print(" - max_and: {}".format(max_and))
     print(" - min_or: {}".format(min_or))
     print(" - max_or: {}".format(max_or))
+    print(" - min_and: {}".format(min_and))
+    print(" - max_and: {}".format(max_and))
     print(" - min_n: {}".format(min_n))
     print(" - max_n: {}".format(max_n))
-    print(" - path_dir: {}".format(path_dir))
     print(" - file_name_dm: {}".format(file_name_dm))
     print(" - file_name_txt: {}".format(file_name_txt))
     print(" - save_data: {}".format(save_data))
@@ -645,18 +649,15 @@ if __name__ == "__main__":
     # if not os.path.exists(path_dir):
     #     os.makedirs(path_dir)
 
-    dm = create_lambda_functions_with_matrices(path_dir=path_dir, ft=ft,
+    dm_params = DotMap(dict(
+        save_data=save_data,
+        path_dir=path_dir, ft=ft,
         min_or=min_or, max_or=max_or,
         min_and=min_and, max_and=max_and,
-        min_n=min_n, max_n=max_n, save_data=save_data)
+        min_n=min_n, max_n=max_n,
+        file_name_dm=file_name_dm, file_name_txt=file_name_txt,
+    ))
+
+    dm = create_lambda_functions_with_matrices(dm_params)
 
     write_dm_obj_txt(dm)
-
-    # create lambda for shaking images
-    # simplest_lambda_functions(path_dir)
-    # simple_random_lambda_creation(path_dir)
-    # create_lambda_functions_2(path_dir)
-    
-    # create_lambda_functions_3(path_dir)
-    # create_lambda_functions_4(path_dir)
-    # create_lambda_functions_5(path_dir)
