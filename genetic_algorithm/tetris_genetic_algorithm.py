@@ -29,6 +29,10 @@ from threading import Lock
 import base64
 import json
 
+from memory_tempfile import MemoryTempfile
+tempfile = MemoryTempfile()
+# import tempfile
+
 import platform
 print("platform.system(): {}".format(platform.system()))
 os.system('xset r off')
@@ -36,7 +40,11 @@ os.system('xset r off')
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 
 class SimpleNeuralNetwork(Exception):
-    def __init__(self, input_nodes, hidden_nodes, output_nodes):
+    def __init__(self, input_nodes=None, hidden_nodes=None, output_nodes=None, ws=None):
+        if ws is not None:
+            self.ws = deepcopy(ws)
+            return
+
         layers = [input_nodes]+hidden_nodes+[output_nodes]
         self.ws = [(np.random.random((i2, i1))*2.-1.)/10. for i1, i2 in zip(layers[:-1], layers[1:])]
 
@@ -61,27 +69,39 @@ class GeneticAlgorithm(Exception):
 
 class TetrisGeneticAlgorithm(Exception):
     def __init__(self):
-        self.field_column = 10
-        self.field_rows = 25
+        self.field_columns = 10
+        self.field_rows = 40
 
-        l_piece_name = ['Z', 'S', 'O', 'T', 'L', 'J', 'I']
-        l_piece_direction = ['W', 'N', 'E', 'S']
+        self.l_piece_name = ['Z', 'S', 'O', 'T', 'L', 'J', 'I']
+        self.l_piece_direction = ['W', 'N', 'E', 'S']
+        self.piece_name_str = ''.join(sorted(self.l_piece_name))
 
-        self.crossover_percent = 0.30
-        self.mutation_percent = 0.05
-        self.mutation_add_percent = 0.10
-        self.mutation_sub_percent = 0.10
+        self.l_clear_lines = []
+        self.l_pieces_used = []
+
+        self.POPULATION_SIZE = 100
+        self.crossover_percent = 0.40
+        self.mutation_percent = 0.10
+        self.mutation_add_percent = 0.08
+        self.mutation_sub_percent = 0.08
+
+        self.using_parent_amount_percent = 0.6
+        self.using_parent_amount = int(self.POPULATION_SIZE*self.using_parent_amount_percent)
+
+        self.hidden_layers = [100]
 
         self.change_hash_at_module = 1
 
         self.generation_nr_acc = 0
         self.generation_nr = 0
+
+        self.max_piece_nr = self.field_columns*200
         self.piece_nr = 0
         self.max_clear_lines = 0
         self.max_pieces = 0
 
         self.field_add_rows = 4
-        self.field = np.zeros((self.field_rows+self.field_add_rows, self.field_column), dtype=np.uint8)
+        self.field = np.zeros((self.field_rows+self.field_add_rows, self.field_columns), dtype=np.uint8)
         self.field_y = self.field.shape[0]
         self.field_x = self.field.shape[1]
         self.need_field_reset = False
@@ -165,11 +185,11 @@ class TetrisGeneticAlgorithm(Exception):
             'I': [1, 1],
         }
 
-        d_piece_name_counter = {piece_name: 0 for piece_name in l_piece_name}
+        d_piece_name_counter = {piece_name: 0 for piece_name in self.l_piece_name}
         self.clear_lines = 0
 
         # the amount of boxes in fields + 7 nodes for currecnt piece + 7 nodes for next piece
-        input_nodes = self.field_column*self.field_rows+7+7
+        input_nodes = self.field_columns*self.field_rows+7+7
         d_piece_name_to_output_node_to_direction_pos = {}
         for piece_name, d in d_pieces.items():
             d_output_node_to_direction_pos = {}
@@ -184,19 +204,25 @@ class TetrisGeneticAlgorithm(Exception):
         # print("input_nodes: {}".format(input_nodes))
         # print("output_nodes: {}".format(output_nodes))
         # input('ENTER...')
-        hidden_layers = [100]
 
-        def generate_new_d_simple_nn():
-            d_simple_nn = {
-                piece_name: SimpleNeuralNetwork(
-                    input_nodes=input_nodes,
-                    hidden_nodes=hidden_layers,
-                    output_nodes=output_nodes,
-                ) for piece_name, d_output_node_to_direction_pos in d_piece_name_to_output_node_to_direction_pos.items()
-            }
+        def generate_new_d_simple_nn(d_simple_nn=None):
+            if d_simple_nn is None:
+                d_simple_nn = {
+                    piece_name: SimpleNeuralNetwork(
+                        input_nodes=input_nodes,
+                        hidden_nodes=self.hidden_layers,
+                        output_nodes=output_nodes,
+                    ) for piece_name, d_output_node_to_direction_pos in d_piece_name_to_output_node_to_direction_pos.items()
+                }
+            else:
+                d_simple_nn = {
+                    piece_name: SimpleNeuralNetwork(
+                        ws=simple_nn.ws,
+                    ) for piece_name, simple_nn in d_simple_nn.items()
+                }
 
             # ws_orig = d_simple_nn['J'].ws
-            # for piece_name in l_piece_name:
+            # for piece_name in self.l_piece_name:
             #     if piece_name=='J':
             #         continue
             #     d_simple_nn[piece_name].ws = ws_orig
@@ -204,7 +230,6 @@ class TetrisGeneticAlgorithm(Exception):
             return d_simple_nn
 
         # TODO: write the learning part in a separate function or make a separate class for the learning only!
-        self.POPULATION_SIZE = 30
         self.l_d_simple_nn = [generate_new_d_simple_nn() for _ in range(0, self.POPULATION_SIZE)]
 
         self.simple_nn_idx = 0
@@ -219,11 +244,12 @@ class TetrisGeneticAlgorithm(Exception):
             return input_vector
 
 
-        self.piece_next_name = random.choice(l_piece_name)
-        self.piece_name = random.choice(l_piece_name)
+        self.piece_next_name = random.choice(self.l_piece_name)
+        self.piece_name = random.choice(self.l_piece_name)
 
         def define_next_random_piece():
-            piece_name = l_piece_name[(self.hash_val+self.piece_nr*123456789)%len(l_piece_name)]
+            piece_name = random.choice(self.l_piece_name)
+            # piece_name = self.l_piece_name[(self.hash_val+self.piece_nr*123456789)%len(self.l_piece_name)]
 
             d_piece = d_pieces[piece_name]
 
@@ -275,22 +301,24 @@ class TetrisGeneticAlgorithm(Exception):
         def reset_field():
             self.need_field_reset = False
             self.field[:] = 0
+            # set some garbage lines at the bottom last 5 lines e.g.
+            garbage_lines = 5
+            self.field[-garbage_lines:] = 1
+            ys = np.arange(self.field_rows+self.field_add_rows-1, self.field_rows+self.field_add_rows-1-garbage_lines, -1)
+            xs = np.random.randint(0, self.field_columns, (garbage_lines, ))
+            self.field[(ys, xs)] = 0
+            # print("self.field:\n{}".format(self.field))
+            # print("ys: {}".format(ys))
+            # print("xs: {}".format(xs))
+            # input('ENTER..')
+
             for k in d_piece_name_counter:
                 d_piece_name_counter[k] = 0
-            #     self.d_strvar_pcs_counter[k].set('0')
-            # self.canvas.create_rectangle(0, 0, self.canv_w, self.canv_h, fill=self.canv_bg, width=0)
             
-            self.piece_nr = 0
-
             self.clear_lines = 0
-            # self.lbl_clear_lines_txt.set('{}'.format(self.clear_lines))
-
+            self.piece_nr = -1
             define_next_random_piece()
-            # define_next_piece()
-            # show_start_piece_position()
-
-            # define_next_piece()
-            # show_start_piece_position()
+            self.piece_nr = 0
 
 
         def do_move_piece_down_instant():
@@ -341,21 +369,15 @@ class TetrisGeneticAlgorithm(Exception):
 
             for yi, xi in s_prev_pos:
                 self.field[yi, xi] = 0
-            #     y = self.pos_y_start+self.box_h*yi
-            #     x = self.pos_x_start+self.box_w*xi
-            #     self.canvas.create_rectangle(x, y, x+self.box_w, y+self.box_h, fill=self.canv_bg, width=0)
                
             for yi, xi in s_next_pos:
                 self.field[yi, xi] = self.piece_idx
-            #     y = self.pos_y_start+self.box_h*yi
-            #     x = self.pos_x_start+self.box_w*xi
-            #     self.canvas.create_rectangle(x, y, x+self.box_w, y+self.box_h, fill=self.piece_color, width=0)
 
             self.piece_posi_y += i-1
 
             return True
 
-
+        # TODO: write a separate function for the running the game and a seperate function for calculting the new offsprings
         def get_new_statistics():
             t = (self.simple_nn_idx, self.piece_nr, self.clear_lines)
             self.l_statistics_of_simple_nn[self.simple_nn_idx] = t
@@ -364,42 +386,43 @@ class TetrisGeneticAlgorithm(Exception):
             if self.max_pieces<self.piece_nr:
                 self.max_pieces = self.piece_nr
             
-            # print("self.simple_nn_idx: {}".format(self.simple_nn_idx))
+            self.calculate_new_hash_val()
+
             self.simple_nn_idx = (self.simple_nn_idx+1)%len(self.l_d_simple_nn)
             if self.simple_nn_idx==0:
-                if self.generation_nr%self.change_hash_at_module == 0:
+                if self.generation_nr_acc%self.change_hash_at_module == 0:
                     self.calculate_new_hash_val()
-                    self.change_hash_at_module += 1
-                    self.generation_nr = 1
+                    self.generation_nr = 0
 
                 l_sorted = sorted(self.l_statistics_of_simple_nn, key=lambda x: (x[2], x[1]), reverse=True)
                 l_sorted_filtered = [(i2, i1) for _, i1, i2 in l_sorted]
                 print("self.generation_nr_acc: {}".format(self.generation_nr_acc))
                 print("self.generation_nr: {}".format(self.generation_nr))
-                self.generation_nr_acc += 1
-                self.generation_nr += 1
+
+                self.l_clear_lines.append(l_sorted_filtered[0])
+                self.l_pieces_used.append(l_sorted_filtered[1])
+
                 print("self.max_clear_lines: {}, self.max_pieces: {}".format(self.max_clear_lines, self.max_pieces))
-                # print("self.max_clear_lines: {}".format(self.max_clear_lines))
-                print("l_sorted_filtered:\n{}".format(l_sorted_filtered))
+                print("self.field_rows: {}, self.field_columns: {}".format(self.field_rows, self.field_columns))
+                print("self.l_piece_name: {}".format(self.l_piece_name))
+                elements_in_row = 20
+                l_sorted_filtered_str = [':'.join(['{:2},{:2}'.format(i1, i2) for i1, i2 in l_sorted_filtered[i:i+elements_in_row]]) for i in range(0, len(l_sorted_filtered), elements_in_row)]
+                print("l_sorted_filtered_str:\n{}".format(':\n'.join(l_sorted_filtered_str)))
 
                 l_idx = [idx for idx, amount_pieces, clear_lines in l_sorted]
-                # l_d_simple_nn_new_parents = [self.l_d_simple_nn[i] for i in l_idx[:self.POPULATION_SIZE//2]]
-                # l_d_simple_nn_new_childs = [generate_new_d_simple_nn() for _ in range(0, self.POPULATION_SIZE//2)]
-                l_d_simple_nn_new_parents = [self.l_d_simple_nn[i] for i in l_idx[:self.POPULATION_SIZE//3]]
-                l_d_simple_nn_new_childs = [generate_new_d_simple_nn() for _ in range(0, self.POPULATION_SIZE-len(l_d_simple_nn_new_parents))]
-                
-                # using_idx = np.random.permutation(np.arange(0, self.POPULATION_SIZE//2))
+                l_d_simple_nn_new_parents = [self.l_d_simple_nn[i] for i in l_idx[:self.using_parent_amount]]
                 amount_parents = len(l_d_simple_nn_new_parents)
-                amount_childs = len(l_d_simple_nn_new_childs)
-                using_idx_delta = np.random.randint(1, amount_parents, (len(l_d_simple_nn_new_childs), ))
+                amount_childs = self.POPULATION_SIZE-amount_parents
+                
+                using_idx_delta = np.random.randint(1, amount_parents, (amount_childs, ))
                 using_idx_delta[0] = np.random.randint(0, amount_parents)
                 using_idx = np.cumsum(using_idx_delta)%amount_parents
-                # print("using_idx: {}".format(using_idx))
-                # for d_snn1, d_snn2, d_snn_child in zip(l_d_simple_nn_new_parents[:-1], l_d_simple_nn_new_parents[1:], l_d_simple_nn_new_childs):
+                l_d_simple_nn_new_childs = [generate_new_d_simple_nn(d_simple_nn=l_d_simple_nn_new_parents[i]) for i in using_idx]
+                # l_d_simple_nn_new_childs = [generate_new_d_simple_nn() for _ in range(0, self.POPULATION_SIZE-len(l_d_simple_nn_new_parents))]
+
                 for i1, i2, d_snn_child in zip(using_idx, np.roll(using_idx, 1), l_d_simple_nn_new_childs):
                     d_snn1, d_snn2 = l_d_simple_nn_new_parents[i1], l_d_simple_nn_new_parents[i2]
-                    # for piece_name in ['J']:
-                    for piece_name in l_piece_name:
+                    for piece_name in self.l_piece_name:
                         snn1 = d_snn1[piece_name]
                         snn2 = d_snn2[piece_name]
                         snn_child = d_snn_child[piece_name]
@@ -418,9 +441,11 @@ class TetrisGeneticAlgorithm(Exception):
 
                             a_c[:] = a1
 
-                            idx_crossover_1 = np.random.permutation(idx_crossover)==1
+                            # idx_crossover_1 = np.random.permutation(idx_crossover)==1
+                            # assert np.all(a_c[idx_crossover_1]==a1[idx_crossover_1])
+                            # a_c[idx_crossover_1] = a1[idx_crossover_1]
+                            
                             idx_crossover_2 = np.random.permutation(idx_crossover)==1
-                            a_c[idx_crossover_1] = a1[idx_crossover_1]
                             a_c[idx_crossover_2] = a2[idx_crossover_2]
 
                             # mutation step
@@ -437,7 +462,7 @@ class TetrisGeneticAlgorithm(Exception):
 
                             idx_mutation_add_c = np.random.permutation(idx_mutation_add)==1
                             amount_mutation_add_vals = np.sum(idx_mutation_add)
-                            a_c[np.random.permutation(idx_mutation_add_c)] += (np.random.random((amount_mutation_add_vals, ))*2.-1.)/1000.
+                            a_c[np.random.permutation(idx_mutation_add_c)] += (np.random.random((amount_mutation_add_vals, ))*2.-1.)/10000.
 
                             # mutation step sub
                             idx_mutation_sub = np.zeros((length, ), dtype=np.uint8)
@@ -445,11 +470,47 @@ class TetrisGeneticAlgorithm(Exception):
 
                             idx_mutation_sub_c = np.random.permutation(idx_mutation_sub)==1
                             amount_mutation_sub_vals = np.sum(idx_mutation_sub)
-                            a_c[np.random.permutation(idx_mutation_sub_c)] -= (np.random.random((amount_mutation_sub_vals, ))*2.-1.)/1000.
+                            a_c[np.random.permutation(idx_mutation_sub_c)] -= (np.random.random((amount_mutation_sub_vals, ))*2.-1.)/10000.
 
                 l_d_simple_nn_new = l_d_simple_nn_new_parents+l_d_simple_nn_new_childs
                 assert len(l_d_simple_nn_new)==self.POPULATION_SIZE
                 self.l_d_simple_nn = l_d_simple_nn_new
+
+                if (self.generation_nr_acc)%500==0:
+                    obj = {
+                        'field_columns': self.field_columns,
+                        'field_rows': self.field_rows,
+                        'crossover_percent': self.crossover_percent,
+                        'mutation_percent': self.mutation_percent,
+                        'mutation_add_percent': self.mutation_add_percent,
+                        'mutation_sub_percent': self.mutation_sub_percent,
+                        'l_d_simple_nn_best': self.l_d_simple_nn[:5],
+                        'l_clear_lines': self.l_clear_lines,
+                        'l_pieces_used': self.l_pieces_used,
+                    }
+
+                    directory = '/run/user/1000/genetic_algorithm/rows_{}_cols_{}/using_pieces_{}/'.format(
+                        self.field_rows, self.field_columns, self.piece_name_str)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+
+                    t = tempfile.NamedTemporaryFile(suffix='_genetic_alg_tetris_pop_size_{}_gen_{}_clear_rows_{}_pcs_{}.pkl'.format(
+                            self.POPULATION_SIZE,
+                            self.generation_nr_acc,
+                            self.clear_lines,
+                            self.piece_nr,
+                        ),
+                        delete=False,
+                        dir=directory
+                    )
+                    print("Saving file: t.name: {}".format(t.name))
+
+                    dill.dump(obj, t)
+
+                    t.close()
+
+                self.generation_nr_acc += 1
+                self.generation_nr += 1
 
             self.using_d_piece_name_simple_nn = self.l_d_simple_nn[self.simple_nn_idx]
 
@@ -459,38 +520,18 @@ class TetrisGeneticAlgorithm(Exception):
 
         def main_game_loop():  
             while True:
-                # is_piece_moved = do_move_piece_down_instant()
-                # # is_piece_moved = do_move_piece_down()
-
-                # if not is_piece_moved:
-                #     if self.need_field_reset:
-                #         reset_field()
-                #     else:
-                #         define_next_piece()
-                #         show_start_piece_position()
-
                 define_next_piece()
-                # show_start_piece_position()
                 is_piece_moved = do_move_piece_down_instant()
 
-                # print("self.field:\n{}".format(self.field))
-                # input('ENTER...')
-
-                if not is_piece_moved and self.need_field_reset or self.piece_nr>200:
+                if not is_piece_moved and self.need_field_reset or self.piece_nr>self.max_piece_nr:
                     get_new_statistics()
                     reset_field()
-                    # self.master.after(self.main_loop_ms_pause, main_game_loop)
-                    # return
 
-
-                # print("self.field:\n{}".format(self.field))
-                # check, if lines can be cleared or not!?
                 idxs_row_full = np.all(self.field!=0, axis=1)
                 if np.any(idxs_row_full):
                     self.field[idxs_row_full] = 0
 
                     self.clear_lines += np.sum(idxs_row_full)
-                    # self.lbl_clear_lines_txt.set('{}'.format(self.clear_lines))
 
                     all_rows_full = np.where(idxs_row_full)[0]
                     all_rows_empty = np.where(np.all(self.field==0, axis=1))[0]
@@ -498,71 +539,20 @@ class TetrisGeneticAlgorithm(Exception):
 
                     all_rows_rest = all_rows[(~np.isin(all_rows, all_rows_full))&(~np.isin(all_rows, all_rows_empty))]
 
-                    # print("all_rows_full: {}".format(all_rows_full))
-                    # print("all_rows_empty: {}".format(all_rows_empty))
-                    # print("all_rows: {}".format(all_rows))
-                    # print("all_rows_rest: {}".format(all_rows_rest))
-
-                    # for row in all_rows_full:
-                    #     y = self.pos_y_start+self.box_h*row
-                    #     x = self.pos_x_start
-                    #     self.canvas.create_rectangle(x, y, x+self.canv_w, y+self.box_h, fill=self.canv_bg, width=0)
-                    
-
                     all_rows_needed = all_rows[:all_rows_rest.shape[0]]
                     idxs_same_rows = np.where(all_rows_rest!=all_rows_needed)[0]
                     
-                    # idxs_row_to_move = np.where(~idxs_same_rows)[0]
-                    # print("idxs_same_rows: {}".format(idxs_same_rows))
-                    # import pdb
-                    # pdb.set_trace()
-
                     if idxs_same_rows.shape[0]>0:
                         idx_first_row = idxs_same_rows[0]
 
                         rows_from = all_rows_rest[idx_first_row:]
                         rows_to = all_rows_needed[idx_first_row:]
 
-                        # print("rows_from: {}".format(rows_from))
-                        # print("rows_to: {}".format(rows_to))
-
-                        # import pdb
-                        # pdb.set_trace()
-
                         for row_from, row_to in zip(rows_from, rows_to):
                             self.field[row_to] = self.field[row_from]
                             self.field[row_from] = 0
 
-                            # y = self.pos_y_start+self.box_h*row_from
-                            # x = self.pos_x_start
-                            # self.canvas.create_rectangle(x, y, x+self.canv_w, y+self.box_h, fill=self.canv_bg, width=0)
-                            
-                            # y = self.pos_y_start+self.box_h*row_to
-                            # for xi, v in enumerate(self.field[row_to], 0):
-                            #     if v==0:
-                            #         continue
-                            #     x = self.pos_x_start+self.box_w*xi
-                            #     self.canvas.create_rectangle(x, y, x+self.box_w, y+self.box_h, fill=d_piece_idx_to_color[v], width=0)
-                            
-                # self.tick += 1
                 self.piece_nr += 1
-                # print("self.piece_nr: {}".format(self.piece_nr))
-
-                # time_diff = time.time()-self.time_begin
-
-                # self.lbl_time_text.set('time_diff: {:.04f}'.format(time_diff))
-                # self.lbl_tick_text.set('tick: {}'.format(self.tick))
-                # fps = self.tick/time_diff
-                # self.lbl_fps_text.set('fps: {:.04f}'.format(fps))
-
-                # fps_needed_diff = fps-self.main_loop_fps_needed
-                # if abs(fps_needed_diff) >= 0.01:
-                #     if fps_needed_diff < 0:
-                #         self.main_loop_ms_pause -= 1
-                #     elif fps_needed_diff > 0:
-                #         self.main_loop_ms_pause += 1
-
-            # self.master.after(self.main_loop_ms_pause, main_game_loop)
         
         main_game_loop()
 
