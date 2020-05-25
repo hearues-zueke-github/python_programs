@@ -301,13 +301,21 @@ class TetrisGeneticAlgorithm(Exception):
 
 
 if __name__ == "__main__":
+    amount_pieces = 500
+
     field_columns = 5
-    field_rows = 15
-    # field_columns = 10
-    # field_rows = 25
+    field_rows = 30
+
     field_add_rows = 4
     field_rows_total = field_rows+field_add_rows
     tetris = TetrisGeneticAlgorithm(field_columns, field_rows, field_add_rows)
+
+    field = tetris.field
+
+    # create garbage!
+    field[-5:] = 8
+    field[-5:][(np.arange(0, 5), np.random.randint(0, field.shape[1], (5, )))] = 0
+    # field[-5:][np.random.randint(0, 2, (5, field.shape[1]))==1] = 8
 
     d_piece_name_to_amount_output_nodes = {}
     for piece_name in tetris.l_piece_name:
@@ -324,17 +332,16 @@ if __name__ == "__main__":
     field_weights += np.flip(np.cumsum(np.arange(1, field_rows_total+1)).reshape((-1, 1)))
     print("field_weights:\n{}".format(field_weights))
 
-    l_best_sequence_piece_name_idx = []
-    amount_pieces = 100
-    l_sequence_piece_name = [tetris.l_piece_name[i] for i in np.random.randint(0, 7, (amount_pieces+1, ))]
-    print("l_sequence_piece_name: {}".format(l_sequence_piece_name))
-    # sys.exit()
-
-    # l_piece_name_order_first = ['I', 'J']
     amount_next_pieces = 1
-    for i in range(0, len(l_sequence_piece_name)-amount_next_pieces-1):
-        l_piece_name_order_first = l_sequence_piece_name[i:i+amount_next_pieces+1]
+    l_best_sequence_piece_name_idx = []
+    l_sequence_piece_name = [tetris.l_piece_name[i] for i in np.random.randint(0, 7, (amount_pieces+amount_next_pieces, ))]
+    print("l_sequence_piece_name: {}".format(l_sequence_piece_name))
+
+    for piece_nr in range(0, len(l_sequence_piece_name)-amount_next_pieces-1):
+        l_piece_name_order_first = l_sequence_piece_name[piece_nr:piece_nr+amount_next_pieces+1]
         
+        prev_field = tetris.field.copy()
+
         d_t_idxs_to_weights_sum_clear_lines_max_height = {}
         for piece_name_last in tetris.l_piece_name:
             def calc_weights(l_piece_name_order):
@@ -389,11 +396,11 @@ if __name__ == "__main__":
                         weight, clear_lines, max_height = d_t_idxs_to_weights_sum_clear_lines_max_height[t_combined]
                         # weight, clear_lines, max_height = d_t_idxs_to_weights_sum_clear_lines_max_height[(pn_last, idx1, idx2, idx_last)]
 
-                        # if min_max_height > max_height:
-                        #     min_max_height = max_height
-                        #     max_clear_lines = clear_lines
-                        #     min_weight = weight
-                        if max_clear_lines < clear_lines:
+                        if min_max_height > max_height:
+                            min_max_height = max_height
+                            max_clear_lines = clear_lines
+                            min_weight = weight
+                        elif max_clear_lines < clear_lines:
                             max_clear_lines = clear_lines
                             min_weight = weight
                         elif min_weight > weight:
@@ -412,8 +419,13 @@ if __name__ == "__main__":
 
         t = (l_piece_name_order_first[0], best_t_idxs[0])
         tetris.do_next_piece(piece_name=t[0], output_node=t[1])
-        print("tetris.field:\n{}".format(tetris.field))
-        print("i: {}, t: {}, max_height: {}".format(i, t, tetris.max_height))
+        column_between = np.empty((prev_field.shape[0], 1), dtype=object)
+        column_between[:] = '|'
+        combined_field = np.hstack((prev_field.astype(object), column_between, tetris.field.astype(object)))
+        print("combined_field:\n{}".format(combined_field))
+        # print("tetris.field:\n{}".format(tetris.field))
+        print("l_piece_name_order_first: {}".format(l_piece_name_order_first))
+        print("piece_nr: {}, t: {}, max_height: {}".format(piece_nr, t, tetris.max_height))
 
         l_best_sequence_piece_name_idx.append(t)
 
@@ -439,7 +451,10 @@ if __name__ == "__main__":
     # print a simple graph, where the max height of each step is shown!
     plt.figure()
 
-    plt.plot(np.arange(0, len(l_max_height)), l_max_height, 'b.-')
+    plt.plot(np.arange(1, len(l_max_height)+1), l_max_height, 'b.-')
+    plt.title('Max Height per next piece nr.')
+    plt.xlabel('Piece Nr.')
+    plt.ylabel('Max Height')
 
     plt.show()
 
