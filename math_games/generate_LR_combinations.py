@@ -8,8 +8,6 @@ import os
 import random
 import sys
 
-from pysat.solvers import Glucose3
-
 from copy import deepcopy
 
 sys.path.append("../combinatorics/")

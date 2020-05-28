@@ -8,8 +8,6 @@ import os
 import random
 import sys
 
-from pysat.solvers import Glucose3
-
 from copy import deepcopy
 
 sys.path.append("../combinatorics/")
@@ -238,7 +236,7 @@ if __name__=='__main__':
     str_moves = argv[1]
     max_iterations = int(argv[2])
     
-    print("str_moves: {}, max_iterations: {}".format(str_moves, max_iterations))
+    # print("str_moves: {}, max_iterations: {}".format(str_moves, max_iterations))
 
     PATH_DIR_PICTURES = '/tmp/ram/'+'pictures/langtons_ant_multiple_machines_iters_{}/'.format(max_iterations)
     # PATH_DIR_PICTURES = PATH_ROOT_DIR+'pictures/langtons_ant_multiple_machines_iters_{}/'.format(max_iterations)
@@ -276,12 +274,12 @@ if __name__=='__main__':
     # str_moves = 'LLLRRRLRLRLRLLR'
     # max_iterations = 2000000
     
-    l_moves = list(str_moves)
-    # l_moves = list('LRRRRRLLR')
+    l_basic_moves = list(str_moves)
+    # l_basic_moves = list('LRRRRRLLR')
 
-    l_states_nums = np.arange(0, len(l_moves))
+    l_states_nums = np.arange(0, len(l_basic_moves))
     l_states_nums_next = np.roll(l_states_nums, -1)
-    d_state_next_state_turn = {state_now: (state_next, move) for move, state_now, state_next in zip(l_moves, l_states_nums, l_states_nums_next)}
+    d_state_next_state_turn = {state_now: (state_next, move) for move, state_now, state_next in zip(l_basic_moves, l_states_nums, l_states_nums_next)}
     
     d_next_position_dir_move_state = {}
     for state, (next_state, next_turn) in d_state_next_state_turn.items():
@@ -293,13 +291,15 @@ if __name__=='__main__':
     # }
     # assert d_next_position_dir_state_2==d_next_position_dir_move_state
 
+    MAX_COORDINATE = 400
+
     for i_step in range(1, max_iterations+1):
         state_now = d_field[cell_now]
         dy, dx, new_dir, move, new_state = d_next_position_dir_move_state[(direction, state_now)]
         cell_new = (cell_now[0]+dy, cell_now[1]+dx)
         
         y, x = cell_new
-        if y<-300 or y>300 or x<-300 or x>300:
+        if y<-MAX_COORDINATE or y>MAX_COORDINATE or x<-MAX_COORDINATE or x>MAX_COORDINATE:
             break
 
         # print("cell_new: {}".format(cell_new))
@@ -309,10 +309,10 @@ if __name__=='__main__':
             d_field[cell_new] = 0
             d_field_count[cell_new] = 0
 
-        l_moves.append(move)
-        l_directions.append(new_dir)
-        l_states.append(new_state)
-        l_tpls.append((move, new_dir, new_state))
+        # l_moves.append(move)
+        # l_directions.append(new_dir)
+        # l_states.append(new_state)
+        # l_tpls.append((move, new_dir, new_state))
 
         direction = new_dir
         cell_now = cell_new
@@ -416,22 +416,22 @@ if __name__=='__main__':
     img_count = Image.fromarray(pix_count)
     img_count.save(PATH_DIR_PICTURES+'langtons_ant_1x1_pixels_count_{}_iterations_{}.png'.format(str_moves, max_iterations)) 
 
-    sys.exit(0)
+    # sys.exit(0)
 
-    max_len_repeat = len(l_directions)//2
-    len_repeat = 1
-    is_found_repeat = False
-    while len_repeat<max_len_repeat:
-        l_dir_repeat = l_tpls[-len_repeat:]
-        if l_dir_repeat==l_tpls[-2*len_repeat:-len_repeat]:
-            is_found_repeat = True
-            break
-        len_repeat += 1
+    # max_len_repeat = len(l_directions)//2
+    # len_repeat = 1
+    # is_found_repeat = False
+    # while len_repeat<max_len_repeat:
+    #     l_dir_repeat = l_tpls[-len_repeat:]
+    #     if l_dir_repeat==l_tpls[-2*len_repeat:-len_repeat]:
+    #         is_found_repeat = True
+    #         break
+    #     len_repeat += 1
 
-    if is_found_repeat:
-        print("l_dir_repeat: {}".format(l_dir_repeat))
-        print("len_repeat: {}".format(len_repeat))
-    else:
-        print("No repeat found!")
+    # if is_found_repeat:
+    #     print("l_dir_repeat: {}".format(l_dir_repeat))
+    #     print("len_repeat: {}".format(len_repeat))
+    # else:
+    #     print("No repeat found!")
 
-    # print("l_len_repeat: {}".format(l_len_repeat))
+    # # print("l_len_repeat: {}".format(l_len_repeat))

@@ -2,33 +2,9 @@
 
 # -*- coding: utf-8 -*-
 
-import dill
-import functools
-import itertools
 import os
-import random
-import sys
-import time
-
-from copy import deepcopy
 
 import numpy as np
-
-from PIL import Image, ImageTk
-
-import tkinter as tk
-import tkinter.ttk as ttk
-
-import multiprocessing as mp
-from multiprocessing import Process, Pipe # , Lock
-from recordclass import recordclass, RecordClass
-
-import matplotlib.pyplot as plt
-
-from threading import Lock
-
-import base64
-import json
 
 from memory_tempfile import MemoryTempfile
 tempfile = MemoryTempfile()
@@ -60,10 +36,10 @@ if __name__ == "__main__":
     print("t_piece_pos: {}".format(t_piece_pos))
 
     d_l_piece_pos = {1: l_piece_pos}
-    d_l_piece_pos_rotate_group = {}
+    d_l_piece_pos_rotate_group = {1: [tuple(l_piece_pos)]}
 
-    l_amount_rotated_pieces = []
-    l_amount_unique_pieces = []
+    l_amount_rotated_pieces = [1]
+    l_amount_unique_pieces = [1]
 
     for i in range(2, 7):
         l_pieces_pos_new = []
@@ -114,7 +90,7 @@ if __name__ == "__main__":
     print("l_amount_unique_pieces: {}".format(l_amount_unique_pieces))
 
 
-    def save_l_piece_pos_rotate_group_to_file(l_piece_pos_rotate_group):
+    def convert_l_piece_pos_rotate_group_to_list_int(l_piece_pos_rotate_group):
         num_blocks = len(l_piece_pos_rotate_group[0][0])
         num_groups = len(l_piece_pos_rotate_group)
         l_group_len = [len(l) for l in l_piece_pos_rotate_group]
@@ -122,12 +98,16 @@ if __name__ == "__main__":
         l = [num_blocks, num_groups]+l_group_len+l_pos
         return l
 
-    # for num_blocks in range(2, 7):
-    num_blocks = 4
-    l_piece_pos_rotate_group = d_l_piece_pos_rotate_group[num_blocks]
-    l = save_l_piece_pos_rotate_group_to_file(l_piece_pos_rotate_group)
-    print("num_blocks: {}, len(l): {}".format(num_blocks, len(l)))
 
-    bytes_content = bytes(l)
-    with open(PATH_ROOT_DIR+'tetris_pieces_block_amount_4.trpcs', 'wb') as f:
-        f.write(bytes_content)
+    PATH_FOLDER_TETRIS_DATA = PATH_ROOT_DIR+'tetris_data/'
+    if not os.path.exists(PATH_FOLDER_TETRIS_DATA):
+        os.makedirs(PATH_FOLDER_TETRIS_DATA)
+
+    for num_blocks in range(1, 7):
+        l_piece_pos_rotate_group = d_l_piece_pos_rotate_group[num_blocks]
+        l = convert_l_piece_pos_rotate_group_to_list_int(l_piece_pos_rotate_group)
+        print("num_blocks: {}, len(l): {}".format(num_blocks, len(l)))
+        
+        bytes_content = bytes(l)
+        with open(PATH_FOLDER_TETRIS_DATA+'tetris_pieces_block_amount_{}.trpcs'.format(num_blocks), 'wb') as f:
+            f.write(bytes_content)
