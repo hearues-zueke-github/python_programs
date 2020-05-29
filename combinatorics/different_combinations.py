@@ -78,59 +78,7 @@ def get_all_combinations_increment(m, n):
 
 
 # n ... amount of states
-def get_permutation_table(n, same_pos=True):
-    if n == 1:
-        return np.array([[0]], dtype=np.uint8)
-    arr = np.array([[0, 1], [1, 0]], dtype=np.uint8)
-    
-    p = 2
-    for i in range(3, n+1):
-        arr_new = np.zeros((p*i, i), dtype=np.uint8)
-
-        for j in range(0, i):
-            arr_new[p*j:p*(j+1), 0] = (j-1) % i
-            arr_new[p*j:p*(j+1), 1:] = (arr+j) % i
-
-        p *= i
-        arr = arr_new
-
-    # arr = np.sort(arr.reshape((-1, )).view(','.join(['u1']*n))).view('u1').reshape((-1, n))
-
-    if not same_pos:
-        arr = arr[~np.any(arr == np.arange(0, n), axis=1)]
-
-    return arr
-
-# n ... amount of states
-def get_permutation_table_faster(n, same_pos=True):
-    if n == 1:
-        return np.array([[0]], dtype=np.uint8)
-    arr = np.array([[0, 1], [1, 0]], dtype=np.uint8)
-    
-    lengths = [fac(i) for i in range(1, n+1)]
-    arr_finish = np.empty((lengths[-1], n), dtype=np.uint8)
-
-    arr_finish[:2, :2] = arr
-
-    p = 2
-    for i in range(2, n):
-        arr_finish[:p, i] = i
-        arr_part = arr_finish[:p, :i]
-        for k in range(1, i+1):
-            arr_part_2 = arr_finish[p*k:p*(k+1), :i]
-            arr_part_2[:] = arr_part
-            arr_part_2[arr_part_2==k-1] = i
-            arr_finish[p*k:p*(k+1), i] = k-1
-        p *= i+1
-
-    if not same_pos:
-        arr_finish = arr_finish[~np.any(arr_finish == np.arange(0, n), axis=1)]
-
-    return arr_finish
-
-
-# n ... amount of states
-def get_permutation_table_faster_2(n, same_pos=True):
+def get_permutation_table(n, is_same_pos=True, is_sorted=False):
     if n == 1:
         return np.array([[0]], dtype=np.uint8)
     arr = np.array([[0, 1], [1, 0]], dtype=np.uint8)
@@ -150,8 +98,11 @@ def get_permutation_table_faster_2(n, same_pos=True):
             arr_part_2[:, k:] = arr_part[:, :i-k]
         p *= i
 
-    if not same_pos:
+    if not is_same_pos:
         arr_finish = arr_finish[~np.any(arr_finish == np.arange(0, n), axis=1)]
+
+    if is_sorted:
+        arr_finish = np.sort(arr_finish.reshape((-1, )).view(','.join(['u1']*n))).view('u1').reshape((-1, n))
 
     return arr_finish
 

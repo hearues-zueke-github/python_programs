@@ -37,11 +37,12 @@ class App(tk.Frame):
         ]
         self.current_color = self.colors[self.color_idx]
 
-        self.tiles_folder = PATH_ROOT_DIR+'tiles/'
+        # self.tiles_folder = PATH_ROOT_DIR+'tiles/'
+        self.tiles_folder = PATH_ROOT_DIR+'tiles_snake/'
 
         self.img_arrow_up = Image.open(self.tiles_folder+'arrow_up_10x10_thick.png')
-        self.img_line_ver_end_up = Image.open(self.tiles_folder+'line_streight_end_up_10x10_thick.png')
-        self.img_line_ver = Image.open(self.tiles_folder+'line_streight_vertical_10x10_thick.png')
+        self.img_line_ver_end_up = Image.open(self.tiles_folder+'line_straight_end_up_10x10_thick.png')
+        self.img_line_ver = Image.open(self.tiles_folder+'line_straight_vertical_10x10_thick.png')
         self.img_line_dl = Image.open(self.tiles_folder+'line_down_left_10x10_thick.png')
         self.img_food = Image.open(self.tiles_folder+'food.png')
 

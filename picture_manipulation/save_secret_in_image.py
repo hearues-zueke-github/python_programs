@@ -63,9 +63,9 @@ def convert_1d_to_2d_arr(arr, length):
     return arr_2d
 
 
-lst_int_base_82 = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.,:;!?#$%&()[]{}/\\ ")
-base_82_len = len(lst_int_base_82)
-dict_base_82_int = {v: i for i, v in enumerate(lst_int_base_82, 0)}
+lst_int_base_84 = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.,:;!?#$%&()[]{}/\\ ")
+base_84_len = len(lst_int_base_84)
+dict_base_84_int = {v: i for i, v in enumerate(lst_int_base_84, 0)}
 # first convert secret to an int and then to a binary number!
 # secret = "abcde"
 
@@ -96,31 +96,31 @@ jumps_amount = 200
 # len(bin(int(1/(1-(1-Dec(1)/Dec(2**100))**(2**38))))[2:])
 # But the probability is very very small (~1/10**18) that the secret could be found by random only!
 
-def convert_base_82_to_int(num_base_82):
+def convert_base_84_to_int(num_base_82):
     b = 1
     s = 0
     for i, v in enumerate(reversed(list(num_base_82)), 0):
-        n = dict_base_82_int[v]
+        n = dict_base_84_int[v]
         s += n*b
-        b *= base_82_len
+        b *= base_84_len
     return s
 
 
-def convert_int_to_base_82(num_int):
+def convert_int_to_base_84(num_int):
     l = []
     while num_int > 0:
-        l.append(num_int % base_82_len)
-        num_int //= base_82_len
-    n = list(map(lambda x: lst_int_base_82[x], reversed(l)))
+        l.append(num_int % base_84_len)
+        num_int //= base_84_len
+    n = list(map(lambda x: lst_int_base_84[x], reversed(l)))
     return "".join(n)
 
 
-def convert_int_to_lst_bin(n):
-    return list(map(int, bin(n)[2:]))
+def convert_int_to_lst_bin(num_int):
+    return list(map(int, bin(num_int)[2:]))
 
 
-def convert_lst_bin_to_int(l):
-    arr = np.array(l, dtype=object)
+def convert_lst_bin_to_int(l_bin):
+    arr = np.array(l_bin, dtype=object)
     length = arr.shape[0]
     return np.sum(arr*2**np.arange(length-1, -1, -1).astype(object))
 
@@ -129,7 +129,7 @@ def add_secret_to_pix(pix, secret, jumps, offset, invalid_idxs=np.array([])):
     """ TODO: add description!
     """
 
-    s = convert_base_82_to_int(secret)
+    s = convert_base_84_to_int(secret)
     s_lst_bin = list(map(int, bin(s)[2:]))
     # current secret bits: prefix|secret_bits|length|suffix
     # # secret bits: prefix|secret_bits|length|checksum|suffix
@@ -165,7 +165,7 @@ def add_secret_to_pix(pix, secret, jumps, offset, invalid_idxs=np.array([])):
 
     idxs_c = np.random.randint(0, c, (idxs_need_change.shape[0], ))
     vals = pix[idxs_need_change, idxs_c]
-    pix[idxs_need_change, idxs_c] = (vals&0xFE)|((vals&0x1)^1)
+    pix[idxs_need_change, idxs_c] = (vals&0xFE)|((vals&0x01)^1)
 
     pix = pix.reshape((h, w, c))
 
@@ -219,7 +219,7 @@ def find_possible_secrets(arr):
                         length_secret = convert_lst_bin_to_int(secret_content[-i:])
                         if length_secret==length_secret_content-i:
                             secret_arr = secret_content[:-i]
-                            secret = convert_int_to_base_82(convert_lst_bin_to_int(secret_arr))
+                            secret = convert_int_to_base_84(convert_lst_bin_to_int(secret_arr))
                             found_secrets.append(secret)
                         elif length_secret>length_secret_content-i:
                             break
@@ -228,8 +228,8 @@ def find_possible_secrets(arr):
 
 
 secret_test = "test123%$&/?!-_,:.;"
-assert secret_test==convert_int_to_base_82(convert_base_82_to_int(secret_test))
-assert 12345678901234567890==convert_base_82_to_int(convert_int_to_base_82(12345678901234567890))
+assert secret_test==convert_int_to_base_84(convert_base_84_to_int(secret_test))
+assert 12345678901234567890==convert_base_84_to_int(convert_int_to_base_84(12345678901234567890))
 
 assert 1234567==convert_lst_bin_to_int(convert_int_to_lst_bin(1234567))
 assert [1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]==convert_int_to_lst_bin(convert_lst_bin_to_int([1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]))
@@ -237,14 +237,15 @@ assert [1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]==convert_int_to_lst_bin(convert_l
 if __name__ == "__main__":
     print("Hello World!")
     
-    img_src_path = "images/orig_image_3_no_secret.jpg"
-    img_dst_path = "images/orig_image_3_with_secret.jpg"
-    # img_src_path = "images/orig_image_2_no_secret.png"
-    # img_dst_path = "images/orig_image_2_with_secret.png"
+    # img_src_path = "images/orig_image_3_no_secret.jpg"
+    # img_dst_path = "images/orig_image_3_with_secret.jpg"
+    img_src_path = "images/orig_image_2_no_secret.png"
+    img_dst_path = "images/orig_image_2_with_secret.png"
 
     img = Image.open(img_src_path)
     pix = np.array(img)
     if len(pix.shape)==3:
+        # remove alpha channel, if alpha is contained! also save the file again.
         if pix.shape[2]==4:
             pix = pix[..., :3]
             Image.fromarray(pix).save(img_src_path)
@@ -272,7 +273,8 @@ if __name__ == "__main__":
 
     img2 = Image.fromarray(pix)
     print("Save image '{}'!".format(img_dst_path))
-    img2.save(img_dst_path, quality=100, subsampling=0)
+    img2.save(img_dst_path)
+    # img2.save(img_dst_path, quality=100, subsampling=0)
 
     # img2 = Image.fromarray(((pix^pix_orig)*255).astype(np.uint8))
     # img2 = Image.fromarray(pix)

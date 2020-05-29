@@ -23,11 +23,13 @@ def get_primes(n):
         is_prime = True
 
         k = 0
-        while ps[k] < q:
-            if i % ps[k] == 0:
+        v = ps[k]
+        while v < q:
+            if i % v == 0:
                 is_prime = False
                 break
             k += 1
+            v = ps[k]
 
         if is_prime:
             yield i
@@ -35,8 +37,6 @@ def get_primes(n):
 
         i += d[j]
         j = (j+1) % 2 
-
-    # return ps
 
 
 def prime_factorization(n, ps):

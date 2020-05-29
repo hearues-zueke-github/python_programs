@@ -71,3 +71,5 @@ math_games/output_*.txt
 
 cpp_programs/primes/*.out
 cpp_programs/primes/*.o
+
+git_status.txt

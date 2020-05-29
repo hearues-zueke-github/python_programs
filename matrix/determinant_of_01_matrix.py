@@ -62,10 +62,10 @@ def det_mat_int(A):
 
 def test_own_det_func():
     A_1 = np.array([
-        [-9, -6,  6, -1],
-        [ 5,  4, -5, -4],
-        [ 0, -6, -7,  6],
-        [ 4, 10, -2,  7]
+        [-9, -6, 6, -1],
+        [5, 4, -5, -4],
+        [0, -6, -7, 6],
+        [4, 10, -2, 7]
     ])
 
     det_a = 3490
@@ -75,12 +75,12 @@ def test_own_det_func():
     assert det_own_a==det_a
 
     A_2 = np.array([
-        [ -2, 6, 5, -10, 6, -9],
-        [ 2, 2, 6, -9, -2, 9],
-        [ 3, 9, 1, -7, 2, 10],
-        [ 0, 5, -1, -2, -9, -9],
+        [-2, 6, 5, -10, 6, -9],
+        [2, 2, 6, -9, -2, 9],
+        [3, 9, 1, -7, 2, 10],
+        [0, 5, -1, -2, -9, -9],
         [-10, 6, 9, -10, -3, 1],
-        [ 5, 1, -10, -4, -9, 4],
+        [5, 1, -10, -4, -9, 4],
     ])
 
     det_A_2 = 2552976
@@ -92,9 +92,28 @@ def test_own_det_func():
 
 test_own_det_func()
 if __name__ == '__main__':
-    print('Hello World!')
-    # try first random 0 and 1 matrices out with different det!
 
+    # n = 7
+    # A = np.zeros((n, n), dtype=np.int64)
+
+    # li = np.array([i for i in range(0, n)])
+    # A[(li, li)] = li+1
+
+    # for j in range(0, n):
+    #     for i in range(j+1, n):
+    #         A[j, i] = j+i+2
+
+    # print("A: {}".format(A))
+    # det_A = det_mat_int(A)
+    # print("det_A: {}".format(det_A))
+
+    # diag_prod = np.product(li+1)
+    # print("diag_prod: {}".format(diag_prod))
+
+    # sys.exit(0)
+
+
+    # try first random 0 and 1 matrices out with different det!
     obj_path = PATH_ROOT_DIR+'obj_det_max_min_amount.pkl.gz'
     if not os.path.exists(obj_path):
         with gzip.open(obj_path, 'wb') as f:
@@ -104,13 +123,7 @@ if __name__ == '__main__':
     with gzip.open(obj_path, 'rb') as f:
         obj = dill.load(f)
 
-    # max_det_A = 0
-    # prev_max_det_A = 0
-    # min_det_A = 0
-    # prev_min_det_A = 0
-    # lst_max_A = []
-    # lst_min_A = []
-    n = 4
+    n = 7
     if not n in obj:
         obj[n] = {}
 
@@ -119,17 +132,23 @@ if __name__ == '__main__':
     if not 'stats' in d_dets:
         d_dets['stats'] = {
             'max_det': 0,
-            # 'prev_max_det': 0,
-            # 'min_det': 0,
-            # 'prev_min_det': 0,
         }
     stats = d_dets['stats']
 
-    for i in range(0, 10000):
-        A = np.random.randint(0, 2, (n, n))
+    if not 'possible_dets' in d_dets:
+        d_dets['possible_dets'] = set()
+    possible_dets = d_dets['possible_dets']
+
+    for i in range(0, 300000):
+        if i%1000==0:
+            print("i: {}".format(i))
+        A = np.random.randint(-1, 2, (n, n))
         det_A = det_mat_int(A)
-        print("A:\n{}".format(A))
-        print("- det_A: {}".format(det_A))
+
+        if not det_A in possible_dets:
+            possible_dets.add(det_A)
+        # print("A:\n{}".format(A))
+        # print("- det_A: {}".format(det_A))
 
         max_det_A = stats['max_det']
         if det_A<max_det_A:
@@ -145,53 +164,26 @@ if __name__ == '__main__':
         lst_A = d_dets[det_A]
 
         A_flatten = tuple(A.flatten().tolist())
-        A_T_flatten = tuple(A.T.flatten().tolist())
+        # A_T_flatten = tuple(A.T.flatten().tolist())
 
-        if not A_flatten in lst_A and not A_T_flatten in lst_A:
-            if A_flatten<A_T_flatten:
-                lst_A.append(A_flatten)
-            else:
-                lst_A.append(A_T_flatten)
+        if not A_flatten in lst_A:
+            lst_A.append(A_flatten)
 
-        # if max_det_A<=det_A:
-        #     max_det_A = det_A
-        #     if max_det_A!=prev_max_det_A:
-        #         prev_max_det_A = max_det_A
-        #         lst_max_A = []
-        #     max_A = tuple(A.flatten().tolist())
-        #     max_A_T = tuple(A.T.flatten().tolist())
-        #     if not max_A in lst_max_A and not max_A_T in lst_max_A:
-        #         lst_max_A.append(max_A)
-        # if min_det_A>=det_A:
-        #     min_det_A = det_A
-        #     if min_det_A!=prev_min_det_A:
-        #         prev_min_det_A = min_det_A
-        #         lst_min_A = []
-        #     min_A = tuple(A.flatten().tolist())
-        #     max_A_T = tuple(A.T.flatten().tolist())
-        #     if not max_A in lst_min_A and not max_A_T in lst_min_A:
-        #     # if not min_A in lst_min_A:
-        #         lst_min_A.append(min_A)
+        # if not A_flatten in lst_A and not A_T_flatten in lst_A:
+        #     if A_flatten<A_T_flatten:
+        #         lst_A.append(A_flatten)
+        #     else:
+        #         lst_A.append(A_T_flatten)
 
-            # min_det_A = det_A
-            # min_A = tuple(A.flatten().tolist())
-
-    # print('')
-    # print("max_det_A: {}".format(max_det_A))
-    # print("lst_max_A:\n{}".format(lst_max_A))
-    # print("len(lst_max_A):\n{}".format(len(lst_max_A)))
-    # print('')
-    # print("min_det_A: {}".format(min_det_A))
-    # print("lst_min_A:\n{}".format(lst_min_A))
-    # print("len(lst_min_A):\n{}".format(len(lst_min_A)))
-
-    print("list(obj.keys()): {}".format(list(obj.keys())))
-
-    keys = sorted(obj.keys())
-    for k in keys:
-        d = obj[k]
-        l = len(d[d['stats']['max_det']])
-        print("k: {}, l: {}".format(k, l))
+    def print_obj(obj):
+        keys = sorted(obj.keys())
+        print("keys: {}".format(keys))
+        for k in keys:
+            d = obj[k]
+            max_det = d['stats']['max_det']
+            l = len(d[max_det])
+            print("k: {}, max_det: {}, l: {}".format(k, max_det, l))
+    print_obj(obj)
 
     with gzip.open(obj_path, 'wb') as f:
         dill.dump(obj, f)

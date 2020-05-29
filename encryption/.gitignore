@@ -1,2 +1,4 @@
 *.hex
+*.xlsx
+*.txt
 *.hex.bak
