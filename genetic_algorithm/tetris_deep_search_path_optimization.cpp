@@ -13,6 +13,8 @@
 #include <ios>
 #include <unistd.h>
 #include <filesystem>
+#include <variant>
+#include "pystring/pystring.h"
 
 #include "utils_tetris.h"
 
@@ -31,12 +33,14 @@ using std::string;
 using std::map;
 using std::set;
 using std::tuple;
+using std::variant;
 
 namespace fs = std::filesystem;
 
 class TetrisField : public std::exception {
 private:
   string data_path_;
+  string file_data_name_;
 
   vector<vector<uint8_t>> field_;
   vector<vector<int>> field_weight_;
@@ -200,7 +204,7 @@ private:
   map<string, uint8_t> piece_name_to_index_;
   map<string, uint8_t> piece_name_to_idx_nr_;
 
-  int amount_pieces_sequence_;
+  int amount_pieces_sequence;
   vector<string> pieces_sequence_;
 
   map<string, vector<Piece>> piece_name_to_group_pieces_;
@@ -316,10 +320,13 @@ private:
   }
 
 public:
-  TetrisField(const int rows, const int columns, const vector<int>& vec_num_blocks = {4}, const string& data_path = "tetris_game_data/") {
+  TetrisField(const int rows, const int columns, const vector<int>& vec_num_blocks = {4},
+      const string& data_path = "tetris_game_data/", const string& file_data_name = "data_fields_test",
+      const string& file_extension = "ttrsfields") {
     piece_idx_nr_ = 1;
 
     data_path_ = data_path;
+    file_data_name_ = file_data_name + "." + file_extension;
 
     rows_ = rows;
     columns_ = columns;
@@ -360,11 +367,6 @@ public:
 
       readTetrisData(file_path);
     }
-
-//    do {
-//      cout << "ENTER..." << endl;
-//    } while (cin.get() != '\n');
-    amount_pieces_sequence_ = 500;
   }
 
   void printField() {
@@ -394,8 +396,8 @@ public:
     return ss;
   }
 
-  void defineRandomPieceVector() {
-    pieces_sequence_.resize(amount_pieces_sequence_);
+  void defineRandomPieceVector(const int amount_pieces_sequence = 100) {
+    pieces_sequence_.resize(amount_pieces_sequence);
 
     auto get_random_piece = [&]() {
         return *select_randomly(set_pieces_name_.begin(), set_pieces_name_.end());
@@ -404,7 +406,7 @@ public:
     pieces_sequence_[0] = get_random_piece();
     pieces_sequence_[1] = get_random_piece();
     string piece_name;
-    for (int i = 2; i < amount_pieces_sequence_; ++i) {
+    for (int i = 2; i < amount_pieces_sequence; ++i) {
       do {
         piece_name = get_random_piece();
       } while (
@@ -447,8 +449,7 @@ public:
     return sum;
   }
 
-  void executePieceVector() {
-    int using_pieces = 4;
+  void executePieceVector(const int using_pieces = 3) {
     vector<uint8_t> heights;
     vector<int> piece_group_idx(using_pieces);
 
@@ -476,7 +477,8 @@ public:
       }
     };
 
-    for (int i = 0; i < amount_pieces_sequence_ - using_pieces + 1; ++i) {
+    const size_t size = pieces_sequence_.size() - using_pieces + 1;
+    for (size_t i = 0; i < size; ++i) {
       map<vector<int>, Datas> pos_pieces_to_max_height;
       vector<string> using_pieces_sequence(pieces_sequence_.begin() + i, pieces_sequence_.begin() + i + using_pieces);
 
@@ -558,7 +560,7 @@ public:
     cout << "heights: " << heights << endl;
 
     std::ofstream stream;
-    stream.open(data_path_ + "data_fields_test.ttrsfields", std::ios::out | std::ios::binary);
+    stream.open(data_path_ + file_data_name_, std::ios::out | std::ios::binary);
     stream.write((char*)&data_fields[0], data_fields.size());
   }
 
@@ -632,6 +634,17 @@ public:
   }
 };
 
+void splitCommaStringToVector(const string& str, vector<int>& cont, const string& delim = ",") {
+  vector<string> v;
+  pystring::split(str, v, delim);
+  const size_t size = v.size();
+  cont.resize(size);
+  for (size_t i = 0; i < size; ++i) {
+    cont[i] = std::stoi(v[i]);
+  }
+  // cout << "v: " << v << endl;
+}
+
 int main(int argc, char *argv[]) {
   string argv0 = argv[0];
 
@@ -669,12 +682,75 @@ int main(int argc, char *argv[]) {
 
   const string data_path = path_new;
 
-  const int rows = 20;
-  const int columns = 10;
-  TetrisField tf = TetrisField(rows, columns, {4}, data_path);
+  map<string, variant<int, string, vector<int>>> arguments_value = {
+    {"-r", 20},
+    {"-c", 10},
+    {"-a", 100},
+    {"-u", 3},
+    {"-f", "data_fields_test"},
+    {"-e", "ttrsfields"},
+    {"-b", vector<int>({4})},
+  };
 
-  tf.defineRandomPieceVector();
-  tf.executePieceVector();
+  map<string, string> arguments_type = {
+    {"-r", "int"},
+    {"-c", "int"},
+    {"-a", "int"},
+    {"-u", "int"},
+    {"-f", "string"},
+    {"-e", "string"},
+    {"-b", "vector"},
+  };
+
+  // parse the input!
+  for (int i = 1; i < argc; ++i) {
+    const string arg = argv[i];
+    auto it = arguments_value.find(arg);
+    if (it != arguments_value.end()) {
+      ++i;
+      if (i >= argc) {
+        cout << "No more args for parameter '" << arg << "' !!! Exit program." << endl;
+        exit(1);
+      }
+
+      const string arg_type = arguments_type[arg];
+      if (arg_type == "int") {
+        arguments_value[arg] = std::stoi(argv[i]);
+      } else if (arg_type == "string") {
+        arguments_value[arg] = argv[i];
+      } else if (arg_type == "vector") {
+        vector<int> cont;
+        splitCommaStringToVector(argv[i], cont);
+        arguments_value[arg] = cont;
+      }
+    } else {
+      cout << "arg: '" << arg << "' Was not found! Exit program." << endl;
+      exit(2);
+    }
+  }
+
+  const int rows = std::get<int>(arguments_value["-r"]);
+  const int columns = std::get<int>(arguments_value["-c"]);
+  const int amount_pieces_sequence = std::get<int>(arguments_value["-a"]);
+  const int using_pieces = std::get<int>(arguments_value["-u"]);
+  const string& file_data_name = std::get<string>(arguments_value["-f"]);
+  const string& file_extension = std::get<string>(arguments_value["-e"]);
+  const vector<int>& vec_num_blocks = std::get<vector<int>>(arguments_value["-b"]);
+
+  cout << "rows: " << rows << endl;
+  cout << "columns: " << columns << endl;
+  cout << "amount_pieces_sequence: " << amount_pieces_sequence << endl;
+  cout << "using_pieces: " << using_pieces << endl;
+  cout << "file_data_name: " << file_data_name << endl;
+  cout << "file_extension: " << file_extension << endl;
+  cout << "vec_num_blocks: " << vec_num_blocks << endl;
+
+  // exit(0);
+
+  TetrisField tf = TetrisField(rows, columns, vec_num_blocks, data_path, file_data_name, file_extension);
+
+  tf.defineRandomPieceVector(amount_pieces_sequence);
+  tf.executePieceVector(using_pieces);
 
   return 0;
 }
