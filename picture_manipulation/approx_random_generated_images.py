@@ -8,9 +8,11 @@ from PIL import Image
 
 def get_pix_between(pix_1, pix_2, alpha=0.5):
     return (pix_1.astype(np.float)*alpha+pix_2.astype(np.float)*(1.-alpha)).astype(np.uint8)
-    
+
+
 def get_random_image(height, width):
     return np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
+
 
 if __name__ == "__main__":
     height = 256

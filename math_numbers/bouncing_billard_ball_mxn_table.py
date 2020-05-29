@@ -2,7 +2,10 @@
 
 # -*- coding: utf-8 -*-
 
+import dill
+import gzip
 import os
+import random
 import sys
 
 from copy import deepcopy
@@ -139,8 +142,8 @@ def get_bounces_amount_of_a_billard_table(h, w):
             if x==0 and y>0: amount_bounces+=1;state=1
             elif x>0 and y==0: amount_bounces+=1;state=2
             else: do_loop = False
-    print("h: {}, w: {}".format(h, w))
-    print("lst: {}".format(lst))
+    # print("h: {}, w: {}".format(h, w))
+    # print("lst: {}".format(lst))
     return amount_bounces
 
 # simple testcases for different billard table sizes!
@@ -175,225 +178,321 @@ for w in range(1, 11):
     for h in range(w+1, 11):
         assert get_bounces_of_a_billard_table(w, h)[0]==get_bounces_amount_of_a_billard_table(w, h)
 
+# only 2d so far!
+def calc_billard_all_possible_ball_moves_2d(size1, size2):
+    s_corner_pos = set([(i, j) for i in [0, size1] for j in [0, size2]])
+    s_edge_pos = set(
+        [(i, 0) for i in range(1, size1)]+
+        [(i, size2) for i in range(1, size1)]+
+        [(0, i) for i in range(1, size2)]+
+        [(size1, i) for i in range(1, size2)]
+    )
+
+    s_corner_edge_pos = s_corner_pos|s_edge_pos
+    s_rest_edge = deepcopy(s_corner_edge_pos)
+
+    l_corner_pos = sorted(list(s_corner_pos))
+    l_edge_pos = sorted(list(s_edge_pos))
+
+    def get_list_of_pos(p1, p2, check_set):
+        l_pos = [(p1, p2)]
+        l_pos_edge = [(p1, p2)]
+
+        if p1==size1:
+            add1 = -1
+        else:
+            add1 = 1
+
+        if p2==size2:
+            add2 = -1
+        else:
+            add2 = 1
+
+        while True:
+            is_edge = False
+            if add1==+1 and p1>=size1:
+                add1 = -1
+                if not is_edge:
+                    is_edge = True
+                    l_pos_edge.append((p1, p2))
+            elif add1==-1 and p1<=0:
+                add1 = +1
+                if not is_edge:
+                    is_edge = True
+                    l_pos_edge.append((p1, p2))
+
+            if add2==+1 and p2>=size2:
+                add2 = -1
+                if not is_edge:
+                    is_edge = True
+                    l_pos_edge.append((p1, p2))
+            elif add2==-1 and p2<=0:
+                add2 = +1
+                if not is_edge:
+                    is_edge = True
+                    l_pos_edge.append((p1, p2))
+
+            p1 += add1
+            p2 += add2
+
+            l_pos.append((p1, p2))
+            if (p1, p2) in check_set:
+                break
+        l_pos_edge.append((p1, p2))
+
+        return l_pos, l_pos_edge
+
+
+    l_pos_list = []
+    l_pos_edge_list = []
+
+    while len(l_corner_pos)>0:
+        p1, p2 = l_corner_pos.pop(0)
+        l_pos, l_pos_edge = get_list_of_pos(p1, p2, check_set=s_corner_pos)
+
+        t = l_pos[-1]
+        if t in l_corner_pos:
+            l_corner_pos.remove(t)
+
+        l_pos_list.append(l_pos)
+        l_pos_edge_list.append(l_pos_edge)
+        s_rest_edge = s_rest_edge-set(l_pos_edge)
+
+    while len(s_rest_edge)>0:
+        l_rest_edge = sorted(list(s_rest_edge))
+
+        p1, p2 = l_rest_edge.pop(0)
+        l_pos, l_pos_edge = get_list_of_pos(p1, p2, check_set=set([(p1, p2)]))
+
+        l_pos_list.append(l_pos)
+        l_pos_edge_list.append(l_pos_edge)
+        s_rest_edge = s_rest_edge-set(l_pos_edge)
+
+    return l_pos_list, l_pos_edge_list
+
+
+def calc_billard_all_possible_ball_moves_n_dim(t_size):
+    dimension = len(t_size)
+    product = itertools.product
+
+    l_01 = list(itertools.product(*[[0, 1] for _ in range(0, len(t_size))]))
+    arr_01 = np.array(l_01)
+    l_amount_01 = np.sum(arr_01, axis=1).tolist()
+
+    l_01_lists = [[] for i in range(0, len(t_size)+1)]
+    for l, amount in zip(l_01, l_amount_01):
+        l_01_lists[amount].append(l)
+
+    l_01_lists = l_01_lists[:-1]
+
+    l_sets = [set(itertools.chain(*[itertools.product(*[[0, v] if i==0 else range(1, v) for i, v in  zip(l, t_size)]) for l in l_01])) for l_01 in l_01_lists]
+    # globals()['l_sets'] = l_sets
+    # print("l_sets: {}".format(l_sets))
+    
+    d_sets_directions_out = {v: list(itertools.product(*[[-1] if i==j else [1] if i==0 else [-1, 1] for i, j in zip(v, t_size)])) for l in l_sets for v in l}
+    
+    s_corner_pos = l_sets[0]
+    s_corner_pos_add = set([(tp, ta) for tp in s_corner_pos for ta in d_sets_directions_out[tp]])
+    l_corner_pos_add = sorted(list(s_corner_pos_add))
+
+    l_edge_pos = sorted(itertools.chain(*[list(l) for l in l_sets[1:]]))
+    s_edge_pos_add = {(tp, ta) for tp in l_edge_pos for ta in d_sets_directions_out[tp]}
+
+    s_corner_edge_pos_add = s_corner_pos_add|s_edge_pos_add
+    s_rest_edge_add = deepcopy(s_corner_edge_pos_add)
+
+    # check sizes
+    arr_size = np.array(t_size, dtype=object)
+    n1 = np.multiply.reduce(arr_size+1)
+    n2 = np.multiply.reduce(arr_size-1)
+    length_points = sum([len(l) for l in l_sets])
+
+    assert n1-n2==length_points
+    assert len(s_corner_pos_add)==2**len(t_size)
+
+    def get_list_of_pos(t_vals, t_add, check_set):
+        l_pos = [(t_vals, t_add)]
+        l_pos_edge = [(t_vals, t_add)]
+
+        lp = list(t_vals)
+        la = list(t_add)
+
+        while True:
+            is_edge = False
+
+            for i in range(0, dimension):
+                lp[i] += la[i]
+
+            t_inv = (tuple(lp), tuple(-1 if i==1 else 1 for i in la))
+
+            for i in range(0, dimension):
+                a = la[i]
+                p = lp[i]
+
+                if a==+1 and p>=t_size[i]:
+                    a = -1
+                    if not is_edge:
+                        is_edge = True
+                elif a==-1 and p<=0:
+                    a = +1
+                    if not is_edge:
+                        is_edge = True
+
+                la[i] = a
+
+            t = (tuple(lp), tuple(la))
+            l_pos.append(t)
+            if is_edge:
+                if t_inv in s_rest_edge_add:
+                    s_rest_edge_add.remove(t_inv)
+                l_pos_edge.append(t)
+
+            if t in check_set:
+                break
+
+        return l_pos, l_pos_edge
+
+
+    l_pos_list = []
+    l_pos_edge_list = []
+
+    while len(l_corner_pos_add)>0:
+        t_first = l_corner_pos_add[0]
+        l_corner_pos_add.remove(t_first)
+
+        tp_first, ta_first = t_first
+        l_pos, l_pos_edge = get_list_of_pos(tp_first, ta_first, check_set=s_corner_pos_add)
+
+        t_last = l_pos[-1]
+        assert t_last in l_corner_pos_add
+        l_corner_pos_add.remove(t_last)
+
+        l_pos_list.append(l_pos)
+        l_pos_edge_list.append(l_pos_edge)
+
+        s_rest_edge_add = s_rest_edge_add-set(l_pos_edge)
+
+    while len(s_rest_edge_add)>0:
+        for t_first in s_rest_edge_add:
+            break
+
+        tp_first, ta_first = t_first
+        l_pos, l_pos_edge = get_list_of_pos(tp_first, ta_first, check_set=set([t_first]))
+
+        l_pos_list.append(l_pos)
+        l_pos_edge_list.append(l_pos_edge)
+
+        s_rest_edge_add = s_rest_edge_add-set(l_pos_edge)
+
+    assert len(s_rest_edge_add)==0
+
+    return l_pos_list, l_pos_edge_list
+
+
+def do_testcases_for_2d_and_n_dim_functions():
+    print('Executing testcases for 2d and n-dim functions.')
+    # do some testcases for testing the billard moves of n-dim (2d) and 2d only!
+    def rotate_list_to_most_minimum_value(l):
+        l_sort = sorted(l)
+        min_val = l_sort[0]
+        l_min_idxs = [i for i, v in enumerate(l, 0) if v==min_val]
+
+        if len(l_min_idxs)==1:
+            i = l_min_idxs[0]
+            return list(l[i:]+l[:i])
+
+        return sorted([list(l[i:]+l[:i]) for i in l_min_idxs])[0]
+
+    l_t_size = [(i, j) for i in range(1, 21) for j in range(1, 21)]
+    for size1, size2 in l_t_size:
+        # print("Checking for: size1: {}, size2: {}".format(size1, size2))
+        l_pos_list_1_full, l_pos_edge_list_1_full = calc_billard_all_possible_ball_moves_2d(size1, size2)
+        l_pos_list_1 = [l if l[0]!=l[-1] else l[:-1] for l in l_pos_list_1_full]
+        l_pos_edge_list_1 = [l if l[0]!=l[-1] else l[:-1] for l in l_pos_edge_list_1_full]
+
+        l_pos_list, l_pos_edge_list = calc_billard_all_possible_ball_moves_n_dim([size1, size2])
+        l_pos_list_2 = [[t for t, _ in (l if l[0]!=l[-1] else l[:-1])] for l in l_pos_list]
+        l_pos_edge_list_2 = [[t for t, _ in (l if l[0]!=l[-1] else l[:-1])] for l in l_pos_edge_list]
+
+
+        l_pos_list_1_sorted = sorted([rotate_list_to_most_minimum_value(l) for l in l_pos_list_1])
+        l_pos_edge_list_1_sorted = sorted([rotate_list_to_most_minimum_value(l) for l in l_pos_edge_list_1])
+        
+        l_pos_list_2_sorted = sorted([rotate_list_to_most_minimum_value(l) for l in l_pos_list_2])
+        l_pos_edge_list_2_sorted = sorted([rotate_list_to_most_minimum_value(l) for l in l_pos_edge_list_2])
+        
+        l_pos_list_2_rot_sorted = sorted([rotate_list_to_most_minimum_value(l[::-1]) for l in l_pos_list_2])
+        l_pos_edge_list_2_rot_sorted = sorted([rotate_list_to_most_minimum_value(l[::-1]) for l in l_pos_edge_list_2])
+
+        l_check_1 = [(l1==l2) or (l1==l2r) for l1, l2, l2r in zip(l_pos_list_1_sorted, l_pos_list_2_sorted, l_pos_list_2_rot_sorted)]
+        assert all(l_check_1)
+        assert all([(l1==l2) or (l1==l2r) for l1, l2, l2r in zip(l_pos_edge_list_1_sorted, l_pos_edge_list_2_sorted, l_pos_edge_list_2_rot_sorted)])
+
 
 if __name__ == "__main__":
     # TODO 2020.03.14: add an object or a function for
     # the adding and substracting of n-dim billard table!
-    # t_pos = [0, 0]
+    
+    # do_testcases_for_2d_and_n_dim_functions()
 
-    def calc_billard_all_possible_ball_moves_n_dim(l_size):
-        dimension = len(l_size)
-        product = itertools.product
+    min_dim = 2
+    max_dim = 4
 
-        l_01 = list(itertools.product(*[[0, 1] for _ in range(0, len(l_size))]))
-        arr_01 = np.array(l_01)
-        l_amount_01 = np.sum(arr_01, axis=1).tolist()
+    # d_permutations = {i: np.array(list(itertools.permutations(range(0, i)))) for i in range(min_dim, max_dim+1)}
 
-        l_01_lists = [[] for i in range(0, len(l_size)+1)]
-        for l, amount in zip(l_01, l_amount_01):
-            l_01_lists[amount].append(l)
-        print("l_01_lists: {}".format(l_01_lists))
+    PATH_FOLDER_OBJECTS = PATH_ROOT_DIR+'objs/bouncing_billard/'
+    if not os.path.exists(PATH_FOLDER_OBJECTS):
+        os.makedirs(PATH_FOLDER_OBJECTS)
+    FILE_PATH_OBJECT = PATH_FOLDER_OBJECTS+'dim_amount_cycles.pkl.gz'
 
-        l_01_lists = l_01_lists[:-1]
+    if not os.path.exists(FILE_PATH_OBJECT):
+        d_dim_amount_cycles = {}
+        s_done_t_size = set()
+    else:
+        with gzip.open(FILE_PATH_OBJECT, 'rb') as f:
+            d_objs = dill.load(f)
+            d_dim_amount_cycles = d_objs['d_dim_amount_cycles']
+            s_done_t_size = d_objs['s_done_t_size']
+    # d_dim_amount_cycles = defaultdict(lambda: defaultdict(lambda: []))
+    for i_iter in range(0, 300):
+        l_size = np.random.randint(1, 20, (np.random.randint(min_dim, max_dim+1), )).tolist()
+        t_size = tuple(sorted(l_size))
+        dim = len(t_size)
+        print("i_iter: {}, t_size: {}".format(i_iter, t_size))
+        if t_size in s_done_t_size:
+            print("- Ignoring t_size '{}'!".format(t_size))
+            continue
+        # arr_size = np.array(t_size)
+        # l_size_perm = [tuple(l) for l in arr_size[d_permutations[arr_size.shape[0]]].tolist()]
+        # s_size_perm = set(l_size_perm)
+        # for t_size in s_size_perm:
 
-        l_sets = [set(itertools.chain(*[itertools.product(*[[0, v] if i==0 else range(1, v) for i, v in  zip(l, l_size)]) for l in l_01])) for l_01 in l_01_lists]
-        globals()['l_sets'] = l_sets
-        print("l_sets: {}".format(l_sets))
-        
-        d_sets_directions_out = {v: list(itertools.product(*[[-1] if i==j else [1] if i==0 else [-1, 1] for i, j in zip(v, l_size)])) for l in l_sets for v in l}
-        d_sets_directions_in = {k: set([tuple(-1 if i==1 else 1 for i in t) for t in v]) for k, v in d_sets_directions_out.items()}
-        globals()['d_sets_directions_out'] = d_sets_directions_out
-        print("d_sets_directions_out: {}".format(d_sets_directions_out))
-        
-        globals()['d_sets_directions_in'] = d_sets_directions_in
-        print("d_sets_directions_in: {}".format(d_sets_directions_in))
+        l_pos_list, l_pos_edge_list = calc_billard_all_possible_ball_moves_n_dim(t_size)
 
-        s_corner_pos = l_sets[0]
-        l_corner_pos = sorted(list(s_corner_pos))
+        amount_corner_paths = 2**(len(t_size)-1)
+        amount_cycles = len(l_pos_list)-amount_corner_paths
+        print("amount_corner_paths: {}".format(amount_corner_paths))
+        print("amount_cycles: {}".format(amount_cycles))
 
-        l_edge_pos = sorted(itertools.chain(*[list(l) for l in l_sets[1:]]))
-        s_edge_pos = set(l_edge_pos)
+        if not dim in d_dim_amount_cycles:
+            d_dim_amount_cycles[dim] = {}
+        d_amount_cycles = d_dim_amount_cycles[dim]
+        if not amount_cycles in d_amount_cycles:
+            d_amount_cycles[amount_cycles] = []  
+        d_amount_cycles[amount_cycles].append(tuple(t_size))
+        s_done_t_size.add(t_size)
 
-        s_corner_edge_pos = s_corner_pos|s_edge_pos
-        s_rest_edge = deepcopy(s_corner_edge_pos)
+    l_info_stats = sorted([[k1]+[sorted([(k2, len(v2)) for k2, v2 in v1.items()])] for k1, v1 in d_dim_amount_cycles.items()])
+    print("l_info_stats: {}".format(l_info_stats))
+    # print("d_dim_amount_cycles: {}".format(d_dim_amount_cycles))
 
-        print("len(l_corner_pos): {}".format(len(l_corner_pos)))
-        print("len(l_edge_pos): {}".format(len(l_edge_pos)))
+    with gzip.open(FILE_PATH_OBJECT, 'wb') as f:
+        d_objs = {}
+        d_objs['d_dim_amount_cycles'] = d_dim_amount_cycles
+        d_objs['s_done_t_size'] = s_done_t_size
+        dill.dump(d_objs, f)
 
-        def get_list_of_pos(t_vals, t_add, check_set):
-            l_pos = [t_vals]
-            l_pos_edge = [t_vals]
-
-            lp = list(t_vals)
-            la = list(t_add)
-
-            while True:
-                is_edge = False
-                for i in range(0, dimension):
-                    a = la[i]
-                    p = lp[i]
-
-                    if a==+1 and p>=l_size[i]:
-                        a = -1
-                        if not is_edge:
-                            is_edge = True
-                            l_pos_edge.append(tuple(lp))
-                    elif a==-1 and p<=0:
-                        a = +1
-                        if not is_edge:
-                            is_edge = True
-                            l_pos_edge.append(tuple(lp))
-
-                    la[i] = a
-
-                for i in range(0, dimension):
-                    lp[i] += la[i]
-
-                l_pos.append(tuple(lp))
-
-                # if tuple(lp) in check_set:
-                if (tuple(lp), tuple(la)) in check_set:
-                    break
-            l_pos_edge.append(tuple(lp))
-
-            return l_pos, l_pos_edge
-
-
-        l_pos_list = []
-        l_pos_edge_list = []
-
-        while len(l_corner_pos)>0:
-            tp = l_corner_pos.pop(0)
-            ta = d_sets_directions_out[tp].pop(0)
-            l_pos, l_pos_edge = get_list_of_pos(tp, ta, check_set=s_corner_pos)
-
-            t = l_pos[-1]
-            if t in l_corner_pos:
-                l_corner_pos.remove(t)
-
-            l_pos_list.append(l_pos)
-            l_pos_edge_list.append(l_pos_edge)
-            s_rest_edge = s_rest_edge-set(l_pos_edge)
-
-        
-
-        while len(s_rest_edge)>0:
-            for tp in s_rest_edge:
-                break
-            ta = d_sets_directions_out[tp].pop(0)
-            l_pos, l_pos_edge = get_list_of_pos(tp, ta, check_set=set([tp]))
-
-            l_pos_list.append(l_pos)
-            l_pos_edge_list.append(l_pos_edge)
-            s_rest_edge = s_rest_edge-set(l_pos_edge)
-
-        globals()['s_rest_edge'] = s_rest_edge
-        print("s_rest_edge: {}".format(s_rest_edge))
-
-        return l_pos_list, l_pos_edge_list
-        # return l_pos, l_pos_edge, s_edge_pos, s_rest_edge
-
-    l_pos_list, l_pos_edge_list = calc_billard_all_possible_ball_moves_n_dim([3, 4, 6])
-    sys.exit('NOICE!')
-
-    # only 2d so far!
-    def calc_billard_all_possible_ball_moves_2d(size1, size2):
-        s_corner_pos = set([(i, j) for i in [0, size1] for j in [0, size2]])
-        s_edge_pos = set(
-            [(i, 0) for i in range(1, size1)]+
-            [(i, size2) for i in range(1, size1)]+
-            [(0, i) for i in range(1, size2)]+
-            [(size1, i) for i in range(1, size2)]
-        )
-
-        s_corner_edge_pos = s_corner_pos|s_edge_pos
-        s_rest_edge = deepcopy(s_corner_edge_pos)
-
-        l_corner_pos = sorted(list(s_corner_pos))
-        l_edge_pos = sorted(list(s_edge_pos))
-
-        def get_list_of_pos(p1, p2, check_set):
-            l_pos = [(p1, p2)]
-            l_pos_edge = [(p1, p2)]
-
-            if p1==size1:
-                add1 = -1
-            else:
-                add1 = 1
-
-            if p2==size2:
-                add2 = -1
-            else:
-                add2 = 1
-
-            while True:
-                is_edge = False
-                if add1==+1 and p1>=size1:
-                    add1 = -1
-                    if not is_edge:
-                        is_edge = True
-                        l_pos_edge.append((p1, p2))
-                elif add1==-1 and p1<=0:
-                    add1 = +1
-                    if not is_edge:
-                        is_edge = True
-                        l_pos_edge.append((p1, p2))
-
-                if add2==+1 and p2>=size2:
-                    add2 = -1
-                    if not is_edge:
-                        is_edge = True
-                        l_pos_edge.append((p1, p2))
-                elif add2==-1 and p2<=0:
-                    add2 = +1
-                    if not is_edge:
-                        is_edge = True
-                        l_pos_edge.append((p1, p2))
-
-                p1 += add1
-                p2 += add2
-
-                l_pos.append((p1, p2))
-                if (p1, p2) in check_set:
-                    break
-            l_pos_edge.append((p1, p2))
-
-            return l_pos, l_pos_edge
-
-
-        l_pos_list = []
-        l_pos_edge_list = []
-
-        while len(l_corner_pos)>0:
-            p1, p2 = l_corner_pos.pop(0)
-            l_pos, l_pos_edge = get_list_of_pos(p1, p2, check_set=s_corner_pos)
-
-            t = l_pos[-1]
-            if t in l_corner_pos:
-                l_corner_pos.remove(t)
-
-            l_pos_list.append(l_pos)
-            l_pos_edge_list.append(l_pos_edge)
-            s_rest_edge = s_rest_edge-set(l_pos_edge)
-
-        while len(s_rest_edge)>0:
-            l_rest_edge = sorted(list(s_rest_edge))
-
-            p1, p2 = l_rest_edge.pop(0)
-            l_pos, l_pos_edge = get_list_of_pos(p1, p2, check_set=set([(p1, p2)]))
-            # print("Inner LOOP!")
-            # print("l_pos: {}".format(l_pos))
-            # print("l_pos_edge: {}".format(l_pos_edge))
-
-            l_pos_list.append(l_pos)
-            l_pos_edge_list.append(l_pos_edge)
-            s_rest_edge = s_rest_edge-set(l_pos_edge)
-
-        # print("s_rest_edge: {}".format(s_rest_edge))
-        # s_rest_edge = s_edge_pos-set(l_pos_edge[1:-1])
-
-        return l_pos_list, l_pos_edge_list
-        # return l_pos, l_pos_edge, s_edge_pos, s_rest_edge
+    sys.exit(0)
 
     d_amount_paths_for_sizes = {}
     max_size1 = 100

@@ -4,6 +4,7 @@
 
 import dill
 import functools
+import os
 import sys
 import time
 
@@ -28,11 +29,16 @@ from recordclass import recordclass, RecordClass
 
 from threading import Lock
 
+import base64
+import json
+
 import platform
 print("platform.system(): {}".format(platform.system()))
 
-START_ROWS = 2
-START_COLS = 1
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+
+START_ROWS = 3
+START_COLS = 2
 
 # class ReadOnlyText(tk.Frame):
 class ReadOnlyText(tk.Text):
@@ -77,11 +83,14 @@ def get_new_binary_automaton_images(w, h):
     variables.lambdas_in_picture = False
     variables.with_resize_image = False
     
-    variables.bits = 8
+    variables.bits = 1
+    # variables.bits = 8
     # variables.bits = 24
     
-    variables.min_or = 2
-    variables.max_or = 3
+    variables.min_or = 1
+    variables.max_or = 1
+    # variables.min_or = 2
+    # variables.max_or = 3
 
     variables.min_and = 3
     variables.max_and = 3
@@ -101,7 +110,9 @@ def get_new_binary_automaton_images(w, h):
     variables.save_gif = False
     # variables.suffix = '1112'
 
-    variables.image_by_str = '1'
+    # variables.image_by_str = '1'
+
+    variables.func_by_name = 'conway_game_of_life'
     # variables.image_by_str = '1'
     
     variables.max_it = 100
@@ -196,23 +207,18 @@ class LabelImageAnimation:
 
     def create_button_animation_functions(self):
         def func_do_the_animation():
-            # print("self.idx_i: {}, self.idx_j: {}, self.idx_img: {}".format(self.idx_i, self.idx_j, self.idx_img))
-            # lock = self.lock
-            # lock.acquire()
             with self.lock:
                 is_animation_on = self.is_animation_on
-            # lock.release()
-            if is_animation_on:
                 self.idx_img = (self.idx_img+1)%self.len_l_imgtk
-                self.lbl_inner.configure(image=self.l_imgtk[self.idx_img])
-                self.lbl_inner.image = self.l_imgtk[self.idx_img]
+                idx_img = self.idx_img
+
+            if is_animation_on:
+                self.lbl_inner.configure(image=self.l_imgtk[idx_img])
+                self.lbl_inner.image = self.l_imgtk[idx_img]
                 self.lbl_inner.after(self.time_elapse, func_do_the_animation)
 
 
         def func_toggle_animation(event, state=None):
-            # lock = self.lock
-            # lock.acquire()
-            # print("state: {}".format(state))
             with self.lock:
                 if state is None:
                     self.is_animation_on = not self.is_animation_on
@@ -223,8 +229,6 @@ class LabelImageAnimation:
                     self.lbl_inner.after(0, func_do_the_animation)
                 elif state==False:
                     self.is_animation_on = False
-
-            # lock.release()
 
 
         def func_reset_index(event):
@@ -247,7 +251,7 @@ class FrameOwn(tk.Frame):
         self.master = master
         kwargs = dict(highlightthickness=0, bd=1, relief=tk.GROOVE)
         # kwargs = dict(image=master.pixel, compound=tk.CENTER, highlightthickness=0, bd=1, relief=tk.GROOVE)
-        tk.Frame.__init__(self, master, class_='FrameOwn', background=background, borderwidth=1, **kwargs)
+        tk.Frame.__init__(self, master=master, class_='FrameOwn', background=background, borderwidth=1, **kwargs)
 
         # canvas width and height!
         self.canvas_width = width
@@ -557,7 +561,7 @@ class FrameOwn(tk.Frame):
 # example window, where this window can only exists once!
 class Win2(tk.Frame):
     def __init__(self, master, main_frame, number):
-        tk.Frame.__init__(self, master, class_='Win2')
+        tk.Frame.__init__(self, master=master, class_='Win2')
         self.master = master
         self.master.title('Show One Automaton')
         self.master.protocol("WM_DELETE_WINDOW", self.close_window)
@@ -606,13 +610,19 @@ class Win2(tk.Frame):
             relief=tk.SOLID, padx=0, pady=0,
         )
         self.lbl.place(x=3, y=3)
-
         self.lbl.bind('<Button-1>', self.show_next_pic)
         self.lbl.bind('<Button-3>', self.reset_to_first_pic)
 
 
         self.ro_txt = ReadOnlyText(master=self, relief=tk.SOLID, bd=1, highlightthickness=0, wrap='none', font=("Monospace", 6))
         self.ro_txt.frame.place(x=self.w_img_size+10, y=3, width=250, height=80)
+        self.ro_txt.frame.update()
+
+        # TODO 2020.04.29: add function/button for loading data from a json file!
+
+        self.btn_save_to_json = tk.Button(master=self, highlightthickness=0, text='Save To JSON')
+        self.btn_save_to_json.place(x=self.ro_txt.frame.winfo_x(), y=90)
+        self.btn_save_to_json.bind('<Button-1>', self.save_to_json)
 
         self.is_image_loaded = False
 
@@ -651,7 +661,29 @@ class Win2(tk.Frame):
         self.ro_txt.delete('1.0', tk.END)
         self.ro_txt.insert(tk.END, '\n'.join(obj.dm_params_lambda.functions_str_lst))
 
+        self.used_obj = obj
         self.is_image_loaded = True
+
+
+    def save_to_json(self, event):
+        DIR_PATH_JSON = PATH_ROOT_DIR+'json/'
+        if not os.path.exists(DIR_PATH_JSON):
+            os.makedirs(DIR_PATH_JSON)
+
+        pix_bws = self.used_obj.pixs_bws[0]
+        shape = pix_bws.shape
+        arr_bits = pix_bws.reshape((-1, ))
+        if arr_bits.shape[0]%8!=0:
+            arr_bits = np.hstack((arr_bits, [0]*(8-(arr_bits.shape[0]%8))))
+
+        arr_bytes = bytes(np.sum(arr_bits.reshape((-1, 8))*2**np.arange(7, -1, -1), axis=1).tolist())
+        d = dict(
+            shape=shape,
+            first_pix_bws_b64=base64.encodebytes(arr_bytes).decode('utf-8').replace('\n', ''),
+        )
+
+        with open(DIR_PATH_JSON+'example_test.json', 'w') as f:
+            json.dump(d, f, indent=4, sort_keys=True)
 
 
 # Here, we are creating our class, MainWindow, and inheriting from the Frame
@@ -731,6 +763,36 @@ class MainWindow(tk.Frame):
             self.win2 = Win2(master=tk.Toplevel(self.master), main_frame=self, number=3)
 
 
+    def func_save_to_json(self, event):
+        DIR_PATH_JSON = PATH_ROOT_DIR+'json/'
+        if not os.path.exists(DIR_PATH_JSON):
+            os.makedirs(DIR_PATH_JSON)
+
+        d_all = {}
+        l_obj = self.frame_own.lst_lbl_image_animation
+        for l_row_obj in l_obj:
+            for obj in l_row_obj:
+                pix_bws = obj.pixs_bws[0]
+                shape = pix_bws.shape
+                arr_bits = pix_bws.reshape((-1, ))
+                if arr_bits.shape[0]%8!=0:
+                    arr_bits = np.hstack((arr_bits, [0]*(8-(arr_bits.shape[0]%8))))
+
+                arr_bytes = bytes(np.sum(arr_bits.reshape((-1, 8))*2**np.arange(7, -1, -1), axis=1).tolist())
+                d = dict(
+                    shape=shape,
+                    first_pix_bws_b64=base64.encodebytes(arr_bytes).decode('utf-8').replace('\n', ''),
+                )
+
+                idx_i, idx_j = obj.idx_i, obj.idx_j
+                # d_all['({}, {})'.format(idx_i, idx_j)] = d
+                d_all[str((idx_i, idx_j))] = d
+
+        print('Saving the json file!')
+        with open(DIR_PATH_JSON+'example_test_all.json', 'w') as f:
+            json.dump(d_all, f, indent=4, sort_keys=True)
+
+
     def init_window(self):
         self.pixel = tk.PhotoImage(master=self, name='photo_pixel_1x1', width=1, height=1)
         self.master.protocol("WM_DELETE_WINDOW", self.client_exit_menu_btn)
@@ -770,7 +832,7 @@ class MainWindow(tk.Frame):
 
         # fill self.frame_own with labels!
 
-        fo.w = 50
+        fo.w = 52
         fo.h = fo.w
         fo.w_img = fo.w-10
         fo.h_img = fo.h-10
@@ -808,6 +870,7 @@ class MainWindow(tk.Frame):
             dict(y_space=0, text='Reset All Anim.', function=fo.func_btn_reset_all_animation),
             dict(y_space=10, text='Do Debug', function=self.func_do_debug),
             dict(y_space=10, text='Second Window', function=self.func_open_second_window),
+            dict(y_space=10, text='Save To JSON', function=self.func_save_to_json),
         ]
 
         def create_functions_for_hover_button_color_change(btn):
@@ -820,10 +883,12 @@ class MainWindow(tk.Frame):
             return on_enter, on_leave
 
 
+        acc_y_space = 0
         for idx_btn, d in enumerate(l_buttons_attributes, 0):
             btn = tk.Button(text=d['text'], **kwargs)
             btn.config(**kwargs_config)
-            btn.place(x=x_start, y=y_start+btn_h*idx_btn+d['y_space'])
+            acc_y_space += d['y_space']
+            btn.place(x=x_start, y=y_start+btn_h*idx_btn+acc_y_space)
 
             on_enter, on_leave = create_functions_for_hover_button_color_change(btn)
             btn.bind("<Enter>", on_enter)

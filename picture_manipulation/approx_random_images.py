@@ -30,6 +30,17 @@ sys.path.append(PATH_ROOT_DIR+"/..")
 import utils_all
 # from .. import utils_all
 
+FUNCTIONS_STR_LST_DICT = {
+    'conway_game_of_life': [
+      ( 'def a():\n'+
+        '    x = u+d+r+l+ur+ul+dr\n'+
+        '    t1 = np.logical_or.reduce((x==2, x==4, x==5))\n'+
+        '    p1 = np.logical_and.reduce((p==1, t1))\n'+
+        '    p2 = np.logical_and.reduce((p==0, x==3))\n'+
+        '    return np.logical_or.reduce((p1, p2)).astype(np.uint8)' ),
+    ]
+}
+
 class BitFieldBWConverter(Exception):
     possible_bits = [1, 8, 24]
 
@@ -324,6 +335,7 @@ def create_bits_neighbour_pictures(dm_params, dm_params_lambda):
     resize_factor = dm_params.resize_factor
     bits = dm_params.bits
     temp_path_lambda_file = dm_params.temp_path_lambda_file
+    func_by_name = dm_params.func_by_name
     image_by_str = dm_params.image_by_str
 
     # print("lambdas_in_picture: {}".format(lambdas_in_picture))
@@ -369,7 +381,10 @@ def create_bits_neighbour_pictures(dm_params, dm_params_lambda):
         dm_params_lambda.save_data = False
 
     if len(functions_str_lst) == 0:
-        if len(temp_path_lambda_file) > 0:
+        if isinstance(func_by_name, str) and func_by_name in FUNCTIONS_STR_LST_DICT:
+            dm_params_lambda.used_method = 'func_by_name'
+            dm_params_lambda.functions_str_lst = FUNCTIONS_STR_LST_DICT[func_by_name]
+        elif len(temp_path_lambda_file) > 0:
             assert os.path.exists(temp_path_lambda_file)
 
             # dm_params_lambda.path_dir = path_pictures
@@ -808,22 +823,11 @@ def combine_images_from_folders(paths_pictures):
 
 
 def get_special_functions_str_lst(name):
-    functions_str_lst_dict = {
-        'conway_game_of_life': [
-          ( 'def a():\n'+
-            '    x = u+d+r+l+ur+ul+dr\n'+
-            '    t1 = np.logical_or.reduce((x==2, x==4, x==5))\n'+
-            '    p1 = np.logical_and.reduce((p==1, t1))\n'+
-            '    p2 = np.logical_and.reduce((p==0, x==3))\n'+
-            '    return np.logical_or.reduce((p1, p2)).astype(np.uint8)' ),
-        ]
-    }
+   # if not name in FUNCTIONS_STR_LST_DICT:
+   #      print("Name '{name}' in dict of functions not found!".format(name=name))
+   #      return []
 
-    if not name in functions_str_lst_dict:
-        print("Name '{name}' in dict of functions not found!".format(name=name))
-        return []
-
-    return functions_str_lst_dict[name]
+    return FUNCTIONS_STR_LST_DICT[name]
 
 
 def print_variables_content(variables):

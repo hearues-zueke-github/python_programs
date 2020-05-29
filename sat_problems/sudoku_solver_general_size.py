@@ -94,7 +94,9 @@ if __name__=='__main__':
     d_cell_pos_num_to_var_num = objs['d_cell_pos_num_to_var_num']
 
 
-    with open(PATH_DIR_TXT+'unsolved_sudokus.txt', 'r') as f:
+    FILE_SUFFIX = '_nr_2'
+
+    with open(PATH_DIR_TXT+'unsolved_sudokus{}.txt'.format(FILE_SUFFIX), 'r') as f:
         lines = [l.replace('\n', '') for l in f.readlines()]
 
     l_unsolved_fields = []
@@ -149,7 +151,7 @@ if __name__=='__main__':
         except:
             l_solved_fields.append(('NOT SOLVABLE', )+t[1:3])
     
-    with open(PATH_DIR_TXT+'solved_sudokus.txt', 'w') as f:
+    with open(PATH_DIR_TXT+'solved_sudokus{}.txt'.format(FILE_SUFFIX), 'w') as f:
         for t in l_solved_fields:
             num_field = t[1]
             prepared_field_str = t[2]
