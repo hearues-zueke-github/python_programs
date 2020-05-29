@@ -1,3 +1,4 @@
 *.o
 cmake-build-debug/*
 *.trpcs
+tetris_game_data/*

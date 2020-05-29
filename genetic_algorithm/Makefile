@@ -1,8 +1,6 @@
 .DEFAULT_GOAL := default
 .PHONY: default
-# CC=clang++
 CC=g++
-# CFLAGS=-Wall -std=c++17
 CFLAGS=-O3 -Wall -std=c++17
 BUILD=build/
 
