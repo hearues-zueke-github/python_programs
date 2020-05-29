@@ -30,8 +30,8 @@ template<typename T> Matrix<T> operator%(const Matrix<T>& m1, const Matrix<T>& m
 template<typename T>
 class Matrix {
 private:
-  int _y;
-  int _x;
+  size_t _y;
+  size_t _x;
   vector<vector<T>> _A;
 public:
   Matrix(const int y, const int x);

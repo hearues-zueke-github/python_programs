@@ -61,3 +61,4 @@ template ostream& operator<<(ostream& os, const vector<vector<int32_t>>& obj);
 template ostream& operator<<(ostream& os, const vector<vector<uint64_t>>& obj);
 template ostream& operator<<(ostream& os, const vector<vector<int64_t>>& obj);
 template ostream& operator<<(ostream& os, const std::vector<std::tuple<int, int>>& obj);
+template ostream& operator<<(ostream& os, const std::vector<std::tuple<int, int>>& obj);

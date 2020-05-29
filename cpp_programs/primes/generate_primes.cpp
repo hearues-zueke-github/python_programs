@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
     }
 
     // generateNextPrimesMultithreadedBetter(primes, n_max);
-    
+
     generatePrimes(primes, 10000);
     vector<uint64_t> primes_new;
     uint64_t increment = 100000;

@@ -5,6 +5,7 @@
 #ifndef SIMPLEVECTORPRINTS_POLYNOMIAL_H
 #define SIMPLEVECTORPRINTS_POLYNOMIAL_H
 
+using namespace std;
 
 #include <iostream>
 #include <vector>
