@@ -58,7 +58,7 @@ void Polynome::shiftFactors(int32_t factor) {
   } else if (factor < 0) {
     factor = -factor;
 
-    if (l > factor) {
+    if ((int32_t)l > factor) {
       size_t new_l = l - factor;
 
       for (size_t i = 0; i < new_l; ++i) {
@@ -66,7 +66,7 @@ void Polynome::shiftFactors(int32_t factor) {
       }
 
       _factors.resize(new_l);
-    } else if (l <= factor) {
+    } else if ((int32_t)l <= factor) {
       _factors.clear();
     }
   }
