@@ -1,0 +1,41 @@
+checkUnique(v,n)={
+    v2=vector(n);
+    unique=1;
+    for(i=1,n,
+        j=v[i]+1;
+        if(v2[j]==1,unique=0;break,v2[j]=1;);
+    );
+    unique;
+};
+dc(a,c,m) = {v_=vector(m); x = 0; for (i=1, m-1, v_[i+1] = (a*v_[i]+c)%m;); v_;}
+getCycles(m)={
+    M=matrix(0,m);
+    for(a=0,m-1,
+        for(c=0,m-1,
+            v_1=dc(a,c,m);
+            if(checkUnique(v_1,m),
+                M=matconcat([M;v_1]);
+            );
+        );
+    );
+    M;
+};
+getCyclesLength2(m)={
+    length_=0;
+    for(a=0,m-1,
+        for(c=0,m-1,
+            v_1=dc(a,c,m);
+            if(checkUnique(v_1,m),
+                length_+=1;
+            );
+        );
+    );
+    length_;
+};
+getCyclesLengths2(nn)={
+    v=vector(nn);
+    for(i=1,nn,
+        v[i]=getCyclesLength2(i);
+    );
+    v;
+};
