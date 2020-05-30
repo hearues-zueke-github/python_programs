@@ -40,27 +40,253 @@ os.system('xset r off')
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 
 class SimpleNeuralNetwork(Exception):
-    def __init__(self, input_nodes=None, hidden_nodes=None, output_nodes=None, ws=None):
-        if ws is not None:
-            self.ws = deepcopy(ws)
+    def __init__(self, input_nodes=None, hidden_nodes=None, output_nodes=None, bws=None):
+        if bws is not None:
+            self.bws = deepcopy(bws)
             return
 
-        layers = [input_nodes]+hidden_nodes+[output_nodes]
-        self.ws = [(np.random.random((i2, i1))*2.-1.)/10. for i1, i2 in zip(layers[:-1], layers[1:])]
+        self.input_nodes = input_nodes
+        self.hidden_nodes = hidden_nodes
+        self.output_nodes = output_nodes
+
+        self.eta = 0.001
+        self.learning_epochs = 100
+
+        self.layers = [input_nodes]+hidden_nodes+[output_nodes]
+        self.nl = self.layers
+
+        self.bws = self.get_random_bws()
+        # self.bws = self.get_random_bws_old()
+
+
+    # def get_random_bws_old(self):
+    #     return [(np.random.random((i2, i1+1))*2.-1.)/10. for i1, i2 in zip(self.layers[:-1], self.layers[1:])]
+
+
+    def get_random_bws(self):
+        return np.array([np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])])
+    
+
+    def __repr__(self):
+        return f"SimpleNeuralNetwork(ni={self.input_nodes}, nh={self.hidden_nodes}, on={self.output_nodes}, "+ \
+            f"eta={self.eta}, learning_epochs={self.learning_epochs})"
 
 
     def calc_output_argmax(self, input_vec):
-        x = input_vec
-        for w in self.ws[:-1]:
+        x = np.hstack((input_vec, [1]))
+        for w in self.bws[:-1]:
             z = np.dot(w, x)
-            x = np.tanh(z)
-        z = np.dot(self.ws[-1], x)
-        y = self.sig(z)
+            x = self.f1(z)
+            x = np.hstack((x, [1]))
+        z = np.dot(self.bws[-1], x)
+        y = self.f2(z)
         return np.argmax(y)
 
 
-    def sig(self, x):
+    def calc_grad_numeric(self, X, T, epsilon=0.0001, softmax=False):
+        ws_grad = [np.empty(w.shape) for w in self.bws]
+
+        for bw, bw_g in zip(self.bws, ws_grad):
+            rows, cols = bw.shape
+            for j in range(0, rows):
+                for i in range(0, cols):
+                    v = bw[j, i]
+
+                    bw[j, i] = v+epsilon
+                    Y = self.calc_Y(X, softmax=softmax)
+                    cecf_plus = self.f_cecf(Y, T) # /T.shape[0]/T.shape[1]
+
+                    bw[j, i] = v-epsilon
+                    Y = self.calc_Y(X, softmax=softmax)
+                    cecf_minus = self.f_cecf(Y, T) # /T.shape[0]/T.shape[1]
+
+                    v_grad = (cecf_plus-cecf_minus) / 2. / epsilon
+                    bw[j, i] = v
+                    bw_g[j, i] = v_grad
+
+        return ws_grad
+
+
+    def calc_Y(self, X, softmax=False):
+        ones = np.ones((X.shape[0], 1))
+
+        # Y = X
+        X = np.hstack((ones, X))
+        for bw in self.bws[:-1]:
+            Z = np.dot(X, bw)
+            Y = self.f1(Z)
+            X = np.hstack((ones, Y))
+        Z = np.dot(X, self.bws[-1])
+        Y = self.f2(Z)
+        if softmax:
+            Y = Y / np.sum(Y, axis=1).reshape((-1, 1))
+        return Y
+
+
+    def calc_feed_forward(self, X):
+        ones = np.ones((X.shape[0], 1))
+        Y = X
+        for i, bw in zip(range(len(self.bws), 0, -1), self.bws[:-1]):
+            Y = self.f1(np.hstack((ones, Y)).dot(bw)) # *self.hidden_multiplier**i)
+        Y = self.f2(np.hstack((ones, Y)).dot(self.bws[-1]))
+        return Y
+
+
+    def calc_backprop(self, X, T, bws, softmax=False):
+        Xs = []
+        Ys = [X]
+        ones = np.ones((X.shape[0], 1))
+        Y = X
+        for bw in bws[:-1]:
+            A = np.hstack((ones, Y)).dot(bw)
+            Xs.append(A)
+            Y = self.f1(A)
+            Ys.append(Y)
+        A = np.hstack((ones, Y)).dot(bws[-1]); Xs.append(A)
+        Y = self.f2(A)
+        if softmax:
+            Y = Y / np.sum(Y, axis=1).reshape((-1, 1))
+        Ys.append(Y)
+
+        d = (Y-T)
+        bwds = np.array([np.zeros(bwsdi.shape) for bwsdi in bws])
+        if softmax:
+            bwds[-1] = np.hstack((ones, Ys[-2])).T.dot(d)
+        else:
+            bwds[-1] = np.hstack((ones, Ys[-2])).T.dot(d)
+
+        length = len(bws)
+        for i in range(2, length+1):
+            d = d.dot(bws[-i+1][1:].T)*self.f1_d(Xs[-i])
+            bwds[-i] = np.hstack((ones, Ys[-i-1])).T.dot(d)
+
+        return np.array(bwds)
+
+
+    def f_rmse(self, Y, T):
+        return np.sqrt(np.mean(np.sum((Y-T)**2, axis=1)))
+    def f_cecf(self, Y, T):
+        return np.sum(np.sum(np.vectorize(lambda y, t: -np.log(y) if t==1. else -np.log(1-y))(Y, T), axis=1))
+
+
+    # def f_cecf(self, Ys, Ts):
+    #     diff = Ys-Ts
+    #     return np.sum(diff**2)/diff.shape[0]/diff.shape[1]
+
+
+    # def calc_logistic_direct(self, Ys, Ts):
+    #     diff = Ys-Ts
+    #     return np.sum(diff**2)/diff.shape[0]/diff.shape[1]
+
+
+    # def calc_mse_direct(self, Xs, Ts):
+    #     Ys = self.calc_Y(Xs)
+    #     diff = Ys-Ts
+    #     return np.sum(diff**2)/diff.shape[0]/diff.shape[1]
+
+
+    def f1(self, x):
+        return np.tanh(x)
+
+
+    def f1_d(self, x):
+        # return 1/(x**2+1)
+        return 1 - np.tanh(x)**2
+
+
+    def f2(self, x):
         return 1 / (1 + np.exp(-x))
+
+
+    def f2_d(self, x):
+        return self.f2(x)*(1-self.f2(x))
+
+
+# do some testing for the backpropagation function!
+
+input_nodes = 5
+output_nodes = 3
+
+snn = SimpleNeuralNetwork(input_nodes=input_nodes, hidden_nodes=[7, 6], output_nodes=output_nodes)
+
+amount = 2000
+
+X = np.random.randint(0, 2, (amount, input_nodes)).T
+
+T = np.vstack(((X[0]^X[3]+X[4])%2, (X[1]^X[2])&(X[2]|X[3]), (X[3]|X[4])&X[0])).T
+X = X.T
+
+snn.ws = snn.get_random_bws()
+
+X[X==0] = -1
+
+X = X.astype(np.float)
+T = T.astype(np.float)
+
+X_part = X[:40]
+T_part = T[:40]
+
+bws_prev = deepcopy(snn.bws)
+
+# bwds_grad_numeric_softmax = snn.calc_grad_numeric(X_part, T_part, softmax=True)
+bwds_grad_numeric_nosoftmax = snn.calc_grad_numeric(X_part, T_part, softmax=False)
+
+bws_now = deepcopy(snn.bws)
+assert all([np.all(w_p==w_n) for w_p, w_n in zip(bws_prev, bws_now)])
+
+# bwds_grad_true_softmax = snn.calc_backprop(X_part, T_part, snn.bws, softmax=True)
+bwds_grad_true_nosoftmax = snn.calc_backprop(X_part, T_part, snn.bws, softmax=False)
+
+bwd_n_soft = bwds_grad_numeric_softmax[-1]
+bwd_n_nosoft = bwds_grad_numeric_nosoftmax[-1]
+
+# bwd_t_soft = bwds_grad_true_softmax[-1]
+# bwd_t_nosoft = bwds_grad_true_nosoftmax[-1]
+
+# print("bwd_n_nosoft:\n{}".format(bwd_n_nosoft))
+# print("bwd_t_nosoft:\n{}".format(bwd_t_nosoft))
+
+# print("bwd_n_soft:\n{}".format(bwd_n_soft))
+# print("bwd_t_soft:\n{}".format(bwd_t_soft))
+
+assert np.sum([np.sum(np.abs(bwd_n-bwd_t)<0.001) for bwd_n, bwd_t in zip(bwds_grad_numeric_nosoftmax, bwds_grad_true_nosoftmax)])==np.sum([bw.shape[0]*bw.shape[1] for bw in snn.bws])
+
+
+# test for a simple backpropagation example!
+# add some noise to the X matrix!
+X += np.random.uniform(-1./100, 1./100, X.shape)
+
+split_n = int(X.shape[0]*0.7)
+X_train = X[:split_n]
+X_test = X[split_n:]
+T_train = T[:split_n]
+T_test = T[split_n:]
+
+l_cecf_train = [snn.f_cecf(snn.calc_feed_forward(X_train), T_train)/T_train.shape[0]/T_train.shape[1]]
+
+eta = 0.0001
+for i in range(1, 2001):
+    ws_grad = snn.calc_backprop(X_train, T_train, snn.bws)
+    # ws_grad = snn.calc_grad_numeric(X_train, T_train)
+    ws_new = [w-wg*eta for w, wg in zip(snn.bws, ws_grad)]
+    snn.bws = ws_new
+    Y_train = snn.calc_feed_forward(X_train)
+    cecf_train = snn.f_cecf(Y_train, T_train)/T_train.shape[0]/T_train.shape[1]
+    print("i: {:4}, cecf_train: {:06f}".format(i, cecf_train))
+    if cecf_train >= l_cecf_train[-1]:
+        l_cecf_train.append(cecf_train)
+        print("Stop!! cecf_train >= l_cecf_train[-1]!")
+        break
+    l_cecf_train.append(cecf_train)
+
+print("l_cecf_train: {}".format(l_cecf_train))
+
+Y_test = snn.calc_feed_forward(X_test)
+cecf_test = snn.f_cecf(Y_test, T_test)/T_test.shape[0]/T_test.shape[1]
+
+print("cecf_test: {}".format(cecf_test))
+
+sys.exit()
 
 
 class GeneticAlgorithm(Exception):
@@ -70,7 +296,7 @@ class GeneticAlgorithm(Exception):
 class TetrisGeneticAlgorithm(Exception):
     def __init__(self):
         self.field_columns = 10
-        self.field_rows = 40
+        self.field_rows = 20
 
         self.l_piece_name = ['Z', 'S', 'O', 'T', 'L', 'J', 'I']
         self.l_piece_direction = ['W', 'N', 'E', 'S']
@@ -217,15 +443,15 @@ class TetrisGeneticAlgorithm(Exception):
             else:
                 d_simple_nn = {
                     piece_name: SimpleNeuralNetwork(
-                        ws=simple_nn.ws,
+                        bws=simple_nn.bws,
                     ) for piece_name, simple_nn in d_simple_nn.items()
                 }
 
-            # ws_orig = d_simple_nn['J'].ws
+            # ws_orig = d_simple_nn['J'].bws
             # for piece_name in self.l_piece_name:
             #     if piece_name=='J':
             #         continue
-            #     d_simple_nn[piece_name].ws = ws_orig
+            #     d_simple_nn[piece_name].bws = ws_orig
             
             return d_simple_nn
 
@@ -377,6 +603,7 @@ class TetrisGeneticAlgorithm(Exception):
 
             return True
 
+
         # TODO: write a separate function for the running the game and a seperate function for calculting the new offsprings
         def get_new_statistics():
             t = (self.simple_nn_idx, self.piece_nr, self.clear_lines)
@@ -427,7 +654,7 @@ class TetrisGeneticAlgorithm(Exception):
                         snn2 = d_snn2[piece_name]
                         snn_child = d_snn_child[piece_name]
 
-                        for w1, w2, w_c in zip(snn1.ws, snn2.ws, snn_child.ws):
+                        for w1, w2, w_c in zip(snn1.bws, snn2.bws, snn_child.bws):
                             shape = w1.shape
                             a1 = w1.reshape((-1, ))
                             a2 = w2.reshape((-1, ))
@@ -501,7 +728,7 @@ class TetrisGeneticAlgorithm(Exception):
                             self.piece_nr,
                         ),
                         delete=False,
-                        dir=directory
+                        dir=directory,
                     )
                     print("Saving file: t.name: {}".format(t.name))
 

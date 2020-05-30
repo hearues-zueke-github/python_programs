@@ -48,13 +48,11 @@ private:
   int rows_;
   int columns_;
 
-  int piece_idx_nr_;
-
   typedef std::tuple<string, string, int> key_name_dir_pos;
 
   struct Position {
-    int rows_;
-    int columns_;
+    int rows_{};
+    int columns_{};
     vector<vector<int>> pos_;
 
     void copyPos(const int rows, const int columns, const uint8_t *pos) {
@@ -69,29 +67,6 @@ private:
         }
       }
     }
-
-    void copyPos(const vector<vector<int>>& pos) {
-      rows_ = pos.size();
-      columns_ = pos[0].size();
-      pos_ = pos;
-    }
-
-    void copyPos(const Position& obj) {
-      rows_ = obj.rows_;
-      columns_ = obj.columns_;
-      pos_ = obj.pos_;
-    }
-
-    void printPos() {
-      ostringstream ss;
-      cout << "pos_: " << pos_ << endl;
-      for (int i = 0; i < rows_; ++i) {
-        ss << "(" << pos_[i][0] << ", " << pos_[i][1] << "), ";
-      }
-      string s = ss.str();
-      s.resize(s.size() - 2);
-      cout << "pos_: " << s << endl;
-    }
   };
 
   struct PiecePositions;
@@ -100,7 +75,9 @@ private:
     string name_;
     string direction_;
     int pos_place_;
-    int idx_nr_;
+    int field_idx_;
+    int piece_unq_idx_;
+    int piece_idx_;
 
     Piece(const Piece& obj) {
       copyValues(obj);
@@ -119,12 +96,16 @@ private:
       name_ = pp.name_;
       direction_ = pp.direction_;
       pos_place_ = pos_place;
-      idx_nr_ = pp.idx_nr_;
+      piece_unq_idx_ = pp.piece_unq_idx_;
+      field_idx_ = piece_unq_idx_ + 1;
+      piece_idx_ = pp.piece_idx_;
     }
 
     friend ostream& operator<<(ostream& os, Piece const& obj) {
       os << "name_: " << obj.name_;
-      os << ", idx_nr_: " << obj.idx_nr_;
+      os << ", piece_unq_idx_: " << obj.piece_unq_idx_;
+      os << ", field_idx_: " << obj.field_idx_;
+      os << ", piece_idx_: " << obj.piece_idx_;
       os << ", direction_: " << obj.direction_;
       os << ", pos_place_: " << obj.pos_place_;
       os << ", pos_: " << obj.pos_;
@@ -135,19 +116,13 @@ private:
       name_ = obj.name_;
       direction_ = obj.direction_;
       pos_place_ = obj.pos_place_;
-      idx_nr_ = obj.idx_nr_;
+      piece_unq_idx_ = obj.piece_unq_idx_;
+      field_idx_ = obj.piece_unq_idx_ + 1;
+      piece_idx_ = obj.piece_idx_;
 
       rows_ = obj.rows_;
       columns_ = obj.columns_;
       pos_ = obj.pos_;
-    }
-
-    void removeFromField(vector<vector<int>> field_) {
-      const size_t size = pos_.size();
-      for (size_t j = 0; j < size; ++j) {
-        vector<int>& v = pos_[j];
-        field_[v[0]][v[1]] = 0;
-      }
     }
   };
 
@@ -156,13 +131,15 @@ private:
     string direction_;
     int min_x_;
     int max_x_;
-    int idx_nr_;
+    int field_idx_;
+    int piece_unq_idx_;
+    int piece_idx_;
 
     PiecePositions(
       string name, string direction, const int rows, const int columns, const uint8_t *pos,
-      const int field_columns, const int idx_nr
+      const int field_columns, const int piece_unq_idx, const int piece_idx
     ) :
-      name_(std::move(name)), direction_(std::move(direction)), idx_nr_(idx_nr) {
+      name_(std::move(name)), direction_(std::move(direction)), field_idx_(piece_unq_idx + 1), piece_unq_idx_(piece_unq_idx), piece_idx_(piece_idx) {
       copyPos(rows, columns, pos);
 
       int min_x = pos_[0][1];
@@ -183,26 +160,20 @@ private:
       min_x_ = -min_x;
       max_x_ = field_columns - max_x;
     }
-
-    void printProperties() {
-      ostringstream ss;
-      ss << "1 name_: " << name_ << endl;
-      ss << "2 direction_: " << direction_ << endl;
-      ss << "3 min_x_: " << min_x_ << endl;
-      ss << "4 max_x_: " << max_x_ << endl;
-      ss << "5 idx_nr_: " << idx_nr_ << endl;
-      string s = ss.str();
-      cout << s;
-    }
   };
 
   vector<PiecePositions> piece_positions_;
+  vector<uint8_t> group_piece_amount_;
 
   set<string> set_pieces_name_;
+  vector<string> vec_pieces_name_;
+  int piece_unq_idx_;
+  int piece_idx_;
 
   map<string, string> piece_name_to_piece_orientation_;
-  map<string, uint8_t> piece_name_to_index_;
-  map<string, uint8_t> piece_name_to_idx_nr_;
+//  map<string, uint8_t> piece_name_to_index_;
+  map<string, uint8_t> piece_name_to_field_idx_;
+  map<string, uint8_t> piece_name_to_piece_unq_idx_;
 
   int amount_pieces_sequence;
   vector<string> pieces_sequence_;
@@ -231,59 +202,55 @@ private:
     vector<string> pieces_orientation;
     // vector<int> pieces_idx_nr;
 
-    if (num_blocks == 4) {
-      pieces_name = {"O", "I", "Z", "S", "L", "T", "J"};
-      pieces_orientation = {
-        "S", "S", "W", "S", "W", "W", "S", "N", "E", "W",
-        "S", "N", "W", "S", "E", "N", "W", "S", "E",
-      };
-      // pieces_idx_nr.resize(amount_groups);
-    } else {
-      pieces_name.resize(amount_groups);
-      // pieces_idx_nr.resize(amount_groups);
+//    if (num_blocks == 4) {
+//      pieces_name = {"O", "I", "Z", "S", "L", "T", "J"};
+//      pieces_orientation = {
+//        "S", "S", "W", "S", "W", "W", "S", "N", "E", "W",
+//        "S", "N", "W", "S", "E", "N", "W", "S", "E",
+//      };
+//    } else {
+    pieces_name.resize(amount_groups);
 
-      int sum = 0;
-      for (int i = 0; i < amount_groups; ++i) {
-        sum += (int) group_piece_amount[i];
-        pieces_name[i] = std::to_string(i + 1);
-      }
-      pieces_orientation.resize(sum);
+    int sum = 0;
+    for (int i = 0; i < amount_groups; ++i) {
+      const uint8_t& val = group_piece_amount[i];
+      sum += (int) val;
+      group_piece_amount_.push_back(val);
+      pieces_name[i] = std::to_string(i + 1);
+    }
+    pieces_orientation.resize(sum);
 
-      int idx = 0;
-      for (int j = 0; j < amount_groups; ++j) {
-        const int amount = (int) group_piece_amount[j];
-        if (amount == 1) {
-          pieces_orientation[idx++] = "S";
-        } else if (amount == 2) {
-          pieces_orientation[idx++] = "S";
-          pieces_orientation[idx++] = "W";
-        } else if (amount == 4) {
-          pieces_orientation[idx++] = "S";
-          pieces_orientation[idx++] = "W";
-          pieces_orientation[idx++] = "N";
-          pieces_orientation[idx++] = "E";
-        }
+    int idx = 0;
+    for (int j = 0; j < amount_groups; ++j) {
+      const int amount = (int) group_piece_amount[j];
+      if (amount == 1) {
+        pieces_orientation[idx++] = "S";
+      } else if (amount == 2) {
+        pieces_orientation[idx++] = "S";
+        pieces_orientation[idx++] = "W";
+      } else if (amount == 4) {
+        pieces_orientation[idx++] = "S";
+        pieces_orientation[idx++] = "W";
+        pieces_orientation[idx++] = "N";
+        pieces_orientation[idx++] = "E";
       }
     }
+//    }
 
     for (int i = 0; i < amount_groups; ++i) {
       pieces_name[i] = std::to_string(unsigned(num_blocks)) + "_" + pieces_name[i];
-      // pieces_idx_nr[i] = i + 1;
     }
 
     map<string, int> piece_name_to_index;
-    // map<string, int> piece_name_to_idx_nr;
 
     for (int i = 0; i < amount_groups; ++i) {
       piece_name_to_index[pieces_name[i]] = i;
-      // piece_name_to_idx_nr[pieces_name[i]] = pieces_idx_nr[i];
     }
 
     uint8_t *pos_data_next = (uint8_t *) pos_data_start;
     for (int i_group = 0; i_group < amount_groups; ++i_group) {
       const uint8_t piece_amount = group_piece_amount[i_group];
       const string name = pieces_name[i_group];
-      // const int idx_nr = piece_name_to_idx_nr[name];
       const string orientation = pieces_orientation[i_group];
 
       if (set_pieces_name_.find(name) != set_pieces_name_.end()) {
@@ -291,17 +258,21 @@ private:
       }
 
       set_pieces_name_.insert(name);
-      piece_name_to_index_[name] = piece_name_to_index[name];
+      vec_pieces_name_.push_back(name);
+//      piece_name_to_field_idx_[name] = vec_pieces_name_.size();
+//      piece_name_to_index_[name] = piece_name_to_index[name];
       piece_name_to_piece_orientation_[name] = orientation;
 
-      piece_name_to_idx_nr_[name] = piece_idx_nr_;
+      piece_name_to_piece_unq_idx_[name] = piece_unq_idx_;
+      piece_name_to_field_idx_[name] = piece_unq_idx_ + 1;
 
       piece_name_to_group_pieces_[name] = {};
       vector<Piece>& group_pieces = piece_name_to_group_pieces_[name];
 
       for (int i_piece = 0; i_piece < piece_amount; ++i_piece) {
         piece_positions_.emplace_back(name, pieces_orientation[index_orientation], num_blocks, 2,
-                                      pos_data_next, columns_, piece_idx_nr_);
+                                      pos_data_next, columns_, piece_unq_idx_, piece_idx_);
+        ++piece_idx_;
         PiecePositions& pp = piece_positions_.back();
 
         for (int pos_place = pp.min_x_; pos_place < pp.max_x_; ++pos_place) {
@@ -312,7 +283,7 @@ private:
         pos_data_next += num_blocks * 2;
       }
 
-      ++piece_idx_nr_;
+      ++piece_unq_idx_;
 
       cout << "name: " << name;
       cout << "; group_pieces.size(): " << group_pieces.size() << endl;
@@ -323,7 +294,8 @@ public:
   TetrisField(const int rows, const int columns, const vector<int>& vec_num_blocks = {4},
       const string& data_path = "tetris_game_data/", const string& file_data_name = "data_fields_test",
       const string& file_extension = "ttrsfields") {
-    piece_idx_nr_ = 1;
+    piece_unq_idx_ = 0;
+    piece_idx_ = 0;
 
     data_path_ = data_path;
     file_data_name_ = file_data_name + "." + file_extension;
@@ -451,20 +423,63 @@ public:
 
   void executePieceVector(const int using_pieces = 3) {
     vector<uint8_t> heights;
+    vector<vector<uint8_t>> relative_row_heights_per_column;
     vector<int> piece_group_idx(using_pieces);
 
-    vector<uint8_t> data_fields;
-    data_fields.push_back(rows_);
-    data_fields.push_back(columns_);
+    vector<uint8_t> fields;
 
-    // TODO: add all needed data to the data_fields vector!
+    struct IdxPosPlace {
+      uint8_t piece_unq_idx_;
+      uint8_t piece_idx_;
+      uint8_t pos_place_;
+
+      IdxPosPlace(const uint8_t piece_unq_idx, const uint8_t piece_idx, const uint8_t pos_place) {
+        piece_unq_idx_ = piece_unq_idx;
+        piece_idx_ = piece_idx;
+        pos_place_ = pos_place;
+      }
+    };
+    vector<IdxPosPlace> used_piece_idx_pos;
 
     auto copy_field_to_data_fields = [&]() {
       for (size_t j = 0; j < field_.size(); ++j) {
         vector<uint8_t>& v = field_[j];
-        data_fields.reserve(data_fields.size() + v.size());
-        data_fields.insert(data_fields.end(), v.begin(), v.end());
+        fields.reserve(fields.size() + v.size());
+        fields.insert(fields.end(), v.begin(), v.end());
       }
+    };
+
+    auto save_the_heights_of_rows_relative_per_column = [&]() {
+      // first find the first appearance of the max height per column
+      set<uint8_t> col_idx_not_finished;
+      vector<uint8_t> col_max_height(columns_, rows_);
+
+      for (int i = 0; i < columns_; ++i) {
+        col_idx_not_finished.emplace(i);
+      }
+
+      uint8_t min_height = 0;
+      for (int row = 0; (row < rows_) && (!col_idx_not_finished.empty()); ++row) {
+        vector<uint8_t>& v = field_[row];
+
+        for(set<uint8_t>::iterator iter = col_idx_not_finished.begin(); iter != col_idx_not_finished.end();) {
+          if(v[*iter]) {
+            col_max_height[*iter] = row;
+            if (col_idx_not_finished.size() == 1) {
+              min_height = rows_ - row;
+            }
+            iter = col_idx_not_finished.erase(iter);
+          } else {
+            ++iter;
+          }
+        }
+      }
+
+      for (vector<uint8_t>::iterator it = col_max_height.begin(); it != col_max_height.end(); ++it) {
+        *it = rows_ - *it - min_height;
+      }
+
+      relative_row_heights_per_column.emplace_back(col_max_height);
     };
 
     struct Datas {
@@ -472,10 +487,14 @@ public:
       int weight_;
       int lines_removed_;
 
-      void print() const {
-        cout << "height_: " << height_ << ", weight_: " << weight_ << ", lines_removed_: " << lines_removed_;
+      void print(const string& name = "min_data") const {
+        cout << name << ": " << "height_: " << height_ << ", weight_: " << weight_ << ", lines_removed_: " << lines_removed_ << endl;
       }
     };
+
+    // is needed to get in sync with the next two times copy_field is called
+    copy_field_to_data_fields();
+    copy_field_to_data_fields();
 
     const size_t size = pieces_sequence_.size() - using_pieces + 1;
     for (size_t i = 0; i < size; ++i) {
@@ -494,8 +513,8 @@ public:
             int lines_removed = removeFullLines();
 
             if (idx == idx_maxs) {
-              int max_height = returnMaxHeight();
-              int lines_removed_total = lines_removed_prev + lines_removed;
+              const int max_height = returnMaxHeight();
+              const int lines_removed_total = lines_removed_prev + lines_removed;
               pos_pieces_to_max_height[piece_group_idx] = {max_height, calculateWeightSum(), lines_removed_total};
             } else {
               do_resursive(idx + 1, idx_maxs, piece_idx + 1, lines_removed_prev + lines_removed);
@@ -532,6 +551,7 @@ public:
       vector<Piece>& vp = piece_name_to_group_pieces_[pieces_sequence_[i]];
       Piece& p_ref = vp[(*best_piece_group_idx)[0]];
 
+      used_piece_idx_pos.emplace_back(p_ref.piece_unq_idx_, p_ref.piece_idx_, p_ref.pos_place_);
 
       Piece p(p_ref);
       movePieceInstant(p);
@@ -541,23 +561,65 @@ public:
       int lines_removed = removeFullLines();
 
       // printField();
-      heights.push_back(min_data.height_);
-      cout << "min_data: ";
-      min_data.print();
-      cout << endl;
-      cout << "returnMaxHeight(): " << returnMaxHeight() << endl;
+      const int current_height = returnMaxHeight();
+      // save the relative heights of the columns relative to the min height to all columns!
+
+      heights.push_back(current_height);
+      min_data.print("min_data");
+      cout << "current_height: " << current_height << endl;
       cout << "using_pieces_sequence: " << using_pieces_sequence << endl;
       cout << "best_piece_group_idx: " << (*best_piece_group_idx) << endl;
       cout << "p: " << p << endl;
       cout << "lines_removed: " << lines_removed << endl;
 
       copy_field_to_data_fields();
-//      while (cin.get() != '\n') {
-//        cout << "ENTER...";
-//      }
+      save_the_heights_of_rows_relative_per_column();
     }
 
+    printField();
+
     cout << "heights: " << heights << endl;
+
+    vector<uint8_t> data_fields;
+    data_fields.push_back(rows_);
+    data_fields.push_back(columns_);
+
+    // save the tetris pieces first! to know, which pieces where used and which not!
+//    data_fields.push_back(piece_name_to_group_pieces_.size());
+    data_fields.push_back(vec_pieces_name_.size());
+
+    data_fields.reserve(data_fields.size() + group_piece_amount_.size());
+    data_fields.insert(data_fields.end(), group_piece_amount_.begin(), group_piece_amount_.end());
+
+    for (const auto& pp : piece_positions_) {
+      vector<uint8_t> data_pos;
+      data_pos.push_back(pp.pos_.size());
+      for (const auto& v : pp.pos_) {
+        data_pos.reserve(data_pos.size() + v.size());
+        data_pos.insert(data_pos.end(), v.begin(), v.end());
+      }
+      data_fields.reserve(data_fields.size() + data_pos.size());
+      data_fields.insert(data_fields.end(), data_pos.begin(), data_pos.end());
+    }
+
+    const uint16_t amount_sequence = heights.size();
+    const uint8_t* amount_sequence_ptr = (uint8_t*)&amount_sequence;
+    data_fields.reserve(data_fields.size() + sizeof(amount_sequence));
+    data_fields.insert(data_fields.end(), amount_sequence_ptr, amount_sequence_ptr + sizeof(amount_sequence));
+
+    for (const auto& idx_pos : used_piece_idx_pos) {
+      data_fields.reserve(data_fields.size() + sizeof(IdxPosPlace));
+      const auto* d = reinterpret_cast<const uint8_t*>(&idx_pos);
+      data_fields.insert(data_fields.end(), d, d + sizeof(IdxPosPlace));
+    }
+
+    for (const auto& v : relative_row_heights_per_column) {
+      data_fields.reserve(data_fields.size() + v.size());
+      data_fields.insert(data_fields.end(), v.begin(), v.end());
+    }
+
+    data_fields.reserve(data_fields.size() + fields.size());
+    data_fields.insert(data_fields.end(), fields.begin(), fields.end());
 
     std::ofstream stream;
     stream.open(data_path_ + file_data_name_, std::ios::out | std::ios::binary);
@@ -593,7 +655,7 @@ public:
 
     for (size_t j = 0; j < size; ++j) {
       vector<int>& point = piece.pos_[j];
-      field_[point[0]][point[1]] = piece.idx_nr_;
+      field_[point[0]][point[1]] = piece.field_idx_;
     }
 
     return true;
@@ -749,7 +811,7 @@ int main(int argc, char *argv[]) {
 
   TetrisField tf = TetrisField(rows, columns, vec_num_blocks, data_path, file_data_name, file_extension);
 
-  tf.defineRandomPieceVector(amount_pieces_sequence);
+  tf.defineRandomPieceVector(amount_pieces_sequence + using_pieces - 1);
   tf.executePieceVector(using_pieces);
 
   return 0;

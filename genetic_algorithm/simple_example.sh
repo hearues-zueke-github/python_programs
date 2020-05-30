@@ -16,5 +16,5 @@ if [ need = true ]; then
     make
 fi
 
-time ./build/tetris_deep_search_path_optimization.o -a 300 -f data_fields_${suffix} -u 4 -r 20 -c 10 -b 4
+time ./build/tetris_deep_search_path_optimization.o -a 100 -f data_fields_${suffix} -u 3 -r 20 -c 10 -b 4
 time python3 create_images_from_tetris_game_data.py ${suffix}
