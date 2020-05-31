@@ -60,14 +60,14 @@ if __name__ == "__main__":
     d_data = parse_tetris_game_data(DATA_FILE_PATH)
     rows = d_data['rows']
     cols = d_data['cols']
-    l_arr = d_data['l_arr']
+    arr_fields = d_data['arr_fields']
 
 
     arr_1_col = np.zeros((rows, 1), dtype=np.uint8)+len(arr_colors)-1
     arr_2_col = np.zeros((rows, 5), dtype=np.uint8)+len(arr_colors)-1
     arr_1_row = np.zeros((1, cols+arr_1_col.shape[1]+arr_2_col.shape[1]), dtype=np.uint8)+len(arr_colors)-1
 
-    for i, arr in enumerate(l_arr, 0):
+    for i, arr in enumerate(arr_fields, 0):
         arr = np.hstack((arr_1_col, arr, arr_2_col))
         arr = np.vstack((arr_1_row, arr, arr_1_row))
 

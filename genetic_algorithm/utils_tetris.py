@@ -38,7 +38,29 @@ def parse_tetris_game_data(file_path):
     amount_fields = len(l_rest)//field_size
     assert len_l_rest==field_size*amount_fields
     assert length*2+2==amount_fields
-    l_arr = [np.array(l).reshape((rows, cols)) for l in [l_rest[field_size*i:field_size*(i+1)] for i in range(0, amount_fields)]]
+    arr_fields = np.array(l_rest).reshape((-1, rows, cols))
+
+    l_group_piece_arr_pos = []
+    l_group_piece_max_x = []
+    group_idx_acc = 0
+    for group_amount in l_amount_group_pieces:
+        l_group_one_piece_arr_pos = []
+        l_group_one_piece_max_x = []
+        for _ in range(0, group_amount):
+            arr = np.array(l_group_pieces[group_idx_acc]).reshape((-1, 2))
+            l_group_one_piece_arr_pos.append(arr.tolist())
+            l_group_one_piece_max_x.append(max(arr[:, 1]))
+            group_idx_acc += 1
+        l_group_piece_arr_pos.append(l_group_one_piece_arr_pos)
+        l_group_piece_max_x.append(l_group_one_piece_max_x)
+
+    l_pcs_idx_l_index_to_group_idx_pos = []
+    for pcs_idx in np.arange(0, amount_pieces):
+        l_index_to_group_idx_pos = []
+        for group_idx, max_x in enumerate(l_group_piece_max_x[pcs_idx], 0):
+            for pos in range(0, cols-max_x):
+                l_index_to_group_idx_pos.append((group_idx, pos))
+        l_pcs_idx_l_index_to_group_idx_pos.append(l_index_to_group_idx_pos)
 
     d_data = {
         'rows': rows,
@@ -46,11 +68,15 @@ def parse_tetris_game_data(file_path):
         'amount_pieces': amount_pieces,
         'l_amount_group_pieces': l_amount_group_pieces,
         'l_group_pieces': l_group_pieces,
+        
+        'l_group_piece_arr_pos': l_group_piece_arr_pos,
+        'l_group_piece_max_x': l_group_piece_max_x,
+        'l_pcs_idx_l_index_to_group_idx_pos': l_pcs_idx_l_index_to_group_idx_pos,
+
         'length': length,
-        'l_group_pieces': l_group_pieces,
         'arr_pcs_idx_pos': arr_pcs_idx_pos,
         'arr_max_height_per_column': arr_max_height_per_column,
-        'l_arr': l_arr,
+        'arr_fields': arr_fields,
     }
 
     return d_data
