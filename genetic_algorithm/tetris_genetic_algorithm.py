@@ -232,15 +232,14 @@ class TetrisGameField(Exception):
 
 
 class GeneticAlgorithmTetris(Exception):
-    def __init__(self, population_size, Xs, Ts):
+    def __init__(self, d_basic_data_info, population_size, Xs, Ts):
+        self.d_basic_data_info = d_basic_data_info
         self.population_size = population_size
 
         self.input_nodes = 5
         self.hidden_nodes = [7, 6]
         self.output_nodes = 3
         
-        self.l_snn = [self.generate_new_simple_nn() for _ in range(0, population_size)]
-
         self.using_parent_amount_percent = 0.4
         self.using_parent_amount = int(self.population_size*self.using_parent_amount_percent)
         self.crossover_percent = 0.40
@@ -251,54 +250,35 @@ class GeneticAlgorithmTetris(Exception):
         self.Xs = Xs
         self.Ts = Ts
 
-        sys.exit()
-
-        # data only for testing the performance of the snn!
-        # self.amount = 2000
-
-        # X = np.random.randint(0, 2, (self.amount, self.input_nodes)).T
-        # T = np.vstack(((X[0]^X[3]+X[4])%2, (X[1]^X[2])&(X[2]|X[3]), (X[3]|X[4])&X[0])).T
-        # X = X.T
-
-        # X[X==0] = -1
-
-        # self.X = X.astype(np.float)
-        # self.T = T.astype(np.float)
-
-        # # add some noise to the X matrix!
-        # self.X += np.random.uniform(-1./100, 1./100, self.X.shape)
-
-        # split_n = int(X.shape[0]*0.7)
-        # self.X_train = X[:split_n]
-        # self.X_test = X[split_n:]
-        # self.T_train = T[:split_n]
-        # self.T_test = T[split_n:]
-
-
-        input_nodes = Xs_full[0].shape[1]
-        hidden_nodes = [50]
-        def create_new_snn(output_nodes):
-            return SimpleNeuralNetwork(input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes)
+        self.input_nodes = Xs_full[0].shape[1]
+        self.hidden_nodes = [50]
 
         max_piece_nr = 1000
         using_pieces = 3
 
-        l_snn = [create_new_snn(output_nodes=T.shape[1]) for T in Ts_full]
-        tgm = TetrisGameField(d_basic_data_info=d_basic_data_info, l_snn=l_snn, max_piece_nr=max_piece_nr, using_pieces=using_pieces)
+        self.l_lsnn = [ for _ in range(0, population_size)]
+        self.l_tgm = [TetrisGameField(d_basic_data_info=d_basic_data_info, l_snn=l_snn, max_piece_nr=max_piece_nr, using_pieces=using_pieces) for l_snn in self.l_lsnn]
 
 
+    def create_new_lsnn(self):
+        return [self.create_new_snn(output_nodes=T.shape[1]) for T in self.Ts]
 
-    def generate_new_simple_nn(self):
-        return SimpleNeuralNetwork(input_nodes=self.input_nodes, hidden_nodes=self.hidden_nodes, output_nodes=self.output_nodes)
+
+    def create_new_snn(self, output_nodes):
+        return SimpleNeuralNetwork(input_nodes=self.input_nodes, hidden_nodes=self.hidden_nodes, output_nodes=output_nodes)
 
 
     def simple_genetic_algorithm_training(self, epochs=100):
-        l_cecf_train_all = []
+        self.l_cecf_all = []
 
-        l_cecf_train = [snn.f_cecf(snn.calc_feed_forward(self.X_train), self.T_train)/self.T_train.shape[0]/self.T_train.shape[1]
-            for snn in self.l_snn
+        self.l_cecf = [
+            [snn.f_cecf(snn.calc_feed_forward(X), T)/T.shape[0]/T.shape[1] for snn, X, T in zip(l_snn, self.Xs, self.Ts)]
+            for l_snn in self.l_lsnn
         ]
-        l_cecf_train_all.append(l_cecf_train)
+        self.l_cecf_sum = [np.sum(l) for l in self.l_cecf]
+        self.l_cecf_all.append(self.l_cecf_sum)
+
+        # sys.exit(0)
 
         print("first: l_cecf_train: {}".format(l_cecf_train))
 
@@ -308,81 +288,85 @@ class GeneticAlgorithmTetris(Exception):
             l_sorted = sorted([(i, v) for i, v in enumerate(l_cecf_train, 0)], key=lambda x: x[1])
             l_idx = [idx for idx, cecf_train in l_sorted]
             
-            l_snn_new_parents = [self.l_snn[i] for i in l_idx[:self.using_parent_amount]]
+            l_lsnn_new_parents = [self.l_lsnn[i] for i in l_idx[:self.using_parent_amount]]
 
             # do the back_propagation only for the one best parent!
-            snn = l_snn_new_parents[0]
-            bwsd = snn.calc_backprop(self.X_train, self.T_train, snn.bws)
+            lsnn = l_lsnn_new_parents[0]
+            bwsd = snn.calc_backprop_own_bws(self.X, self.T)
             eta = 0.001
             snn.bws = [w-wg*eta for w, wg in zip(snn.bws, bwsd)]
 
-            amount_parents = len(l_snn_new_parents)
+            amount_parents = len(l_lsnn_new_parents)
             amount_childs = self.population_size-amount_parents
             
             using_idx_delta = np.random.randint(1, amount_parents, (amount_childs, ))
             using_idx_delta[0] = np.random.randint(0, amount_parents)
             using_idx = np.cumsum(using_idx_delta)%amount_parents
-            l_snn_new_childs = [self.generate_new_simple_nn() for _ in using_idx]
+            l_lsnn_new_childs = [self.create_new_lsnn() for _ in using_idx]
 
-            for i1, i2, snn_child in zip(using_idx, np.roll(using_idx, 1), l_snn_new_childs):
-                snn1, snn2 = l_snn_new_parents[i1], l_snn_new_parents[i2]
+            for i1, i2, lsnn_child in zip(using_idx, np.roll(using_idx, 1), l_lsnn_new_childs):
+                lsnn1, lsnn2 = l_lsnn_new_parents[i1], l_lsnn_new_parents[i2]
+                for snn1, snn2, snn_child in zip(lsnn1, lsnn2, lsnn_child):
+                    for w1, w2, w_c in zip(snn1.bws, snn2.bws, snn_child.bws):
+                        shape = w1.shape
+                        a1 = w1.reshape((-1, ))
+                        a2 = w2.reshape((-1, ))
+                        a_c = w_c.reshape((-1, ))
 
-                for w1, w2, w_c in zip(snn1.bws, snn2.bws, snn_child.bws):
-                    shape = w1.shape
-                    a1 = w1.reshape((-1, ))
-                    a2 = w2.reshape((-1, ))
-                    a_c = w_c.reshape((-1, ))
+                        length = a1.shape[0]
 
-                    length = a1.shape[0]
+                        # crossover step
+                        idx_crossover = np.zeros((length, ), dtype=np.uint8)
+                        idx_crossover[:int(length*self.crossover_percent)] = 1
 
-                    # crossover step
-                    idx_crossover = np.zeros((length, ), dtype=np.uint8)
-                    idx_crossover[:int(length*self.crossover_percent)] = 1
+                        a_c[:] = a1
 
-                    a_c[:] = a1
+                        # idx_crossover_1 = np.random.permutation(idx_crossover)==1
+                        # assert np.all(a_c[idx_crossover_1]==a1[idx_crossover_1])
+                        # a_c[idx_crossover_1] = a1[idx_crossover_1]
+                        
+                        idx_crossover_2 = np.random.permutation(idx_crossover)==1
+                        a_c[idx_crossover_2] = a2[idx_crossover_2]
 
-                    # idx_crossover_1 = np.random.permutation(idx_crossover)==1
-                    # assert np.all(a_c[idx_crossover_1]==a1[idx_crossover_1])
-                    # a_c[idx_crossover_1] = a1[idx_crossover_1]
-                    
-                    idx_crossover_2 = np.random.permutation(idx_crossover)==1
-                    a_c[idx_crossover_2] = a2[idx_crossover_2]
+                        # mutation step
+                        idx_mutation = np.zeros((length, ), dtype=np.uint8)
+                        idx_mutation[:int(length*self.mutation_percent)] = 1
 
-                    # mutation step
-                    idx_mutation = np.zeros((length, ), dtype=np.uint8)
-                    idx_mutation[:int(length*self.mutation_percent)] = 1
+                        idx_mutation_c = np.random.permutation(idx_mutation)==1
+                        amount_mutation_vals = np.sum(idx_mutation)
+                        a_c[np.random.permutation(idx_mutation_c)] = (np.random.random((amount_mutation_vals, ))*2.-1.)/10.
 
-                    idx_mutation_c = np.random.permutation(idx_mutation)==1
-                    amount_mutation_vals = np.sum(idx_mutation)
-                    a_c[np.random.permutation(idx_mutation_c)] = (np.random.random((amount_mutation_vals, ))*2.-1.)/10.
+                        # mutation step add
+                        idx_mutation_add = np.zeros((length, ), dtype=np.uint8)
+                        idx_mutation_add[:int(length*self.mutation_add_percent)] = 1
 
-                    # mutation step add
-                    idx_mutation_add = np.zeros((length, ), dtype=np.uint8)
-                    idx_mutation_add[:int(length*self.mutation_add_percent)] = 1
+                        idx_mutation_add_c = np.random.permutation(idx_mutation_add)==1
+                        amount_mutation_add_vals = np.sum(idx_mutation_add)
+                        a_c[np.random.permutation(idx_mutation_add_c)] += (np.random.random((amount_mutation_add_vals, ))*2.-1.)/10000.
 
-                    idx_mutation_add_c = np.random.permutation(idx_mutation_add)==1
-                    amount_mutation_add_vals = np.sum(idx_mutation_add)
-                    a_c[np.random.permutation(idx_mutation_add_c)] += (np.random.random((amount_mutation_add_vals, ))*2.-1.)/10000.
+                        # mutation step sub
+                        idx_mutation_sub = np.zeros((length, ), dtype=np.uint8)
+                        idx_mutation_sub[:int(length*self.mutation_sub_percent)] = 1
 
-                    # mutation step sub
-                    idx_mutation_sub = np.zeros((length, ), dtype=np.uint8)
-                    idx_mutation_sub[:int(length*self.mutation_sub_percent)] = 1
+                        idx_mutation_sub_c = np.random.permutation(idx_mutation_sub)==1
+                        amount_mutation_sub_vals = np.sum(idx_mutation_sub)
+                        a_c[np.random.permutation(idx_mutation_sub_c)] -= (np.random.random((amount_mutation_sub_vals, ))*2.-1.)/10000.
 
-                    idx_mutation_sub_c = np.random.permutation(idx_mutation_sub)==1
-                    amount_mutation_sub_vals = np.sum(idx_mutation_sub)
-                    a_c[np.random.permutation(idx_mutation_sub_c)] -= (np.random.random((amount_mutation_sub_vals, ))*2.-1.)/10000.
+            for tgm, l_snn in zip(self.l_tgm, self.l_lsnn):
+                tgm.l_snn = l_snn
 
-            l_snn_new = l_snn_new_parents+l_snn_new_childs
-            assert len(l_snn_new)==self.population_size
-            self.l_snn = l_snn_new
+            l_lsnn_new = l_lsnn_new_parents+l_lsnn_new_childs
+            assert len(l_lsnn_new)==self.population_size
+            self.l_lsnn = l_snn_new
 
-            l_cecf_train = [snn.f_cecf(snn.calc_feed_forward(self.X_train), self.T_train)/self.T_train.shape[0]/self.T_train.shape[1]
-                for snn in self.l_snn
+            self.l_cecf = [
+                [snn.f_cecf(snn.calc_feed_forward(X), T)/T.shape[0]/T.shape[1] for snn, X, T in zip(l_snn, self.Xs, self.Ts)]
+                for l_snn in self.l_lsnn
             ]
+            self.l_cecf_sum = [np.sum(l) for l in self.l_cecf]
+            self.l_cecf_all.append(self.l_cecf_sum)
 
-            print("np.min(l_cecf_train): {}".format(np.min(l_cecf_train)))
-
-            l_cecf_train_all.append(l_cecf_train)
+            print("np.min(self.l_cecf): {}".format(np.min(self.l_cecf)))
 
         return l_cecf_train_all
 
@@ -482,7 +466,7 @@ def load_Xs_Ts_from_tetris_data(d_data, using_pieces=3):
 
 
 def load_Xs_Ts_full(using_pieces=3):
-    l_suffix = ['{:03}_{}'.format(i, j) for i in range(101, 108) for j in range(1, 2)]
+    l_suffix = ['{:03}_{}'.format(i, j) for i in range(101, 102) for j in range(1, 2)]
 
     file_name_template = 'tetris_game_data/data_fields_{suffix}.ttrsfields'
     data_file_path_template = PATH_ROOT_DIR+file_name_template
@@ -545,4 +529,5 @@ def load_Xs_Ts_full(using_pieces=3):
 if __name__ == "__main__":
     Xs_full, Ts_full, d_basic_data_info = load_Xs_Ts_full()
 
-    ga = GeneticAlgorithmTetris(population_size=10, Xs=Xs_full, Ts=Ts_full)
+    ga = GeneticAlgorithmTetris(d_basic_data_info=d_basic_data_info, population_size=10, Xs=Xs_full, Ts=Ts_full)
+    ga.simple_genetic_algorithm_training()
