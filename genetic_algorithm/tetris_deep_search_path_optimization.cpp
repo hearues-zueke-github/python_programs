@@ -48,6 +48,8 @@ private:
   int rows_;
   int columns_;
 
+  int rows_garbage_;
+
   typedef std::tuple<string, string, int> key_name_dir_pos;
 
   struct Position {
@@ -307,6 +309,29 @@ public:
     for (int i = 0; i < rows; ++i) {
       field_[i].resize(columns, 0);
     }
+    
+    if (false) {
+      uint64_t seed1 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+      std::mt19937 rng1(seed1);
+      std::uniform_int_distribution<int> gen1(0, rows_ / 2);
+
+      rows_garbage_ = gen1(rng1);
+
+      uint64_t seed2 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+      std::mt19937 rng2(seed2);
+      std::uniform_int_distribution<int> gen2(0, columns - 1);
+
+      for (int j = rows - 1; j > rows - rows_garbage_ - 1; --j) {
+        vector<uint8_t>& v = field_[j];
+        for (int i = 0; i < columns; ++i) {
+          v[i] = 1;
+        }
+      }
+
+      for (int j = rows - 1; j > rows - rows_garbage_ - 1; --j) {
+        field_[j][gen2(rng2)] = 0;
+      }
+    }
 
     int sum_row_acc = 1;
     int sum_row = 1;
@@ -462,8 +487,8 @@ public:
       for (int row = 0; (row < rows_) && (!col_idx_not_finished.empty()); ++row) {
         vector<uint8_t>& v = field_[row];
 
-        for(set<uint8_t>::iterator iter = col_idx_not_finished.begin(); iter != col_idx_not_finished.end();) {
-          if(v[*iter]) {
+        for (set<uint8_t>::iterator iter = col_idx_not_finished.begin(); iter != col_idx_not_finished.end();) {
+          if (v[*iter]) {
             col_max_height[*iter] = row;
             if (col_idx_not_finished.size() == 1) {
               min_height = rows_ - row;

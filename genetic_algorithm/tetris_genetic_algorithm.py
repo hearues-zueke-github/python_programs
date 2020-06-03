@@ -5,7 +5,6 @@
 import dill
 import functools
 import os
-import random
 import sys
 import time
 
@@ -15,519 +14,140 @@ import numpy as np
 
 from PIL import Image, ImageTk
 
-# Simple enough, just import everything from tkinter.
-# from tkinter import *
-import tkinter as tk
-import tkinter.ttk as ttk
-
-import multiprocessing as mp
-from multiprocessing import Process, Pipe # , Lock
-from recordclass import recordclass, RecordClass
-
-from threading import Lock
-
 import matplotlib.pyplot as plt
-
-import base64
-import json
 
 from memory_tempfile import MemoryTempfile
 tempfile = MemoryTempfile()
-# import tempfile
 
-from utils_tetris import parse_tetris_game_data
+from GeneticAlgorithmTetris import GeneticAlgorithmTetris
+
+from utils_tetris import load_Xs_Ts_full
+import utils_objects
 
 import platform
 print("platform.system(): {}".format(platform.system()))
-# os.system('xset r off')
-
-from SimpleNeuralNetwork import SimpleNeuralNetwork
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 
-class TetrisGameField(Exception):
-    def __init__(self, d_basic_data_info, l_snn, max_piece_nr=1000, using_pieces=3):
-        self.rows = d_basic_data_info['rows']
-        self.cols = d_basic_data_info['cols']
-        self.amount_pieces = d_basic_data_info['amount_pieces']
-        self.l_amount_group_pieces = d_basic_data_info['l_amount_group_pieces']
-        self.l_group_pieces = d_basic_data_info['l_group_pieces']
-
-        self.arr_pcs_idx = np.arange(0, self.amount_pieces)
-        self.arr_pcs_one_hot = np.diag(np.ones((self.amount_pieces, )))
-
-        self.l_group_piece_arr_pos = d_basic_data_info['l_group_piece_arr_pos']
-        self.l_group_piece_max_x = d_basic_data_info['l_group_piece_max_x']
-        self.l_pcs_idx_l_index_to_group_idx_pos = d_basic_data_info['l_pcs_idx_l_index_to_group_idx_pos']
-
-        self.using_pieces = using_pieces
-        self.max_piece_nr = max_piece_nr
-
-        self.l_snn = l_snn
-
-        self.arr_x = np.empty((self.rows*self.cols+self.amount_pieces*self.using_pieces, ))
-
-        self.garbage_lines = 5
-        self.with_garbage = False
-
-        self.field_add_rows = 4
-        self.field = np.zeros((self.rows+self.field_add_rows, self.cols), dtype=np.uint8)
-        self.field_y = self.field.shape[0]
-        self.field_x = self.field.shape[1]
-
-        # self.reset_values()
-
-
-    def __repr__(self):
-        return f'TetrisGameField(rows={self.rows}, cols={self.cols}, amount_pieces={self.amount_pieces})'
-
-
-    def reset_values(self):
-        self.field[:] = 0
-
-        self.l_clear_lines = []
-        self.l_pieces_used = []
-
-        self.need_field_reset = False
-        self.piece_nr = 0
-        self.clear_lines = 0
-
-        self.l_next_pcs = np.random.choice(self.arr_pcs_idx, size=(self.using_pieces, )).tolist()
-        self.pcs_now = random.choice(self.arr_pcs_idx)
-
-        if self.with_garbage:
-            self.add_garbage_lines()
-
-
-    def add_garbage_lines(self):
-        self.field[-self.garbage_lines:] = 1
-        ys = np.arange(self.rows+self.field_add_rows-1, self.rows+self.field_add_rows-1-self.garbage_lines, -1)
-        xs = np.random.randint(0, self.cols, (self.garbage_lines, ))
-        self.field[(ys, xs)] = 0
-
-
-    def define_next_piece(self):
-        self.pcs_now = self.l_next_pcs.pop(0)
-        self.l_next_pcs.append(random.choice(self.arr_pcs_idx))
-        
-        self.piece_posi_y = 1
-        
-        snn = self.l_snn[self.pcs_now]
-        self.arr_x[:] = 0
-        self.arr_x[:self.rows*self.cols] = (self.field[self.field_add_rows:].reshape((-1, ))!=0)+0
-        self.arr_x[self.rows*self.cols:] = self.arr_pcs_one_hot[[self.pcs_now]+self.l_next_pcs[:-1]].reshape((-1, ))
-        self.arr_x[self.arr_x==0] = -1
-
-        # print("self.arr_x: {}".format(self.arr_x))
-        arr_field = self.arr_x[:self.rows*self.cols].reshape((-1, self.cols)).astype(object)
-        arr_field[arr_field==1.] = '0'
-        arr_field[arr_field==-1.] = ' '
-        print("self.arr_x:\n{}".format(arr_field))
-        input("ENTER...")
-        argmax = snn.calc_output_argmax(self.arr_x)
-
-        group_idx, piece_posi_x = self.l_pcs_idx_l_index_to_group_idx_pos[self.pcs_now][argmax]
-
-        self.group_idx = group_idx
-        self.piece_posi_x = piece_posi_x
-
-        self.piece_positions = self.l_group_piece_arr_pos[self.pcs_now][self.group_idx]
-
-
-    def do_move_piece_down_instant(self):
-        is_move_down_possible = True
-        s_pos_now = set()
-        for yi_, xi_ in self.piece_positions:
-            yi = self.piece_posi_y+yi_
-            xi = self.piece_posi_x+xi_
-            if yi+1>=self.field_y:
-                is_move_down_possible = False
-                break
-            s_pos_now.add((yi, xi))
-        
-        if not is_move_down_possible:
-            return False
-
-        s_pos_down = set()
-        for yi, xi in s_pos_now:
-            s_pos_down.add((yi+1, xi))
-
-        s_next_pos = s_pos_down-s_pos_now
-
-        if not all([self.field[yi, xi]==0 for yi, xi in s_next_pos]):
-            is_move_down_possible = False
-            if self.piece_posi_y < 5:
-                self.need_field_reset = True
-            return False
-
-        s_pos_down_prev = s_pos_down
-        i = 2
-        while True:
-            s_pos_down = set()
-            for yi, xi in s_pos_now:
-                s_pos_down.add((yi+i, xi))
-
-            s_next_pos = s_pos_down-s_pos_now
-
-            if any([yi>=self.field_y for yi, _ in s_next_pos]) or any([self.field[yi, xi]!=0 for yi, xi in s_next_pos]):
-                break
-
-            s_pos_down_prev = s_pos_down
-            i += 1
-
-        s_pos_down = s_pos_down_prev
-
-        s_next_pos = s_pos_down-s_pos_now
-        s_prev_pos = s_pos_now-s_pos_down
-
-        for yi, xi in s_prev_pos:
-            self.field[yi, xi] = 0
-           
-        for yi, xi in s_next_pos:
-            self.field[yi, xi] = self.pcs_now+1
-
-        self.piece_posi_y += i-1
-
-        return True
-
-
-    def main_game_loop(self):
-        self.reset_values()
-
-        while True:
-            self.define_next_piece()
-            is_piece_moved = self.do_move_piece_down_instant()
-
-            if not is_piece_moved and self.need_field_reset:
-                return False
-            elif self.piece_nr>self.max_piece_nr:
-                return True
-
-            idxs_row_full = np.all(self.field!=0, axis=1)
-            if np.any(idxs_row_full):
-                self.field[idxs_row_full] = 0
-
-                self.clear_lines += np.sum(idxs_row_full)
-
-                all_rows_full = np.where(idxs_row_full)[0]
-                all_rows_empty = np.where(np.all(self.field==0, axis=1))[0]
-                all_rows = np.arange(self.field_y-1, -1, -1)
-
-                all_rows_rest = all_rows[(~np.isin(all_rows, all_rows_full))&(~np.isin(all_rows, all_rows_empty))]
-
-                all_rows_needed = all_rows[:all_rows_rest.shape[0]]
-                idxs_same_rows = np.where(all_rows_rest!=all_rows_needed)[0]
-                
-                if idxs_same_rows.shape[0]>0:
-                    idx_first_row = idxs_same_rows[0]
-
-                    rows_from = all_rows_rest[idx_first_row:]
-                    rows_to = all_rows_needed[idx_first_row:]
-
-                    for row_from, row_to in zip(rows_from, rows_to):
-                        self.field[row_to] = self.field[row_from]
-                        self.field[row_from] = 0
-
-            self.piece_nr += 1
-
-
-class GeneticAlgorithmTetris(Exception):
-    def __init__(self, d_basic_data_info, population_size, Xs, Ts):
-        self.d_basic_data_info = d_basic_data_info
-        self.population_size = population_size
-
-        self.input_nodes = 5
-        self.hidden_nodes = [7, 6]
-        self.output_nodes = 3
-        
-        self.using_parent_amount_percent = 0.4
-        self.using_parent_amount = int(self.population_size*self.using_parent_amount_percent)
-        self.crossover_percent = 0.40
-        self.mutation_percent = 0.1
-        self.mutation_add_percent = 0.05
-        self.mutation_sub_percent = 0.05
-
-        self.Xs = Xs
-        self.Ts = Ts
-
-        self.input_nodes = Xs_full[0].shape[1]
-        self.hidden_nodes = [50]
-
-        max_piece_nr = 1000
-        using_pieces = 3
-
-        self.l_lsnn = [ for _ in range(0, population_size)]
-        self.l_tgm = [TetrisGameField(d_basic_data_info=d_basic_data_info, l_snn=l_snn, max_piece_nr=max_piece_nr, using_pieces=using_pieces) for l_snn in self.l_lsnn]
-
-
-    def create_new_lsnn(self):
-        return [self.create_new_snn(output_nodes=T.shape[1]) for T in self.Ts]
-
-
-    def create_new_snn(self, output_nodes):
-        return SimpleNeuralNetwork(input_nodes=self.input_nodes, hidden_nodes=self.hidden_nodes, output_nodes=output_nodes)
-
-
-    def simple_genetic_algorithm_training(self, epochs=100):
-        self.l_cecf_all = []
-
-        self.l_cecf = [
-            [snn.f_cecf(snn.calc_feed_forward(X), T)/T.shape[0]/T.shape[1] for snn, X, T in zip(l_snn, self.Xs, self.Ts)]
-            for l_snn in self.l_lsnn
-        ]
-        self.l_cecf_sum = [np.sum(l) for l in self.l_cecf]
-        self.l_cecf_all.append(self.l_cecf_sum)
-
-        # sys.exit(0)
-
-        print("first: l_cecf_train: {}".format(l_cecf_train))
-
-        for epoch in range(1, epochs):
-            print("epoch: {}".format(epoch))
-
-            l_sorted = sorted([(i, v) for i, v in enumerate(l_cecf_train, 0)], key=lambda x: x[1])
-            l_idx = [idx for idx, cecf_train in l_sorted]
-            
-            l_lsnn_new_parents = [self.l_lsnn[i] for i in l_idx[:self.using_parent_amount]]
-
-            # do the back_propagation only for the one best parent!
-            lsnn = l_lsnn_new_parents[0]
-            bwsd = snn.calc_backprop_own_bws(self.X, self.T)
-            eta = 0.001
-            snn.bws = [w-wg*eta for w, wg in zip(snn.bws, bwsd)]
-
-            amount_parents = len(l_lsnn_new_parents)
-            amount_childs = self.population_size-amount_parents
-            
-            using_idx_delta = np.random.randint(1, amount_parents, (amount_childs, ))
-            using_idx_delta[0] = np.random.randint(0, amount_parents)
-            using_idx = np.cumsum(using_idx_delta)%amount_parents
-            l_lsnn_new_childs = [self.create_new_lsnn() for _ in using_idx]
-
-            for i1, i2, lsnn_child in zip(using_idx, np.roll(using_idx, 1), l_lsnn_new_childs):
-                lsnn1, lsnn2 = l_lsnn_new_parents[i1], l_lsnn_new_parents[i2]
-                for snn1, snn2, snn_child in zip(lsnn1, lsnn2, lsnn_child):
-                    for w1, w2, w_c in zip(snn1.bws, snn2.bws, snn_child.bws):
-                        shape = w1.shape
-                        a1 = w1.reshape((-1, ))
-                        a2 = w2.reshape((-1, ))
-                        a_c = w_c.reshape((-1, ))
-
-                        length = a1.shape[0]
-
-                        # crossover step
-                        idx_crossover = np.zeros((length, ), dtype=np.uint8)
-                        idx_crossover[:int(length*self.crossover_percent)] = 1
-
-                        a_c[:] = a1
-
-                        # idx_crossover_1 = np.random.permutation(idx_crossover)==1
-                        # assert np.all(a_c[idx_crossover_1]==a1[idx_crossover_1])
-                        # a_c[idx_crossover_1] = a1[idx_crossover_1]
-                        
-                        idx_crossover_2 = np.random.permutation(idx_crossover)==1
-                        a_c[idx_crossover_2] = a2[idx_crossover_2]
-
-                        # mutation step
-                        idx_mutation = np.zeros((length, ), dtype=np.uint8)
-                        idx_mutation[:int(length*self.mutation_percent)] = 1
-
-                        idx_mutation_c = np.random.permutation(idx_mutation)==1
-                        amount_mutation_vals = np.sum(idx_mutation)
-                        a_c[np.random.permutation(idx_mutation_c)] = (np.random.random((amount_mutation_vals, ))*2.-1.)/10.
-
-                        # mutation step add
-                        idx_mutation_add = np.zeros((length, ), dtype=np.uint8)
-                        idx_mutation_add[:int(length*self.mutation_add_percent)] = 1
-
-                        idx_mutation_add_c = np.random.permutation(idx_mutation_add)==1
-                        amount_mutation_add_vals = np.sum(idx_mutation_add)
-                        a_c[np.random.permutation(idx_mutation_add_c)] += (np.random.random((amount_mutation_add_vals, ))*2.-1.)/10000.
-
-                        # mutation step sub
-                        idx_mutation_sub = np.zeros((length, ), dtype=np.uint8)
-                        idx_mutation_sub[:int(length*self.mutation_sub_percent)] = 1
-
-                        idx_mutation_sub_c = np.random.permutation(idx_mutation_sub)==1
-                        amount_mutation_sub_vals = np.sum(idx_mutation_sub)
-                        a_c[np.random.permutation(idx_mutation_sub_c)] -= (np.random.random((amount_mutation_sub_vals, ))*2.-1.)/10000.
-
-            for tgm, l_snn in zip(self.l_tgm, self.l_lsnn):
-                tgm.l_snn = l_snn
-
-            l_lsnn_new = l_lsnn_new_parents+l_lsnn_new_childs
-            assert len(l_lsnn_new)==self.population_size
-            self.l_lsnn = l_snn_new
-
-            self.l_cecf = [
-                [snn.f_cecf(snn.calc_feed_forward(X), T)/T.shape[0]/T.shape[1] for snn, X, T in zip(l_snn, self.Xs, self.Ts)]
-                for l_snn in self.l_lsnn
-            ]
-            self.l_cecf_sum = [np.sum(l) for l in self.l_cecf]
-            self.l_cecf_all.append(self.l_cecf_sum)
-
-            print("np.min(self.l_cecf): {}".format(np.min(self.l_cecf)))
-
-        return l_cecf_train_all
-
-
-# TODO: next step: take the already played games and learn the nn from it!
-def load_Xs_Ts_from_tetris_data(d_data, using_pieces=3):
-    rows = d_data['rows']
-    cols = d_data['cols']
-    amount_pieces = d_data['amount_pieces']
-    l_amount_group_pieces = d_data['l_amount_group_pieces']
-    l_group_pieces = d_data['l_group_pieces']
-
-    arr_fields = d_data['arr_fields'][1::2]
-    arr_pcs_idx_pos = d_data['arr_pcs_idx_pos']
-    # could be used instead of the arr_fields, but lets see
-    arr_max_height_per_column = d_data['arr_max_height_per_column']
-
-    # calculate first all possible tuple combinations for the piece + direction + pos!
-    l_pcs_group = []
-    l_pcs_group_idx = []
-    l_pcs_group_max_x = []
-    l_pcs_idx_l_tpl_pcs_group_pos = []
-    group_idx_acc = 0
-    for pcs_idx, amount in enumerate(l_amount_group_pieces, 0):
-        l = []
-        l_idx = []
-        l_max_x = []
-        for j in range(0, amount):
-            l_pos = l_group_pieces[group_idx_acc]
-            max_x = max(l_pos[1::2])
-
-            l.append(l_pos)
-            l_idx.append(group_idx_acc)
-            l_max_x.append(max_x)
-
-            group_idx_acc += 1
-        l_pcs_group.append(l)
-        l_pcs_group_idx.append(l_idx)
-        l_pcs_group_max_x.append(l_max_x)
-
-        l_pcs_idx_l_tpl_pcs_group_pos.append([(pcs_idx, group_idx, pos) for group_idx, max_x in zip(l_idx, l_max_x) for pos in range(0, cols-max_x)])
-
-    d_pcl_idx_d_tpl_pcs_group_pos_to_index = {
-        pcs_idx: {t: i for i, t in enumerate(l_tpl_pcs_group_pos, 0)} for pcs_idx, l_tpl_pcs_group_pos in enumerate(l_pcs_idx_l_tpl_pcs_group_pos, 0)
-    }
-
-    s_used_pcs_group_pos = set([tuple(l) for l in arr_pcs_idx_pos.tolist()]) 
-    s_all_pcs_group_pos = set([t for l in l_pcs_idx_l_tpl_pcs_group_pos for t in l])
-
-    s_diff = s_all_pcs_group_pos - s_used_pcs_group_pos
-
-    # convert the fields + other data into the learning X and T Matrices!
-    Xs = [[] for _ in range(0, amount_pieces)]
-    Ts = [[] for _ in range(0, amount_pieces)]
-
-    arr_pcs_one_hot = np.diag(np.ones((amount_pieces, ), dtype=np.int8))
-
-    x_len = rows*cols + using_pieces*amount_pieces
-    l_t_len = [len(l) for l in l_pcs_idx_l_tpl_pcs_group_pos]
-    for i in range(0, d_data['length']-using_pieces+1):
-        arr_field = arr_fields[i]
-        arr_pcs_idx_pos_part = arr_pcs_idx_pos[i:i+using_pieces]
-        arr_pcs_idx, arr_group_idx, arr_pos = arr_pcs_idx_pos_part.T
-
-        pcs_idx = arr_pcs_idx[0]
-        X = Xs[pcs_idx]
-        T = Ts[pcs_idx]
-
-        # vector for x
-        arr_x = np.zeros((x_len, ), dtype=np.int8)
-        arr_t = np.zeros((l_t_len[pcs_idx], ), dtype=np.int8)
-
-        arr_x[:rows*cols] = (arr_field.reshape((-1, ))!=0)+0
-        arr_x[rows*cols:] = arr_pcs_one_hot[arr_pcs_idx].reshape((-1, ))
-
-        tpl = tuple(arr_pcs_idx_pos_part[0].tolist())
-        # l_tpl_pcs_group_pos = l_pcs_idx_l_tpl_pcs_group_pos[pcs_idx]
-        d_tpl_pcs_group_pos = d_pcl_idx_d_tpl_pcs_group_pos_to_index[pcs_idx]
-        t_idx = d_tpl_pcs_group_pos[tpl]
-
-        arr_t[t_idx] = 1
-
-        arr_x[arr_x==0] = -1
-
-        X.append(arr_x)
-        T.append(arr_t)
-        # break
-
-    l_len_Xs = [len(X) for X in Xs]
-    # print("l_len_Xs: {}".format(l_len_Xs))
-
-
-    Xs = [np.array(X, dtype=np.float) for X in Xs]
-    Ts = [np.array(T, dtype=np.float) for T in Ts]
-
-    return Xs, Ts
-
-
-def load_Xs_Ts_full(using_pieces=3):
-    l_suffix = ['{:03}_{}'.format(i, j) for i in range(101, 102) for j in range(1, 2)]
-
-    file_name_template = 'tetris_game_data/data_fields_{suffix}.ttrsfields'
-    data_file_path_template = PATH_ROOT_DIR+file_name_template
-
-    print("suffix: {}".format(l_suffix[0]))
-    data_file_path = data_file_path_template.format(suffix=l_suffix[0])
-    d_data = parse_tetris_game_data(file_path=data_file_path)
-
-    d_basic_data_info = {
-        'rows': d_data['rows'],
-        'cols': d_data['cols'],
-        'amount_pieces': d_data['amount_pieces'],
-        'l_amount_group_pieces': d_data['l_amount_group_pieces'],
-        'l_group_pieces': d_data['l_group_pieces'],
-
-        'l_group_piece_arr_pos': d_data['l_group_piece_arr_pos'],
-        'l_group_piece_max_x': d_data['l_group_piece_max_x'],
-        'l_pcs_idx_l_index_to_group_idx_pos': d_data['l_pcs_idx_l_index_to_group_idx_pos'],
-    }
-
-    Xs, Ts = load_Xs_Ts_from_tetris_data(d_data=d_data, using_pieces=3)
-
-    l_Xs = [[X] for X in Xs]
-    l_Ts = [[T] for T in Ts]
-
-    for suffix in l_suffix[1:]:
-        print("suffix: {}".format(suffix))
-        data_file_path = data_file_path_template.format(suffix=suffix)
-        d_data = parse_tetris_game_data(file_path=data_file_path)
-
-        d_basic_data_info_new = {
-            'rows': d_data['rows'],
-            'cols': d_data['cols'],
-            'amount_pieces': d_data['amount_pieces'],
-            'l_amount_group_pieces': d_data['l_amount_group_pieces'],
-            'l_group_pieces': d_data['l_group_pieces'],
-
-            'l_group_piece_arr_pos': d_data['l_group_piece_arr_pos'],
-            'l_group_piece_max_x': d_data['l_group_piece_max_x'],
-            'l_pcs_idx_l_index_to_group_idx_pos': d_data['l_pcs_idx_l_index_to_group_idx_pos'],
-        }
-
-        assert d_basic_data_info==d_basic_data_info_new
-
-        Xs, Ts = load_Xs_Ts_from_tetris_data(d_data=d_data)
-
-        for l_X, l_T, X, T in zip(l_Xs, l_Ts, Xs, Ts):
-            l_X.append(X)
-            l_T.append(T)
-
-    Xs_full = [np.vstack(l_X) for l_X in l_Xs]
-    Ts_full = [np.vstack(l_T) for l_T in l_Ts]
-
-    l_len_Xs_full = [len(X) for X in Xs_full]
-    print("l_len_Xs_full: {}".format(l_len_Xs_full))
-
-    return Xs_full, Ts_full, d_basic_data_info
+def plot_graph(d_using_params, ga, l_cecf_sum_all=None):
+    if l_cecf_sum_all is None:
+        d = utils_objects.load_dict_object('xs_Ys')
+        xs = d['xs']
+        Ys = d['Ys']
+    else:
+        Ys = np.array(l_cecf_sum_all).T
+        xs = np.arange(0, len(l_cecf_sum_all))
+    
+    color_str_template = '#'+'{:02X}'*3
+
+    plt.figure()
+
+    for ys in Ys:
+        plt.plot(xs, ys, 'o', markersize=2., color=color_str_template.format(*np.random.randint(32, 198, (3, )).tolist()))
+
+    plt.title('Rows: {}, Cols: {}, Popul. size: {}, Epochs: {}\n'.format(d_using_params['rows'], d_using_params['cols'], d_using_params['population_size'], d_using_params['epochs'])+
+        'Hidden nodes: {}, Using Pieces: {}, Block Cells: {}'.format(ga.hidden_nodes, d_using_params['using_pieces'], d_using_params['block_cells']))
+
+    plt.xlabel('Epochs')
+    plt.ylabel("sum of {} cecf's".format(d_using_params['amount_pieces']))
+
+    plt.show(block=False)
 
 
 if __name__ == "__main__":
-    Xs_full, Ts_full, d_basic_data_info = load_Xs_Ts_full()
+    # plot_graph()
+     # sys.exit(0)
 
-    ga = GeneticAlgorithmTetris(d_basic_data_info=d_basic_data_info, population_size=10, Xs=Xs_full, Ts=Ts_full)
-    ga.simple_genetic_algorithm_training()
+    rows = 20
+    cols = 5
+    proc_num = 6
+    iterations_multi_processing = 100
+    using_pieces = 4
+    block_cells = [4]
+
+    population_size = 5
+    epochs = 400
+    
+    hidden_nodes = [300, 200, 100]
+
+    # TODO: create a database, where the best saved neural networks are saved!!!
+
+    Xs_full, Ts_full, d_basic_data_info = load_Xs_Ts_full(
+        rows=rows,
+        cols=cols,
+        proc_num=proc_num,
+        iterations_multi_processing=iterations_multi_processing,
+        using_pieces=using_pieces,
+        block_cells=block_cells,
+    )
+
+    print("Xs_full[0].shape: {}".format(Xs_full[0].shape))
+
+    l_shapes_1 = [X.shape for X in Xs_full]
+    print("l_shapes_1: {}".format(l_shapes_1))
+
+    for i in range(0, len(Xs_full)):
+        X = Xs_full[i].copy()
+        T = Ts_full[i]
+
+        X[X==-1.] = 0
+        X = X.astype(np.uint8)
+
+        rows, cols = X.shape
+        X = np.hstack((X, np.zeros((rows, 8-cols%8 if cols%8!=0 else 0), dtype=np.uint8)))
+        cols_new = X.shape[1]
+        X = X.reshape((rows, cols_new//8, -1))
+        X_row_sum = np.sum(X*(2**np.arange(0, 8)), axis=-1, dtype=np.uint8)
+        X_row_sum_dtype = X_row_sum.reshape((-1, )).view(dtype=[(f'x{i}', 'u1') for i in range(0, X_row_sum.shape[1])])
+
+        u, c = np.unique(X_row_sum_dtype, return_counts=True)
+        u_c_gt_1 = u[c>1]
+
+        l_idxs_not_remove = []
+        for v in u_c_gt_1:
+            idxs = np.where(X_row_sum_dtype==v)[0]
+            l_idxs_not_remove.append(idxs[0])
+            ts = T[idxs]
+        
+        idxs = np.isin(X_row_sum_dtype, u_c_gt_1)
+        idxs[l_idxs_not_remove] = False
+        idxs = ~idxs
+
+        assert np.sum(np.isin(X_row_sum_dtype[idxs], u_c_gt_1))==u_c_gt_1.shape[0]
+
+        Xs_full[i] = Xs_full[i][idxs]
+        Ts_full[i] = Ts_full[i][idxs]
+
+    l_len_Xs_full = [len(X) for X in Xs_full]
+    print("new l_len_Xs_full: {}".format(l_len_Xs_full))
+    print("Xs_full[0].shape: {}".format(Xs_full[0].shape))
+
+    l_shapes_ = [X.shape for X in Xs_full]
+    print("l_shapes_: {}".format(l_shapes_))
+
+    # sys.exit(0)
+
+    ga = GeneticAlgorithmTetris(
+        d_basic_data_info=d_basic_data_info,
+        population_size=population_size,
+        Xs=Xs_full,
+        Ts=Ts_full,
+        is_single_instance_only=False,
+    )
+    ga.simple_genetic_algorithm_training(epochs=epochs)
+
+    l_cecf_all, l_cecf_sum_all = ga.l_cecf_all, ga.l_cecf_sum_all
+
+    d_using_params = {
+        'rows': rows,
+        'cols': cols,
+        'proc_num': proc_num,
+        'iterations_multi_processing': iterations_multi_processing,
+        'using_pieces': using_pieces,
+        'block_cells': block_cells,
+        'population_size': population_size,
+        'epochs': epochs,
+        'amount_pieces': d_basic_data_info['amount_pieces'],
+    }
+
+    plot_graph(d_using_params, ga, l_cecf_sum_all=l_cecf_sum_all)

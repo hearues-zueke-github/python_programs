@@ -4,3 +4,4 @@ cmake-build-debug/*
 tetris_game_data/*
 pystring
 gifs
+plots
