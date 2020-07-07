@@ -16,5 +16,9 @@ test_vector_sort: utils
 	$(CC) $(CFLAGS) test_vector_sort.cpp utils.o -o test_vector_sort.o
 hex_output: utils
 	$(CC) $(CFLAGS) hex_output.cpp utils.o -o hex_output.o
+test_currying:
+	$(CC) $(CFLAGS) test_currying.cpp -o test_currying.o
+simple_hashing_algorithm:
+	$(CC) $(CFLAGS) simple_hashing_algorithm.cpp -o simple_hashing_algorithm.o
 all:
 	$(CC) $(CFLAGS) simple_hashing_algorithm.cpp -o simple_hashing_algorithm.o
