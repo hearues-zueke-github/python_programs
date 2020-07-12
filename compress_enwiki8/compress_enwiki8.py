@@ -6,17 +6,21 @@ import dill
 import gzip
 import os
 import sys
-import tempfile
+
+# import tempfile
+from memory_tempfile import MemoryTempfile
+tempfile = MemoryTempfile()
 
 from collections import defaultdict
 from copy import deepcopy
 from dotmap import DotMap
 from operator import itemgetter
-# from sortedcontainers import SortedSet
 
 from os.path import expanduser
-PATH_HOME = expanduser("~")+'/'
-print("PATH_HOME: {}".format(PATH_HOME))
+
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+HOME_DIR = os.path.expanduser("~")
+TEMP_DIR = tempfile.gettempdir()+"/"
 
 from PIL import Image
 
@@ -27,10 +31,6 @@ from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
 
 import utils_compress_enwik8
-# utils_compress_enwik8.do_some_simple_tests()
-# sys.exit()
-
-PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 def create_dict_word_count_for_arr(arr, max_byte_length=10):
     d_arr_comb = {}
@@ -61,11 +61,64 @@ def create_dict_word_count_for_arr(arr, max_byte_length=10):
 if __name__ == "__main__":
 
     # arr = utils_compress_enwik8.get_arr(used_length=2**21)
-    arr = utils_compress_enwik8.get_arr(used_length=2**18)
+    # arr = utils_compress_enwik8.get_arr(used_length=2**18)
+    arr = utils_compress_enwik8.get_arr(used_length=-1)
     # arr = utils_compress_enwik8.get_arr(used_length=2**23)
-    bytes_starting_size = arr.shape[0]
     # arr = utils_compress_enwik8.get_arr(used_length=2**22+1)
 
+
+    used_len = 1000000
+    next_step = used_len // 4
+    max_len = 10
+    d_sum = {i: {} for i in range(2, max_len+1)}
+    d_stats = {i: [] for i in range(2, max_len+1)}
+    for pos_i in range(0, used_len*10 - used_len + 1, next_step):
+    # for pos_i in range(0, arr.shape[0], next_step):
+        arr_1 = arr[pos_i:pos_i+used_len+max_len].reshape((-1, 1))
+        print("pos_i: {:9}, {:9}".format(pos_i, pos_i+used_len))
+        for i in range(2, max_len+1):
+            arr_1 = np.hstack((arr_1[:-1], arr_1[1:, -1:]))
+            u, c = np.unique(arr_1.reshape((-1, )).view(','.join(['u1']*i)), return_counts=True)
+            d_1 = {tuple(t): j for t, j in zip(u, c)}
+
+            d = d_sum[i]
+
+            for t, j in d_1.items():
+                if t not in d:
+                    d[t] = j
+                else:
+                    d[t] += j
+
+            # get the max len for each seperate combined bytes!
+            l_t, l_j = list(zip(*list(d.items())))
+            i_max = np.argmax(l_j)
+
+            print("- i: {:2}, amount: {:10}, mult: {:10}, t: {}".format(i, l_j[i_max], i*l_j[i_max], l_t[i_max]))
+
+        for i in range(2, max_len+1):
+            d = d_sum[i]
+            l = list(d.items())
+            l_sort = sorted(list(d.items()), reverse=True, key=lambda x: (x[1], x[0]))
+
+            d_stat = d_stats[i]
+
+            d_stat.append('{:9},{:9}:{}'.format(
+                pos_i,
+                pos_i+used_len,
+                '|'.join(['{},{:5}'.format(''.join(map(lambda x: '{:02X}'.format(x), t)), c) for t, c in l_sort[:5]])
+            ))
+
+    with open(TEMP_DIR+'compress_enwik8_stats.txt', 'w') as f:
+        for i in range(2, max_len+1):
+            l = d_stats[i]
+
+            f.write('len: {:2}\n'.format(i))
+            f.write('\n'.join(l)+'\n'+'\n')
+
+    sys.exit()
+
+
+    bytes_starting_size = arr.shape[0]
 
     # global_object_getter_setter.delete_object(OBJ_NAME_D_ARR_COMB)
     # global_object_getter_setter.delete_object(OBJ_NAME_D_ARR_COMB_UNIQUE)
@@ -411,7 +464,6 @@ if __name__ == "__main__":
         # sys.exit()
 
     print()
-    print("bytes_starting_size: {}".format(bytes_starting_size))
     print("LEN_BITS_CHOSEN_INDEX: {}".format(LEN_BITS_CHOSEN_INDEX))
     print("LEN_CHOSEN_INDEX: {}".format(LEN_CHOSEN_INDEX))
     print("MAX_BYTE_LENGTH: {}".format(MAX_BYTE_LENGTH))
@@ -439,6 +491,8 @@ if __name__ == "__main__":
     tmp_hex_dir = os.path.join(TMP_PATH_DIR, 'compressed_files_enwik8/')
     if not os.path.exists(tmp_hex_dir):
         os.makedirs(tmp_hex_dir)
+
+    print("bytes_starting_size: {}".format(bytes_starting_size))
 
     arr_compressed_full.tofile(
         (tmp_hex_dir+'content_compressed_size_orig_{size_orig}_size_comp_{size_comp}_round_nr_{round_nr}'+
