@@ -14,7 +14,7 @@ complex_numbers/objs
 complex_numbers/z_func.txt
 complex_numbers/*.o
 
-cpp_programs/*.o
+cpp_programs/**/*.o
 c_programs/huge_number_test
 
 labyrinth/images
@@ -56,6 +56,10 @@ multi_dimensional_plots/images
 
 sequence_generators/images
 sequence_generators/other
+sequence_generators/build
+sequence_generators/dist
+sequence_generators/*.spec
+sequence_generators/*.dist
 
 puzzle_solver/figures
 

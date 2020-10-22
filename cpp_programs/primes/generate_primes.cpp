@@ -243,14 +243,14 @@ void generatePrimesIncrements(const size_t start_primes_amount, vector<uint64_t>
 int main(int argc, char* argv[]) {
     vector<uint64_t> primes;
 
-    // // useful for reading the file with pre-calculated prime numbers!
-    // std::ifstream fin("/tmp/primes_data_test_2.dat", std::ios_base::binary);
-    // uint64_t size_read;
-    // fin.read(reinterpret_cast<char*>(&size_read), sizeof(uint64_t));
-    // primes.resize(size_read);
-    // fin.read(reinterpret_cast<char*>(&primes[0]), size_read*sizeof(uint64_t));
+    // useful for reading the file with pre-calculated prime numbers!
+    std::ifstream fin("/tmp/primes_data_test_3.dat", std::ios_base::binary);
+    uint64_t size_read;
+    fin.read(reinterpret_cast<char*>(&size_read), sizeof(uint64_t));
+    primes.resize(size_read);
+    fin.read(reinterpret_cast<char*>(&primes[0]), size_read*sizeof(uint64_t));
 
-    generatePrimes(primes, 100000);
+    // generatePrimes(primes, 100000);
 
     // // useful for writting the prime numbers to the file!
     // ofstream fout("/tmp/primes_data.dat", ios::out | ios::binary);
@@ -260,8 +260,9 @@ int main(int argc, char* argv[]) {
     // fout.close();
     
     vector<uint64_t> primes_new;
-    for (int i = 0; i < 4; ++i) {
-        generateNextPrimesMultithreaded(primes, 10, 100000, primes_new);
+    for (int i = 0; i < 1; ++i) {
+    // for (int i = 1; i < 5; ++i) {
+        generateNextPrimesMultithreaded(primes, 50, 10000000, primes_new);
 
         cout << "primes_new.size(): " << primes_new.size() << endl;
         primes.insert(primes.end(), primes_new.begin(), primes_new.end());

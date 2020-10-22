@@ -260,10 +260,10 @@ int main(int argc, char* argv[]) {
     uint64_t max_n = 0;
     uint64_t max_n_concat = 0;
 
-    const uint64_t b = 2;
+    const uint64_t b = 5;
     vector<vector<uint64_t>> found_values;
 
-    for (uint64_t n = 1; n < 50000000ULL; ++n) {
+    for (uint64_t n = 1; n < 500000ULL; ++n) {
         if (n % 100000 == 0) {
             cout << "n: " << n << endl;
         }
