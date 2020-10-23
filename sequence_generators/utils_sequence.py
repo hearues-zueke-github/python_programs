@@ -1,5 +1,27 @@
 import numpy as np
 
+from functools import reduce
+
+def check_if_prime(n, primes):
+    n_sqrt = int(np.sqrt(n))+1
+    i = 0
+    v = primes[i]
+    while v<=n_sqrt:
+        if n%v==0:
+            return False
+        i += 1
+        v = primes[i]
+    return True
+
+
+def num_to_base(n, b):
+    l = []
+    while n>0:
+        l.append(n%b)
+        n = n//b
+    return l
+
+
 def find_max_match(arr):
     previous_pattern = None
     length = arr.shape[0]
@@ -88,3 +110,217 @@ def all_possibilities_changing_one_position(m, n):
             arr_resh[idxs2, :, :, -i] = np.arange(m-1, -1, -1).reshape((-1, 1))
 
     return arr
+
+
+def calc_gcd(lst):
+    return reduce(lambda a, b: np.gcd(a, b), lst[1:], lst[0])
+
+
+def calc_lsm(lst):
+    return np.multiply.reduce(lst)//calc_gcd(lst)
+
+
+def get_all_linear_coefficients(n):
+    c = np.tile(np.arange(0, n), n)
+    a = c.reshape((n, n)).T.flatten()
+    x = np.zeros((n*n, ), dtype=np.int64)
+
+    l = []
+    for i in range(0, n):
+        x = (a*x+c)%n
+        l.append(x)
+    X = np.vstack(l).T
+
+    idxs = np.all(np.diff(np.sort(X, axis=1), axis=1)==1, axis=1)
+    a_valid = a[idxs]
+    c_valid = c[idxs]
+
+    l_linear_coefficients = [(a, c) for a, c in zip(a_valid, c_valid)]
+    return l_linear_coefficients
+
+
+def mix_l1_with_l2(l1, l2, rounds=1):
+    l1 = l1.copy()
+
+    len1 = len(l1)
+    len2 = len(l2)
+
+    acc_i2 = 0
+    for it_round in range(0, rounds):
+        for i1 in range(0, len1):
+            i2 = (i1+l2[acc_i2])%len1
+            if i2==i1:
+                i2 = (i2+1)%len1
+            acc_i2 = (acc_i2+1)%len2
+            l1[i1], l1[i2] = l1[i2], l1[i1]
+
+    return l1
+
+
+def mix_l1_with_l2_method_2(l1, l2, rounds=1):
+    l1 = l1.copy()
+
+    len1 = len(l1)
+    len2 = len(l2)
+
+    # acc_i1 = 0
+    acc_i2 = 0
+    i2 = 0
+    for it_round in range(0, rounds):
+        for i1 in range(0, len1):
+            i2 = (i2+l1[i1]+l2[acc_i2]+1)%len1
+            # i2 = (i2+l1[acc_i1]+l2[acc_i2]+1)%len1
+            if i2==i1:
+                i2 = (i2+1)%len1
+            # acc_i1 = (acc_i1+1)%len1
+            acc_i2 = (acc_i2+1)%len2
+            l1[i1], l1[i2] = l1[i2], l1[i1]
+
+    return l1
+
+
+def create_sboxes(xs, mod):
+    assert len(xs.shape)==1
+    assert xs.shape[0]%mod==0
+
+    u, c = np.unique(xs, return_counts=True)
+    assert u.shape[0]==mod
+    assert np.all(c==c[0])
+
+    rows = xs.shape[0]//mod
+    sboxes = np.zeros((rows, mod), dtype=np.int)
+    sbox_num_index = np.zeros((mod, ), dtype=np.int)
+    sbox_num_pos = np.zeros((rows, ), dtype=np.int)
+
+    # create sboxes from the xs aka np.roll(xs, 1)
+    for v in xs:
+        sbox_num = sbox_num_index[v]
+        sboxes[sbox_num, sbox_num_pos[sbox_num]] = v
+        sbox_num_index[v] += 1
+        sbox_num_pos[sbox_num] += 1
+
+    # check, if for any i is s[i]==i true!
+    idxs_nums = np.arange(0, mod)
+    for sbox_nr, sbox in enumerate(sboxes, 0):
+        idxs = sbox==idxs_nums
+        amount_same_pos = np.sum(idxs)
+        if amount_same_pos>0:
+            # print("sbox_nr: {}".format(sbox_nr))
+            if amount_same_pos==1:
+                i = np.where(idxs)[0]
+                j = 0
+                if i==j and mod>1:
+                    j = 1
+                v1, v2 = sbox[i], sbox[j]
+                sbox[j], sbox[i] = v1, v2
+            else:
+                sbox[idxs] = np.roll(sbox[idxs], 1)
+
+    return sboxes
+
+
+def calc_gcd(lst):
+    return reduce(lambda a, b: np.gcd(a, b), lst[1:], lst[0])
+
+
+def calc_lsm(lst):
+    return np.multiply.reduce(lst)//calc_gcd(lst)
+
+
+def get_all_linear_coefficients(n):
+    c = np.tile(np.arange(0, n), n)
+    a = c.reshape((n, n)).T.flatten()
+    x = np.zeros((n*n, ), dtype=np.int64)
+
+    l = []
+    for i in range(0, n):
+        x = (a*x+c)%n
+        l.append(x)
+    X = np.vstack(l).T
+
+    idxs = np.all(np.diff(np.sort(X, axis=1), axis=1)==1, axis=1)
+    a_valid = a[idxs]
+    c_valid = c[idxs]
+
+    l_linear_coefficients = [(a, c) for a, c in zip(a_valid, c_valid)]
+    return l_linear_coefficients
+
+
+def mix_l1_with_l2(l1, l2, rounds=1):
+    l1 = l1.copy()
+
+    len1 = len(l1)
+    len2 = len(l2)
+
+    acc_i2 = 0
+    for it_round in range(0, rounds):
+        for i1 in range(0, len1):
+            i2 = (i1+l2[acc_i2])%len1
+            if i2==i1:
+                i2 = (i2+1)%len1
+            acc_i2 = (acc_i2+1)%len2
+            l1[i1], l1[i2] = l1[i2], l1[i1]
+
+    return l1
+
+
+def mix_l1_with_l2_method_2(l1, l2, rounds=1):
+    l1 = l1.copy()
+
+    len1 = len(l1)
+    len2 = len(l2)
+
+    # acc_i1 = 0
+    acc_i2 = 0
+    i2 = 0
+    for it_round in range(0, rounds):
+        for i1 in range(0, len1):
+            i2 = (i2+l1[i1]+l2[acc_i2]+1)%len1
+            # i2 = (i2+l1[acc_i1]+l2[acc_i2]+1)%len1
+            if i2==i1:
+                i2 = (i2+1)%len1
+            # acc_i1 = (acc_i1+1)%len1
+            acc_i2 = (acc_i2+1)%len2
+            l1[i1], l1[i2] = l1[i2], l1[i1]
+
+    return l1
+
+
+def create_sboxes(xs, mod):
+    assert len(xs.shape)==1
+    assert xs.shape[0]%mod==0
+
+    u, c = np.unique(xs, return_counts=True)
+    assert u.shape[0]==mod
+    assert np.all(c==c[0])
+
+    rows = xs.shape[0]//mod
+    sboxes = np.zeros((rows, mod), dtype=np.int)
+    sbox_num_index = np.zeros((mod, ), dtype=np.int)
+    sbox_num_pos = np.zeros((rows, ), dtype=np.int)
+
+    # create sboxes from the xs aka np.roll(xs, 1)
+    for v in xs:
+        sbox_num = sbox_num_index[v]
+        sboxes[sbox_num, sbox_num_pos[sbox_num]] = v
+        sbox_num_index[v] += 1
+        sbox_num_pos[sbox_num] += 1
+
+    # check, if for any i is s[i]==i true!
+    idxs_nums = np.arange(0, mod)
+    for sbox_nr, sbox in enumerate(sboxes, 0):
+        idxs = sbox==idxs_nums
+        amount_same_pos = np.sum(idxs)
+        if amount_same_pos>0:
+            # print("sbox_nr: {}".format(sbox_nr))
+            if amount_same_pos==1:
+                i = np.where(idxs)[0]
+                j = 0
+                if i==j and mod>1:
+                    j = 1
+                v1, v2 = sbox[i], sbox[j]
+                sbox[j], sbox[i] = v1, v2
+            else:
+                sbox[idxs] = np.roll(sbox[idxs], 1)
+
+    return sboxes

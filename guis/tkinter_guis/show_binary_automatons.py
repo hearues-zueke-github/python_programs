@@ -639,6 +639,11 @@ class Window(tk.Frame):
 
         return show_lambdas
 
+
+    def quitHandler():
+        root.destroy()
+
+
 if __name__ == "__main__":
     # root window created. Here, that would be the only window, but
     # you can later have windows within windows.

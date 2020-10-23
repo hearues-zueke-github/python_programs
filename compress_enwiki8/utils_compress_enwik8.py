@@ -1,4 +1,5 @@
 import os
+import sys
 
 from os.path import expanduser
 PATH_HOME = expanduser("~")+'/'
@@ -12,6 +13,9 @@ from tkinter import Tk, Label, BOTH
 from tkinter.ttk import Frame, Style
 
 from copy import deepcopy
+
+sys.path.append("../")
+import global_object_getter_setter
 
 def time_measure(f, args):
     start_time = time()
@@ -33,7 +37,7 @@ class ShowImg(Frame, object):
         parent.mainloop()
 
 
-def get_arr():
+def get_arr(used_length=5000000):
     file_path_enwik8 = PATH_HOME+'Downloads/enwik8'
 
     print("file_path_enwik8: {}".format(file_path_enwik8))
@@ -45,13 +49,16 @@ def get_arr():
     with open(file_path_enwik8, 'rb') as f:
         data = f.read()
 
-    used_length = 5000000
-    # used_length = 3000000
-    data_str = data.decode('utf-8')[:used_length]
-    lst_data = list(data)[:used_length]
-    arr = np.array(lst_data, dtype=object)
+    if used_length==-1:
+        arr = np.array(list(data), dtype=np.uint8)
+    elif used_length>=0:
+        arr = np.array(list(data[:used_length]), dtype=np.uint8)
+    else:
+        assert False=='used_length<0 !'
+    # arr = np.array(list(data[:used_length]), dtype=object)
+    # global_object_getter_setter.save_object('data', data)
 
-    print("used_length: {}".format(used_length))
+    print("arr.shape: {}".format(arr.shape))
 
     return arr
 
@@ -143,6 +150,78 @@ def do_merge_idxs_ranges(idxs_ranges_1, idxs_ranges_2, is_inplace=False):
     return sorted(idxs_ranges_merged)
 
 
+def get_list_of_ranges(idxs_ranges):
+    assert len(idxs_ranges.shape)==2
+    assert idxs_ranges.shape[1]==2
+    diff = idxs_ranges[0, 1]-idxs_ranges[0, 0]
+    assert np.all(np.diff(idxs_ranges, axis=1)==diff)
+    assert np.all(np.diff(idxs_ranges[:, 0])>0)
+
+    # print("idxs_ranges:\n{}".format(idxs_ranges))
+    global_object_getter_setter.save_object('idxs_ranges', idxs_ranges)
+
+    idxs = idxs_ranges[1:, 0]<idxs_ranges[:-1, 1]
+    idxs2 = np.hstack(((False, ), idxs))|np.hstack((idxs, (False, )))
+
+    idxs_ranges_out_range = idxs_ranges[idxs2]
+    idxs_ranges_ok = idxs_ranges[~idxs2]
+    # print("idxs_ranges_out_range:\n{}".format(idxs_ranges_out_range))
+    # print("idxs_ranges_ok:\n{}".format(idxs_ranges_ok))
+
+    a = idxs_ranges_out_range[:, 0]
+    idxs_parts = np.hstack(((0, ), np.where(np.diff(a)>=2)[0]+1, (a.shape[0], )))
+    # print("idxs_parts:\n{}".format(idxs_parts))
+
+    # TODO: 2020.04.10: can be made, such that all possible combinations are made!
+    l_idxs_ranges_parts = [[np.arange(i1+j, i2, diff) for j in range(0, diff)] for i1, i2 in np.vstack((idxs_parts[:-1], idxs_parts[1:])).T]
+    # print("l_idxs_ranges_parts: {}".format(l_idxs_ranges_parts))
+
+    l_combined_ranges = []
+    for r in zip(*l_idxs_ranges_parts):
+        l_combined_ranges.append(np.hstack(r))
+    # print("l_combined_ranges: {}".format(l_combined_ranges))
+
+    l_idxs_ranges = [(lambda x: x[np.argsort(x[:, 0])])(np.vstack((idxs_ranges_out_range[idxs], idxs_ranges_ok))) for idxs in l_combined_ranges]
+    # print("l_idxs_ranges: {}".format(l_idxs_ranges))
+
+    return l_idxs_ranges
+
+
+def check_if_crossover_is_possible(arr1, arr2):
+    len1 = arr1.shape[0]
+    len2 = arr2.shape[0]
+
+    if len1==len2:
+        for i in range(1, len1):
+            if np.all(arr1[i:]==arr2[:-i]):
+                return True
+
+        if np.all(arr1==arr2):
+            return True
+
+        for i in range(1, len1):
+            if np.all(arr1[:-i]==arr2[i:]):
+                return True
+    else:
+        if len1<len2:
+            len1, len2 = len2, len1
+            arr1, arr2 = arr2, arr1
+
+        for i in range(1, len2):
+            if np.all(arr1[:i]==arr2[-i:]):
+                return True
+
+        for i in range(0, len1-len2+1):
+            if np.all(arr1[i:i+len2]==arr2):
+                return True
+
+        for i in range(1, len2):
+            if np.all(arr1[-i:]==arr2[:i]):
+                return True
+
+    return False
+
+
 def do_some_simple_tests():
     idxs_ranges_1 = [(1, 2), (4, 6)]
     idxs_ranges_2 = [(2, 4)]
@@ -184,7 +263,7 @@ def do_some_simple_tests():
     idxs_ranges_1 = [(5, 9), (13, 18), (21, 25)]
     idxs_ranges_2 = [(7, 11), (12, 14), (16, 19), (20, 25)]
     idxs_ranges_merged_8 = do_merge_idxs_ranges(idxs_ranges_1, idxs_ranges_2)
-    print("idxs_ranges_merged_8: {}".format(idxs_ranges_merged_8))
+    # print("idxs_ranges_merged_8: {}".format(idxs_ranges_merged_8))
     # assert idxs_ranges_merged_8==[(0, 2), (7, 9), (10, 12)]
 
     lst_idxs_ranges = [
@@ -198,10 +277,39 @@ def do_some_simple_tests():
         idxs_ranges_merged_8,
     ]
     for idxs_ranges in lst_idxs_ranges:
-        print("idxs_ranges: {}".format(idxs_ranges))
+        # print("idxs_ranges: {}".format(idxs_ranges))
         if len(idxs_ranges) < 2:
             continue
         for t1, t2 in zip(idxs_ranges[:-1], idxs_ranges[1:]):
             assert t1[1]<=t2[0]
 
+
+    l = get_list_of_ranges(np.array([
+        [1, 3],
+        [2, 4],
+        [3, 5],
+        [8, 10],
+        [14, 16],
+        [15, 17],
+        [16, 18],
+        [20, 22],
+        [21, 23],
+        [26, 28],
+    ]))
+
+    l = get_list_of_ranges(np.array([
+        [1, 4],
+        [2, 5],
+        [3, 6],
+        [8, 11],
+        [15, 18],
+        [17, 20],
+        [20, 23],
+        [21, 24],
+        [26, 29],
+    ]))
+    # print("l: {}".format(l))
+
+
 do_some_simple_tests()
+

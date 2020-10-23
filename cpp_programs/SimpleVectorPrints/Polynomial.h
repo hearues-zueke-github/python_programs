@@ -2,13 +2,30 @@
 // Created by doublepmcl on 06.06.19.
 //
 
-#ifndef SIMPLEVECTORPRINTS_POLYNOM_H
-#define SIMPLEVECTORPRINTS_POLYNOM_H
+#ifndef SIMPLEVECTORPRINTS_POLYNOMIAL_H
+#define SIMPLEVECTORPRINTS_POLYNOMIAL_H
 
+using namespace std;
 
-class Polynom {
+#include <iostream>
+#include <vector>
 
+#include "Polynome.h"
+
+using namespace std;
+
+class Polynomial {
+private:
+    vector<Polynome> _polynomes;
+public:
+    Polynomial(const vector<Polynome>& polynomes);
+    Polynomial(const Polynomial& obj);
+    virtual ~Polynomial();
+
+    void multiplyPolynomialItself();
+
+    friend ostream& operator<<(ostream& os, const Polynomial& obj);
 };
 
 
-#endif //SIMPLEVECTORPRINTS_POLYNOM_H
+#endif //SIMPLEVECTORPRINTS_POLYNOMIAL_H

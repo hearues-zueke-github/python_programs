@@ -1,36 +1,43 @@
 #include "utils.h"
 
-#define GET_TEMPLATE_FUNCTION(NAMESPACE, WIDTH, TYPENAME, MASK) \
-ostream& NAMESPACE::operator<<(ostream& os, const vector<TYPENAME>& obj) { \
-  size_t size = obj.size(); \
-  os << "["; \
-  for (size_t i = 0; i < size; ++i) { \
-    if (i > 0) { \
-      os << ", "; \
-    } \
-    stringstream ss; \
-    ss << "0x" << hex << uppercase << setw(WIDTH) << setfill('0') << ((+obj[i])&MASK); \
-    os << ss.str(); \
-  } \
-  os << "]"; \
-  return os; \
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const std::tuple<T, T>& obj)
+{
+    os << "(";
+    os << std::get<0>(obj) << ", " << std::get<1>(obj);
+    os << ")";
+    return os;
+}
+template std::ostream& operator<<(std::ostream& os, const std::tuple<int, int>& obj);
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& obj)
+{
+    // static constexpr auto width = sizeof(T) * 2;
+    // static constexpr auto mask = make_mask<T,0xFF>::value;
+    os << "[";
+    std::for_each(obj.begin(), obj.end() - 1, [&os](const T& elem) {
+        os << elem << ", ";
+        // os << "0x" << std::hex << std::uppercase << std::setw(width) << std::setfill('0') << (elem & mask) << ", ";
+    });
+    os << obj.back();
+    // os << "0x" << std::hex << std::uppercase << std::setw(width) << std::setfill('0') << (obj.back() & mask);
+    os << "]";
+    return os;
 }
 
-GET_TEMPLATE_FUNCTION(print_width_2, 2, int8_t, 0xFF)
-GET_TEMPLATE_FUNCTION(print_width_2, 2, uint8_t, 0xFF)
-using print_width_2::operator<<;
+template<typename T1, typename T2>
+void copyValues(const vector<T1>& src, vector<T2>& dst) {
+  const size_t size = src.size();
+  dst.resize(size);
+  for (size_t i = 0; i < size; ++i) {
+    dst[i] = src[i];
+  }
+}
 
-GET_TEMPLATE_FUNCTION(print_width_4, 4, int16_t, 0xFFFF)
-GET_TEMPLATE_FUNCTION(print_width_4, 4, uint16_t, 0xFFFF)
-using print_width_4::operator<<;
-
-GET_TEMPLATE_FUNCTION(print_width_8, 8, int32_t, 0xFFFFFFFF)
-GET_TEMPLATE_FUNCTION(print_width_8, 8, uint32_t, 0xFFFFFFFF)
-using print_width_8::operator<<;
-
-GET_TEMPLATE_FUNCTION(print_width_16, 16, int64_t, 0xFFFFFFFFFFFFFFFF)
-GET_TEMPLATE_FUNCTION(print_width_16, 16, uint64_t, 0xFFFFFFFFFFFFFFFF)
-using print_width_16::operator<<;
+template void copyValues(const vector<char>& src, vector<int16_t>& dst);
+template void copyValues(const vector<char>& src, vector<int8_t>& dst);
+// template void copyValues(const vector<int8_t>& src, vector<int16_t>& dst);
 
 template<typename T>
 ostream& operator<<(ostream& os, const vector<vector<T>>& obj) {
@@ -53,3 +60,5 @@ template ostream& operator<<(ostream& os, const vector<vector<uint32_t>>& obj);
 template ostream& operator<<(ostream& os, const vector<vector<int32_t>>& obj);
 template ostream& operator<<(ostream& os, const vector<vector<uint64_t>>& obj);
 template ostream& operator<<(ostream& os, const vector<vector<int64_t>>& obj);
+template ostream& operator<<(ostream& os, const std::vector<std::tuple<int, int>>& obj);
+template ostream& operator<<(ostream& os, const std::vector<std::tuple<int, int>>& obj);

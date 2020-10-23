@@ -10,11 +10,15 @@ from PIL import Image
 
 import Utils
 
-if __name__ == "__main__":
-    from os.path import expanduser
-    home = expanduser("~")
+from memory_tempfile import MemoryTempfile
+tempfile = MemoryTempfile()
 
-    path_images = home+"/Pictures/tiles_images/"
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+HOME_DIR = os.path.expanduser("~")
+TEMP_DIR = tempfile.gettempdir()+"/"
+
+if __name__ == "__main__":
+    path_images = HOME_DIR+"/Pictures/tiles_images/"
     file_name = "nature_1.jpeg"
     print("path_images: {}".format(path_images))
     print("file_name: {}".format(file_name))

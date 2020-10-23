@@ -68,3 +68,14 @@ puzzle_solver/figures
 math_numbers/objs
 
 venv
+
+math_games/objects/*
+math_games/pictures/*
+math_games/output_*.txt
+
+cpp_programs/primes/*.out
+cpp_programs/primes/*.o
+
+git_status.txt
+
+git_status.txt

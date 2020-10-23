@@ -41,6 +41,7 @@ def test_color_print():
     print("lcb: {}testTEST{}".format(clrs.lcb, clrs.rst))
     print("lwb: {}testTEST{}".format(clrs.lwb, clrs.rst))
 
+
 def pretty_block_printer(block, bits, length, per_line=16):
     digits = int((bits+3)/4)
     temp = length-1

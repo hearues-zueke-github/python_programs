@@ -1,0 +1,30 @@
+[
+ {
+  "directory": "/home/doublepmcl/git/python_programs/genetic_algorithm",
+  "arguments": [
+   "g++",
+   "-O3",
+   "-Wall",
+   "-std=c++17",
+   "../cpp_programs/primes/utils.cpp",
+   "-c",
+   "-o",
+   "build/utils.o"
+  ],
+  "file": "../cpp_programs/primes/utils.cpp"
+ },
+ {
+  "directory": "/home/doublepmcl/git/python_programs/genetic_algorithm",
+  "arguments": [
+   "g++",
+   "-O3",
+   "-Wall",
+   "-std=c++17",
+   "tetris_deep_search_path_optimization.cpp",
+   "utils.o",
+   "-o",
+   "build/tetris_deep_search_path_optimization.o"
+  ],
+  "file": "tetris_deep_search_path_optimization.cpp"
+ }
+]

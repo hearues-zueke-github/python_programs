@@ -1,11 +1,14 @@
 #! /usr/bin/python3.6
 
 import os
+import sys
 
 import numpy as np
 
 # from PIL import Image
 from PIL import Image, ImageDraw, ImageFont
+
+PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
 
 if __name__ == "__main__":
     print("Hello World!")
