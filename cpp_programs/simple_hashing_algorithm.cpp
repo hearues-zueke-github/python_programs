@@ -12,19 +12,29 @@ using std::ofstream;
 using std::string;
 using std::stringstream;
 
-string intToHex(uint64_t n) {
-  if (n == 0ull) {
-    return "0x0000000000000000";
+auto getFunctionIntToHex(int bits) {
+  int used_length = bits / 4;
+  string empty_hex_str = "0x";
+  for (int i = 0; i < 16; ++i) {
+    empty_hex_str += "0";
   }
+  return [used_length, empty_hex_str](uint64_t n) -> string {
+    if (n == 0ull) {
+      return empty_hex_str;
+      // return "0x0000000000000000";
+    }
 
-  stringstream s;
-  s << std::showbase << std::hex << std::uppercase << n;
-  string st = s.str();
-  st = st.substr(2, st.length() - 2);
-  s.str(string());
-  s << std::setfill('0') << std::setw(16) << st;
-  return "0x"+s.str();
+    stringstream s;
+    s << std::showbase << std::hex << std::uppercase << n;
+    string st = s.str();
+    st = st.substr(2, st.length() - 2);
+    s.str(string());
+    s << std::setfill('0') << std::setw(used_length) << st;
+    return "0x"+s.str();
+  };
 }
+
+auto intToHexU64 = getFunctionIntToHex(64);
 
 struct Bits64 {
   uint8_t bits[64];
@@ -77,11 +87,11 @@ struct HashIterator {
 };
 
 ostream& operator<<(ostream& os, const HashIterator& obj) {
-  os << "obj.I: " << intToHex(obj.I);
-  os << ", obj.x: " << intToHex(obj.x);
-  os << ", obj.y: " << intToHex(obj.y);
-  os << ", obj.z: " << intToHex(obj.z);
-  os << ", obj.w: " << intToHex(obj.w);
+  os << "obj.I: " << intToHexU64(obj.I);
+  os << ", obj.x: " << intToHexU64(obj.x);
+  os << ", obj.y: " << intToHexU64(obj.y);
+  os << ", obj.z: " << intToHexU64(obj.z);
+  os << ", obj.w: " << intToHexU64(obj.w);
   return os;
 }
 

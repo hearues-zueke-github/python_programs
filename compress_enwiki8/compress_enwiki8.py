@@ -18,8 +18,6 @@ from operator import itemgetter
 
 from os.path import expanduser
 
-import multiprocessing as mp
-
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 HOME_DIR = os.path.expanduser("~")
 TEMP_DIR = tempfile.gettempdir()+"/"
@@ -33,8 +31,6 @@ from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
 
 import utils_compress_enwik8
-
-from create_stats_enwik8 import calc_sorted_stats
 
 def create_dict_word_count_for_arr(arr, max_byte_length=10):
     d_arr_comb = {}
@@ -63,79 +59,61 @@ def create_dict_word_count_for_arr(arr, max_byte_length=10):
 
 
 if __name__ == "__main__":
-    arr = utils_compress_enwik8.get_arr(used_length=-1)
 
-    def calc_stats_using_bytes_tuple(arr, max_len):
-        used_len = 1000000
-        max_amount_values = 50
-        # max_len = 6
-        l_stat = []
-        s_chars = set()
-        for pos_i in range(0, arr.shape[0], used_len):
-            arr_1 = arr[pos_i:pos_i+used_len+max_len].reshape((-1, 1))
-            print("pos_i: {:9}, {:9}".format(pos_i, pos_i+used_len))
-            for _ in range(0, max_len-1):
-                arr_1 = np.hstack((arr_1[:-1], arr_1[1:, -1:]))
-            u, c = np.unique(arr_1.reshape((-1, )).view(','.join(['u1']*max_len)), return_counts=True)
-            if max_len == 1:
-                d = {tuple((t, )): j for t, j in zip(u, c)}
-            else:
-                d = {tuple(t): j for t, j in zip(u, c)}
+    # arr = utils_compress_enwik8.get_arr(used_length=2**21)
+    # arr = utils_compress_enwik8.get_arr(used_length=2**18)
+    arr = utils_compress_enwik8.get_arr(used_length=-1)
+    # arr = utils_compress_enwik8.get_arr(used_length=2**23)
+    # arr = utils_compress_enwik8.get_arr(used_length=2**22+1)
+
+
+    used_len = 1000000
+    next_step = used_len // 4
+    max_len = 10
+    d_sum = {i: {} for i in range(2, max_len+1)}
+    d_stats = {i: [] for i in range(2, max_len+1)}
+    for pos_i in range(0, used_len*10 - used_len + 1, next_step):
+    # for pos_i in range(0, arr.shape[0], next_step):
+        arr_1 = arr[pos_i:pos_i+used_len+max_len].reshape((-1, 1))
+        print("pos_i: {:9}, {:9}".format(pos_i, pos_i+used_len))
+        for i in range(2, max_len+1):
+            arr_1 = np.hstack((arr_1[:-1], arr_1[1:, -1:]))
+            u, c = np.unique(arr_1.reshape((-1, )).view(','.join(['u1']*i)), return_counts=True)
+            d_1 = {tuple(t): j for t, j in zip(u, c)}
+
+            d = d_sum[i]
+
+            for t, j in d_1.items():
+                if t not in d:
+                    d[t] = j
+                else:
+                    d[t] += j
 
             # get the max len for each seperate combined bytes!
             l_t, l_j = list(zip(*list(d.items())))
             i_max = np.argmax(l_j)
 
-            print("- max_len: {:2}, amount: {:10}, mult: {:10}, t: {}".format(max_len, l_j[i_max], max_len*l_j[i_max], l_t[i_max]))
-            print("-- len(d): {}".format(len(d)))
-            s_chars |= set(list(d.keys()))
+            print("- i: {:2}, amount: {:10}, mult: {:10}, t: {}".format(i, l_j[i_max], i*l_j[i_max], l_t[i_max]))
 
+        for i in range(2, max_len+1):
+            d = d_sum[i]
             l = list(d.items())
             l_sort = sorted(list(d.items()), reverse=True, key=lambda x: (x[1], x[0]))
 
-            l_stat.append('{:9},{:9}:{}'.format(
+            d_stat = d_stats[i]
+
+            d_stat.append('{:9},{:9}:{}'.format(
                 pos_i,
                 pos_i+used_len,
-                '|'.join(['{},{:5}'.format(''.join(map(lambda x: '{:02X}'.format(x), t)), c) for t, c in l_sort[:max_amount_values]])
+                '|'.join(['{},{:5}'.format(''.join(map(lambda x: '{:02X}'.format(x), t)), c) for t, c in l_sort[:5]])
             ))
-        l = sorted(s_chars)
-        print("l: {}".format(l))
-        print("len(l): {}".format(len(l)))
 
-        with open(TEMP_DIR+'enwik8_stats_max_len_{}.txt'.format(max_len), 'w') as f:
-            f.write('\n'.join(l_stat)+'\n')
+    with open(TEMP_DIR+'compress_enwik8_stats.txt', 'w') as f:
+        for i in range(2, max_len+1):
+            l = d_stats[i]
 
-    # calc_stats_using_bytes_tuple(arr, 1)
-    
-    # l_proc = []
-    # cpu_count = mp.cpu_count()
-    # for i in range(2, cpu_count+2):
-    #     l_proc.append(mp.Process(target=calc_stats_using_bytes_tuple, args=(arr, i)))
-    # for proc in l_proc: proc.start()
-    # for proc in l_proc: proc.join()
-
-    d_all_part, l_sort = calc_sorted_stats()
-    d3 = d_all_part[3]
-    l_k_3 = list(d3.keys())
-    l_k_i_2_byte = [(k, (0, i)) for i, k in enumerate(l_k_3, 0)]
-    
-    l_sort_ge_4_byte = sorted([(len(k)*v, -len(k), v, k) for k1 in range(4, 14) for k, v in d_all_part[k1].items()], reverse=True)
-    l_k_i_2_byte += [(k, (0, i)) for i, (_, _, _, k) in enumerate(l_sort_ge_4_byte[:256-len(l_k_3)], len(l_k_3))]
-
-    l_k_i_3_byte = [(k, (0, i//256, i%256)) for i, (_, _, _, k) in enumerate(l_sort_ge_4_byte[256-len(l_k_3):], 0)]
-
-    d_k_to_count = {k: v for k1 in range(3, 14) for k, v in d_all_part[k1].items()}
-    d_k_to_i_byte = dict(l_k_i_2_byte+l_k_i_3_byte)
-
-    print("len(d_k_to_count): {}".format(len(d_k_to_count)))
-    print("len(d_k_to_i_byte): {}".format(len(d_k_to_i_byte)))
-
-    assert set(list(d_k_to_count)) == set(list(d_k_to_i_byte))
-
-    l_encrypt = []
-
-    l_arr = arr.tolist()
-
+            f.write('len: {:2}\n'.format(i))
+            f.write('\n'.join(l)+'\n'+'\n')
 
     sys.exit()
 

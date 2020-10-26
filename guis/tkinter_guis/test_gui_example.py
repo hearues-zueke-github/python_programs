@@ -71,6 +71,11 @@ class App(tk.Frame):
         self.arr_line_ul = np.flip(self.arr_line_dl, axis=0).copy()
         self.arr_line_ur = np.flip(self.arr_line_ul, axis=1).copy()
 
+        assert box_width%10==0
+        self.box_width = box_width
+        self.box_height = self.box_width
+        self.x_amount = x_amount # 400//self.box_width
+        self.y_amount = y_amount # 400//self.box_height
 
         self.imgtk_arrow_up = ImageTk.PhotoImage(Image.fromarray(self.arr_arrow_up))
         self.imgtk_arrow_down = ImageTk.PhotoImage(Image.fromarray(self.arr_arrow_down))

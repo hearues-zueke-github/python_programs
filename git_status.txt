@@ -1,0 +1,24 @@
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   .gitignore
+	modified:   cpp_programs/primes/concat_number_to_prime.cpp
+	modified:   cpp_programs/primes/generate_primes.cpp
+	modified:   sequence_generators/sequence_gen_1.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	git_status.txt
+	sat_problems/found_valid_4x4_no_neightbor.txt
+	sat_problems/sat_problem.txt
+	sat_problems/sat_problem_rubiks_cube_4x4.txt
+	sequence_generators/do_compile_py_to_c.sh
+	sequence_generators/test.py
+	template_file_ultra.py
+
+no changes added to commit (use "git add" and/or "git commit -a")

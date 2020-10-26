@@ -1,4 +1,4 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python3.8
 
 import os
 import sys
@@ -27,14 +27,14 @@ f = lambda c, mod: lambda params: lambda x: (np.sum(params*x)+c) % mod
 def get_sequence_with_all_nums(mod, n, length):
     c = np.random.randint(1, mod)
     f_prepared = f(c, mod)
-    for tries in xrange(0, 10000):
+    for tries in range(0, 10000):
         params = np.random.randint(0, mod, (n, ))
         f_1 = f_prepared(params)
 
         nums = np.random.randint(0, mod, (n, )).tolist()
         # nums = [0]*(n-1)+[1]
 
-        for i in xrange(0, length-n):
+        for i in range(0, length-n):
             nums.append(f_1(nums[-n:]))
 
         # check, if all numbers can be found in the sequence
@@ -52,16 +52,18 @@ def get_sequence_with_all_nums(mod, n, length):
 
     return nums
 
+
 def get_random_sequence_1d(mod):
     nums = get_sequence_with_all_nums(mod, 1, mod)
     print("nums: {}".format(nums))
+
 
 def get_random_picture():
     amount = 3*mod
     length = 2*mod
     pix = np.zeros((amount, length, 3)).astype(np.uint8)
 
-    for i in xrange(0, amount):
+    for i in range(0, amount):
         print("i: {}".format(i))
         nums = get_sequence_with_all_nums(mod, n, length)
         pix[i] = np.array(nums).reshape((-1, 1))*4
@@ -69,10 +71,12 @@ def get_random_picture():
     img = Image.fromarray(pix)
     img.show()
 
+
 # print("mod: {}".format(mod))
 # print("n: {}".format(n))
 # print("nums: {}".format(nums))
 
 # print("len(nums: {}".format(len(nums)))
 
-get_random_sequence_1d(10)
+if __name__ == '__main__':
+    get_random_sequence_1d(10)
