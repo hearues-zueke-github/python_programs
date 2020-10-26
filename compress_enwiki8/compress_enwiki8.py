@@ -6,17 +6,23 @@ import dill
 import gzip
 import os
 import sys
-import tempfile
+
+# import tempfile
+from memory_tempfile import MemoryTempfile
+tempfile = MemoryTempfile()
 
 from collections import defaultdict
 from copy import deepcopy
 from dotmap import DotMap
 from operator import itemgetter
-# from sortedcontainers import SortedSet
 
 from os.path import expanduser
-PATH_HOME = expanduser("~")+'/'
-print("PATH_HOME: {}".format(PATH_HOME))
+
+import multiprocessing as mp
+
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+HOME_DIR = os.path.expanduser("~")
+TEMP_DIR = tempfile.gettempdir()+"/"
 
 from PIL import Image
 
@@ -27,10 +33,8 @@ from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
 
 import utils_compress_enwik8
-# utils_compress_enwik8.do_some_simple_tests()
-# sys.exit()
 
-PATH_ROOT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))+"/"
+from create_stats_enwik8 import calc_sorted_stats
 
 def create_dict_word_count_for_arr(arr, max_byte_length=10):
     d_arr_comb = {}
@@ -59,13 +63,84 @@ def create_dict_word_count_for_arr(arr, max_byte_length=10):
 
 
 if __name__ == "__main__":
+    arr = utils_compress_enwik8.get_arr(used_length=-1)
 
-    # arr = utils_compress_enwik8.get_arr(used_length=2**21)
-    arr = utils_compress_enwik8.get_arr(used_length=2**18)
-    # arr = utils_compress_enwik8.get_arr(used_length=2**23)
+    def calc_stats_using_bytes_tuple(arr, max_len):
+        used_len = 1000000
+        max_amount_values = 50
+        # max_len = 6
+        l_stat = []
+        s_chars = set()
+        for pos_i in range(0, arr.shape[0], used_len):
+            arr_1 = arr[pos_i:pos_i+used_len+max_len].reshape((-1, 1))
+            print("pos_i: {:9}, {:9}".format(pos_i, pos_i+used_len))
+            for _ in range(0, max_len-1):
+                arr_1 = np.hstack((arr_1[:-1], arr_1[1:, -1:]))
+            u, c = np.unique(arr_1.reshape((-1, )).view(','.join(['u1']*max_len)), return_counts=True)
+            if max_len == 1:
+                d = {tuple((t, )): j for t, j in zip(u, c)}
+            else:
+                d = {tuple(t): j for t, j in zip(u, c)}
+
+            # get the max len for each seperate combined bytes!
+            l_t, l_j = list(zip(*list(d.items())))
+            i_max = np.argmax(l_j)
+
+            print("- max_len: {:2}, amount: {:10}, mult: {:10}, t: {}".format(max_len, l_j[i_max], max_len*l_j[i_max], l_t[i_max]))
+            print("-- len(d): {}".format(len(d)))
+            s_chars |= set(list(d.keys()))
+
+            l = list(d.items())
+            l_sort = sorted(list(d.items()), reverse=True, key=lambda x: (x[1], x[0]))
+
+            l_stat.append('{:9},{:9}:{}'.format(
+                pos_i,
+                pos_i+used_len,
+                '|'.join(['{},{:5}'.format(''.join(map(lambda x: '{:02X}'.format(x), t)), c) for t, c in l_sort[:max_amount_values]])
+            ))
+        l = sorted(s_chars)
+        print("l: {}".format(l))
+        print("len(l): {}".format(len(l)))
+
+        with open(TEMP_DIR+'enwik8_stats_max_len_{}.txt'.format(max_len), 'w') as f:
+            f.write('\n'.join(l_stat)+'\n')
+
+    # calc_stats_using_bytes_tuple(arr, 1)
+    
+    # l_proc = []
+    # cpu_count = mp.cpu_count()
+    # for i in range(2, cpu_count+2):
+    #     l_proc.append(mp.Process(target=calc_stats_using_bytes_tuple, args=(arr, i)))
+    # for proc in l_proc: proc.start()
+    # for proc in l_proc: proc.join()
+
+    d_all_part, l_sort = calc_sorted_stats()
+    d3 = d_all_part[3]
+    l_k_3 = list(d3.keys())
+    l_k_i_2_byte = [(k, (0, i)) for i, k in enumerate(l_k_3, 0)]
+    
+    l_sort_ge_4_byte = sorted([(len(k)*v, -len(k), v, k) for k1 in range(4, 14) for k, v in d_all_part[k1].items()], reverse=True)
+    l_k_i_2_byte += [(k, (0, i)) for i, (_, _, _, k) in enumerate(l_sort_ge_4_byte[:256-len(l_k_3)], len(l_k_3))]
+
+    l_k_i_3_byte = [(k, (0, i//256, i%256)) for i, (_, _, _, k) in enumerate(l_sort_ge_4_byte[256-len(l_k_3):], 0)]
+
+    d_k_to_count = {k: v for k1 in range(3, 14) for k, v in d_all_part[k1].items()}
+    d_k_to_i_byte = dict(l_k_i_2_byte+l_k_i_3_byte)
+
+    print("len(d_k_to_count): {}".format(len(d_k_to_count)))
+    print("len(d_k_to_i_byte): {}".format(len(d_k_to_i_byte)))
+
+    assert set(list(d_k_to_count)) == set(list(d_k_to_i_byte))
+
+    l_encrypt = []
+
+    l_arr = arr.tolist()
+
+
+    sys.exit()
+
+
     bytes_starting_size = arr.shape[0]
-    # arr = utils_compress_enwik8.get_arr(used_length=2**22+1)
-
 
     # global_object_getter_setter.delete_object(OBJ_NAME_D_ARR_COMB)
     # global_object_getter_setter.delete_object(OBJ_NAME_D_ARR_COMB_UNIQUE)
@@ -411,7 +486,6 @@ if __name__ == "__main__":
         # sys.exit()
 
     print()
-    print("bytes_starting_size: {}".format(bytes_starting_size))
     print("LEN_BITS_CHOSEN_INDEX: {}".format(LEN_BITS_CHOSEN_INDEX))
     print("LEN_CHOSEN_INDEX: {}".format(LEN_CHOSEN_INDEX))
     print("MAX_BYTE_LENGTH: {}".format(MAX_BYTE_LENGTH))
@@ -439,6 +513,8 @@ if __name__ == "__main__":
     tmp_hex_dir = os.path.join(TMP_PATH_DIR, 'compressed_files_enwik8/')
     if not os.path.exists(tmp_hex_dir):
         os.makedirs(tmp_hex_dir)
+
+    print("bytes_starting_size: {}".format(bytes_starting_size))
 
     arr_compressed_full.tofile(
         (tmp_hex_dir+'content_compressed_size_orig_{size_orig}_size_comp_{size_comp}_round_nr_{round_nr}'+

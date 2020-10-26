@@ -2,10 +2,13 @@ import dill
 import gzip
 import os
 import sys
-import tempfile
+
+# import tempfile
+from memory_tempfile import MemoryTempfile
+tempfile = MemoryTempfile()
 
 TEMP_ROOT_DIR_PATH = tempfile.gettempdir()
-TMP_PATH_DIR = os.path.join(TEMP_ROOT_DIR_PATH, 'python_objs/')
+TEMP_FOLDER_PATH = os.path.join(TEMP_ROOT_DIR_PATH, 'python_objs/')
 if not os.path.exists(TEMP_FOLDER_PATH):
     os.makedirs(TEMP_FOLDER_PATH)
 
