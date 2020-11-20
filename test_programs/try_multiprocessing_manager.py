@@ -21,6 +21,8 @@ from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
 
+import config_file
+
 sys.path.append('..')
 from utils import mkdirs
 from utils_multiprocessing_manager import MultiprocessingManager
@@ -43,19 +45,8 @@ if __name__ == '__main__':
 
     mult_proc_manag = MultiprocessingManager(cpu_count=4)
     mult_proc_manag.define_new_func(name='do_simple_loop', func=do_simple_loop)
-    n_smaller = 6
-    n_bigger = 8
-    i_s = 10**n_smaller
-    i_b = 10**n_bigger
-    l_func_args = [
-        (i_s, ), (i_s, ),
-        (i_b, ), (i_s, ),
-        (i_b, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ),
-        (i_b, ), (i_s, ), (i_s, ), (i_s, ),
-        (i_b, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ),
-        (i_b, ), (i_s, ), (i_s, ),
-        (i_b, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ), (i_s, ),
-    ]
+    
+    l_func_args = config_file.l_func_args
     l_func_name = ['do_simple_loop'] * len(l_func_args)
     mult_proc_manag.do_new_jobs(l_func_name=l_func_name, l_func_args=l_func_args)
 

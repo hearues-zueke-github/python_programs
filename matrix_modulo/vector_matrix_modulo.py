@@ -21,6 +21,8 @@ from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
 
+import config_file
+
 sys.path.append('..')
 from utils import mkdirs
 from utils_multiprocessing_manager import MultiprocessingManager
@@ -120,53 +122,17 @@ def calc_new_cycles(n, modulo):
 
 
 if __name__ == '__main__':
-    # for file, d_n_mod_x_len in l_values:
-    #     for n, d_mod_x_len in d_n_mod_x_len.items():
-    #         for modulo, d_x_len in d_mod_x_len.items():
-    #             print("n: {}, modulo: {}".format(n, modulo))
-    #             max_cycle_length = max([v[0] for k, v in d_x_len.items()])
-
-    # print("l_values: {}".format(l_values))
-
-    # sys.exit()
-
-
-    # n = int(sys.argv[1])
-    # if n > 10:
-    #     n = 10
-    # if n < 1:
-    #     n = 1
-
-    # modulo = int(sys.argv[2])
-    # if modulo > 10:
-    #     modulo = 10
-    # if modulo < 1:
-    #     modulo = 1
-
-    # n = 4
-    # modulo = 3
-    
     mult_proc_manag = MultiprocessingManager(cpu_count=4)
     mult_proc_manag.define_new_func(name='calc_new_cycles', func=calc_new_cycles)
-    # l_func_args = [
-    #     (2, 2), (2, 3), (2, 4),
-    #     (3, 2), (3, 3), (3, 4),
-    #     (4, 2), (4, 3), (4, 4),
-    # ]
-    l_func_args = [
-        (n, modulo) for n in range(2, 8) for modulo in range(2, 6)
-    ]
+
+    l_func_args = config_file.l_func_args
     l_func_args = [l_func_args[i] for i in np.random.permutation(np.arange(0, len(l_func_args)))]
     l_func_name = ['calc_new_cycles'] * len(l_func_args)
-    # mult_proc_manag.do_new_jobs(l_func_name=['calc_new_cycles']*, l_func_args)
     mult_proc_manag.do_new_jobs(l_func_name=l_func_name, l_func_args=l_func_args)
-    # calc_new_cycles(n=n, modulo=modulo)
 
     del mult_proc_manag
 
-    # if n == 1 and modulo == 1:
     l_files = [os.path.join(root, file) for root, dirs, files in os.walk(OBJS_DIR_PATH) for file in files]
-    # sys.exit()
     
     l_values_d = [
         (file, get_pkl_gz_obj(create_d_n_mod_x_len, file))
@@ -184,38 +150,3 @@ if __name__ == '__main__':
     l_values_sort = sorted(l_values)
     print("l_values_sort: {}".format(l_values_sort))
     sys.exit()
-
-    # if n == 1 and modulo == 1:
-    #     l_values = [
-    #         (n, modulo, max([v[0] for k, v in d_x_len.items()]))
-    #         for n, d_mod_x_len in d_n_mod_x_len.items()
-    #         for modulo, d_x_len in d_mod_x_len.items()
-    #         # for x, (cycle_length, A_t) in d_x_len.items()
-    #     ]
-    #     print("l_values: {}".format(l_values))
-
-    # y = np.dot(A, x) % modulo
-
-    # print("x:\n{}".format(x))
-    # print("A:\n{}".format(A))
-    # print("y:\n{}".format(y))
-    # # sys.exit()
-
-    # # a = np.random.randint(0, 2, (n, ))
-    # # b = np.random.randint(0, 2, (n, ))
-
-    # # C = np.add.outer(a, b) % modulo
-
-    # # an1 = np.dot(C, a) % modulo
-    # # bn1 = np.dot(C, b) % modulo
-
-    # # an2 = np.dot(a, C) % modulo
-    # # bn2 = np.dot(b, C) % modulo
-
-    # print("a:\n{}".format(a))
-    # print("b:\n{}".format(b))
-    # print("C:\n{}".format(C))
-    # print("an1:\n{}".format(an1))
-    # print("bn1:\n{}".format(bn1))
-    # print("an2:\n{}".format(an2))
-    # print("bn2:\n{}".format(bn2))

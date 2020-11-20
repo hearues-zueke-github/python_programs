@@ -1,7 +1,11 @@
 import dill
 import time
 
+from collections import deque
 from multiprocessing import Process, Pipe
+
+WORKER_SLEEP_TIME = 0.02
+MANAGER_SLEEP_TIME = 0.02
 
 class MultiprocessingManager(Exception):
     def __init__(self, cpu_count):
@@ -40,7 +44,7 @@ class MultiprocessingManager(Exception):
                     pipe_out.send(ret_tpl)
                 elif name == 'test_ret':
                     pipe_out.send('IS WORKING!')
-            time.sleep(0.1)
+            time.sleep(WORKER_SLEEP_TIME)
 
 
     def define_new_func(self, name, func):
@@ -65,16 +69,24 @@ class MultiprocessingManager(Exception):
 
 
     def do_new_jobs(self, l_func_name, l_func_args):
-        amount = len(l_func_name)
+        len_l_func_name = len(l_func_name)
 
         l_ret = []
-        if amount <= self.worker_amount:
+        if len_l_func_name <= self.worker_amount:
             for worker_nr, (pipe_send, func_name, func_args) in enumerate(zip(self.pipes_send_main, l_func_name, l_func_args), 0):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
                 print("Doing job: worker_nr: {}".format(worker_nr))
-            
-            for pipe_recv in self.pipes_recv_main:
-                # TODO: make a poll in a loop, until everything is done!
+
+            dq_pipe_i = deque(range(0, len_l_func_name))
+            while len(dq_pipe_i) > 0:
+                pipe_i = dq_pipe_i.popleft()
+
+                pipe_recv = self.pipes_recv_main[pipe_i]
+                if not pipe_recv.poll():
+                    dq_pipe_i.append(pipe_i)
+                    time.sleep(MANAGER_SLEEP_TIME)
+                    continue
+
                 ret_tpl = pipe_recv.recv()
                 worker_nr, ret_val = ret_tpl
                 l_ret.append(ret_val)
@@ -85,13 +97,12 @@ class MultiprocessingManager(Exception):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
                 print("Doing job: worker_nr: {}".format(worker_nr))
             
-            # TODO: create a loop, where every single worker is checked if the worker is done or not!
             pipe_i = 0
             for func_name, func_args in zip(l_func_name[self.worker_amount:], l_func_args[self.worker_amount:]):
                 while True:
                     pipe_recv = self.pipes_recv_main[pipe_i]
                     if not pipe_recv.poll():
-                        time.sleep(0.02)
+                        time.sleep(MANAGER_SLEEP_TIME)
                         pipe_i = (pipe_i+1) % self.worker_amount
                         continue
                     break
@@ -109,15 +120,21 @@ class MultiprocessingManager(Exception):
                 
                 pipe_i = (pipe_i+1) % self.worker_amount
             
-            for _ in range(0, self.worker_amount):
+            dq_pipe_i = deque(range(0, self.worker_amount))
+            while len(dq_pipe_i) > 0:
+                pipe_i = dq_pipe_i.popleft()
+
                 pipe_recv = self.pipes_recv_main[pipe_i]
+                if not pipe_recv.poll():
+                    dq_pipe_i.append(pipe_i)
+                    time.sleep(MANAGER_SLEEP_TIME)
+                    continue
+
                 ret_tpl = pipe_recv.recv()
                 worker_nr, ret_val = ret_tpl
                 l_ret.append(ret_val)
                 
                 print("Finished: worker_nr: {}".format(worker_nr))
-
-                pipe_i = (pipe_i+1) % self.worker_amount
 
         return l_ret
 
