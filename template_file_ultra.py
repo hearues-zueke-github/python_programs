@@ -21,14 +21,12 @@ from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
 
+sys.path.append('..')
+from utils import mkdirs
+
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
 HOME_DIR = os.path.expanduser("~")+"/"
 TEMP_DIR = MemoryTempfile().gettempdir()+"/"
-
-def mkdirs(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
 
 OBJS_DIR_PATH = PATH_ROOT_DIR+'objs/'
 mkdirs(OBJS_DIR_PATH)

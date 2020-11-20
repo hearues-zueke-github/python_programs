@@ -18,7 +18,7 @@ from dotmap import DotMap
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
 
-if __name__=='__main__':
+if __name__ == '__main__':
     # base1 = 3, convert num to base2 = 2
     base1 = 5
     l_consecutive_ones = []
