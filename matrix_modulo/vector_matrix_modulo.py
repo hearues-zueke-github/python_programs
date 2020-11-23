@@ -12,6 +12,7 @@ import re
 import sys
 import traceback
 
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 
@@ -122,7 +123,7 @@ def calc_new_cycles(n, modulo):
 
 
 if __name__ == '__main__':
-    mult_proc_manag = MultiprocessingManager(cpu_count=4)
+    mult_proc_manag = MultiprocessingManager(cpu_count=mp.cpu_count())
     mult_proc_manag.define_new_func(name='calc_new_cycles', func=calc_new_cycles)
 
     l_func_args = config_file.l_func_args
@@ -138,6 +139,17 @@ if __name__ == '__main__':
         (file, get_pkl_gz_obj(create_d_n_mod_x_len, file))
         for file in l_files
     ]
+
+    d_n_mod_x_len_all = {}
+    for file, d_n_mod_x_len in l_values_d:
+        print("file: {}".format(file))
+        for n, d_mod_x_len in d_n_mod_x_len.items():
+            if n not in d_n_mod_x_len_all:
+                d_n_mod_x_len_all[n] = {}
+            d_mod_x_len_all = d_n_mod_x_len_all[n]
+            for modulo, d_x_len in d_mod_x_len.items():
+                assert modulo not in d_mod_x_len_all
+                d_mod_x_len_all[modulo] = d_x_len
 
     l_values = [
         (n, modulo, max([v[0]

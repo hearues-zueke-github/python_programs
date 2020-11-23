@@ -93,7 +93,6 @@ if __name__=='__main__':
     d_var_num_to_cell_num = objs['d_var_num_to_cell_num']
     d_cell_pos_num_to_var_num = objs['d_cell_pos_num_to_var_num']
 
-
     FILE_SUFFIX = '_nr_2'
 
     with open(PATH_DIR_TXT+'unsolved_sudokus{}.txt'.format(FILE_SUFFIX), 'r') as f:
