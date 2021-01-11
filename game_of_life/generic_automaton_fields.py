@@ -20,6 +20,8 @@ from pprint import pprint
 
 from os.path import expanduser
 
+import itertools
+
 import multiprocessing as mp
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
@@ -33,7 +35,9 @@ import numpy as np
 sys.path.append("../")
 from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
+import utils
 
+from bit_automaton import BitAutomaton
 
 def range_gen(g, n):
     i = 0
@@ -44,128 +48,29 @@ def range_gen(g, n):
             break
 
 
-class BitAutomaton(Exception):
-    __slot__ = [
-        'h', 'w',
-        'frame', 'frame_wrap',
-        'field_size', 'field',
-        'field_frame_size', 'field_frame',
-        'd_vars', 'd_func', 'funcs_str',
-    ]
-
-    def __init__(self, h, w, frame, frame_wrap, funcs_str):
-        self.h = h
-        self.w = w
-        
-        self.frame = frame
-        self.frame_wrap = frame_wrap
-        
-        self.field_size = (h, w)
-        self.field = np.zeros(self.field_size, dtype=np.uint8)
-
-        self.field_frame_size = (h+frame*2, w+frame*2)
-        self.field_frame = np.zeros(self.field_frame_size, dtype=np.uint8)
-
-        self.d_vars = {}
-        self.d_vars['n'] = self.field_frame[frame:-frame, frame:-frame]
-        l_up = [('u', i, -i) for i in range(frame, 0, -1)]
-        l_down = [('d', i, i) for i in range(1, frame+1)]
-        l_left = [('l', i, -i) for i in range(frame, 0, -1)]
-        l_right = [('r', i, i) for i in range(1, frame+1)]
-        l_empty = [('', 0, 0)]
-
-        for direction, amount, i in l_up+l_down:
-            self.d_vars[direction+str(amount)] = self.field_frame[frame+i:frame+h+i, frame:frame+w]
-            self.d_vars[direction*amount] = self.field_frame[frame+i:frame+h+i, frame:frame+w]
-        for direction, amount, i in l_left+l_right:
-            self.d_vars[direction+str(amount)] = self.field_frame[frame:frame+h, frame+i:frame+i+w]
-            self.d_vars[direction*amount] = self.field_frame[frame:frame+h, frame+i:frame+i+w]
-
-        for direction_y, amount_y, i_y in l_up+l_empty+l_down:
-            for direction_x, amount_x, i_x in l_left+l_empty+l_right:
-                self.d_vars[direction_y+str(amount_y)+direction_x+str(amount_x)] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
-                self.d_vars[direction_y*amount_y+direction_x*amount_x] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
-
-        self.d_func = {}
-
-        self.funcs_str = funcs_str
-
-        exec(funcs_str, self.d_vars, self.d_func)
-
-        assert 'rng' in self.d_func.keys()
-
-        # test if each function starting with 'fun_' is returning a boolean array!
-        l_func_name = []
-        for func_name in self.d_func.keys():
-            if func_name[:4] != 'fun_':
-                continue
-
-            l_func_name.append(func_name)
-
-            # print("func_name: {}".format(func_name))
-            v = self.d_func[func_name]()
-            assert v.dtype == np.bool
-            assert v.shape == self.field_size
-
-        # check, if every function name is appearing starting from 0 to upwards in ascending order!
-        assert np.all(np.diff(np.sort([int(v.replace('fun_', '')) for v in l_func_name])) == 1)
-
-
-    def fill_field_frame(self):
-        self.field_frame[self.frame:-self.frame, self.frame:-self.frame] = self.field
-
-        if self.frame_wrap == False:
-            self.field_frame[:, :self.frame] = 0
-            self.field_frame[:, -self.frame:] = 0
-            self.field_frame[:self.frame, self.frame:-self.frame] = 0
-            self.field_frame[-self.frame:, self.frame:-self.frame] = 0
-        else:
-            # do the right part copy to left
-            self.field_frame[self.frame:-self.frame, :self.frame] = self.field_frame[self.frame:-self.frame, -self.frame*2:-self.frame]
-            # do the left part copy to right
-            self.field_frame[self.frame:-self.frame, -self.frame:] = self.field_frame[self.frame:-self.frame, self.frame:self.frame*2]
-            # do the bottom part copy to top
-            self.field_frame[:self.frame] = self.field_frame[-self.frame*2:-self.frame]
-            # do the top part copy to bottom
-            self.field_frame[-self.frame:] = self.field_frame[self.frame:self.frame*2]
-
-
 if __name__ == '__main__':
-#     func_str = """
-# def f():
-#     a = 4 + b
-#     return a
-# """
+    path_images = PATH_ROOT_DIR + 'images/'
 
-#     d_loc = {}
-#     d_glob = {'b': 5}
+    file_name = 'nature_trees_river_84761_800x600.jpg'
+    image_path = path_images + file_name
 
-#     exec(func_str, d_glob, d_loc)
+    path_images_save = TEMP_DIR + 'save_images/{}/'.format(file_name.split('.')[0])
+    utils.mkdirs(path_images_save)
 
-#     b = d_loc['f']()
-#     print("b: {}".format(b))
-    
-#     d_glob = {'b': 4}
-#     b = d_loc['f']()
-#     print("b: {}".format(b))
+    img = Image.open(image_path)
+    pix = np.array(img)
 
-#     sys.exit()
-
-
-    h = 3
-    w = 4
-
-    frame = 2
-    # frame_wrap = False
-    frame_wrap = True
-    
     funcs_str = """
 def rng(seed=0):
     a = seed
     while True:
         a = ((a + 19) ^ 0x2343) % 15232
         yield a % 13
-fun_0 = lambda: (u + dl) % 2 == 0
+def fun_0():
+    v1 = (u + dl) % 2 == 0
+    v2 = (u + dr) % 3 == 0
+    v3 = (ur + l) % 2 == 0
+    return v1 | v2 | v3
 def fun_1():
     return (u + dl) % 3 == 0
 def fun_2():
@@ -173,84 +78,59 @@ def fun_2():
 def fun_3():
     a = u+d+l+r+ur+ul+dr+dl
     return (a==2)|(a==3)
+def fun_4():
+    return n == 1
 """
-    
-    bit_automaton = BitAutomaton(h=h, w=w, frame=frame, frame_wrap=frame_wrap, funcs_str=funcs_str)
 
-    bit_automaton.field
+    # h = 3
+    # w = 4
 
-    # field_size = (h, w)
-    # field = np.zeros(field_size, dtype=np.uint8)
-    # # field[:] = np.arange(0, np.multiply(*field_size)).reshape(field_size)
-    # field[:] = np.random.randint(0, 2, field_size)
+    # frame = 2
+    # frame_wrap = True
 
-    # field_frame_size = (h+frame*2, w+frame*2)
-    # field_frame = np.zeros(field_frame_size, dtype=np.uint8)
-    
-    # def fill_field_frame(field_frame, field_size, field, frame, frame_wrap):
-    #     field_frame[:] = np.random.randint(0, 10, field_frame_size)
-    #     field_frame[frame:-frame, frame:-frame] = field
+    # arr = np.random.randint(0, 0x100, (h, w), dtype=np.uint8)
+    # arr_bits = np.array([[list(map(int, bin(v)[2:].zfill(8))) for v in row] for row in arr], dtype=np.uint8).transpose(2, 0, 1)
 
-    #     if frame_wrap == False:
-    #         field_frame[:, :frame] = 0
-    #         field_frame[:, -frame:] = 0
-    #         field_frame[:frame, frame:-frame] = 0
-    #         field_frame[-frame:, frame:-frame] = 0
-    #     else:
-    #         # do the right part copy to left
-    #         field_frame[frame:-frame, :frame] = field_frame[frame:-frame, -frame*2:-frame]
-    #         # do the left part copy to right
-    #         field_frame[frame:-frame, -frame:] = field_frame[frame:-frame, frame:frame*2]
-    #         # do the bottom part copy to top
-    #         field_frame[:frame] = field_frame[-frame*2:-frame]
-    #         # do the top part copy to bottom
-    #         field_frame[-frame:] = field_frame[frame:frame*2]
+    # amount_bit_automaton = arr_bits.shape[0]
 
-    # def fill():
-    #     fill_field_frame(field_frame, field_size, field, frame, frame_wrap)
+    # l_bit_automaton = [BitAutomaton(h=h, w=w, frame=frame, frame_wrap=frame_wrap, funcs_str=funcs_str) for _ in range(0, amount_bit_automaton)]
 
-    # fill()
+    # for bit_automaton, bits in zip(l_bit_automaton, arr_bits):
+    #     bit_automaton.set_field(bits)
 
-    # d_vars = {}
-    # d_vars['n'] = field_frame[frame:-frame, frame:-frame]
-    # l_up = [('u', i, -i) for i in range(frame, 0, -1)]
-    # l_down = [('d', i, i) for i in range(1, frame+1)]
-    # l_left = [('l', i, -i) for i in range(frame, 0, -1)]
-    # l_right = [('r', i, i) for i in range(1, frame+1)]
-    # l_empty = [('', 0, 0)]
+    # pix = np.random.randint(0, 0x100, (400, 500, 3), dtype=np.uint8)
 
-    # for direction, amount, i in l_up+l_down:
-    #     d_vars[direction+str(amount)] = field_frame[frame+i:frame+h+i, frame:frame+w]
-    #     d_vars[direction*amount] = field_frame[frame+i:frame+h+i, frame:frame+w]
-    # for direction, amount, i in l_left+l_right:
-    #     d_vars[direction+str(amount)] = field_frame[frame:frame+h, frame+i:frame+i+w]
-    #     d_vars[direction*amount] = field_frame[frame:frame+h, frame+i:frame+i+w]
+    h, w = pix.shape[:2]
 
-    # for direction_y, amount_y, i_y in l_up+l_empty+l_down:
-    #     for direction_x, amount_x, i_x in l_left+l_empty+l_right:
-    #         d_vars[direction_y+str(amount_y)+direction_x+str(amount_x)] = field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
-    #         d_vars[direction_y*amount_y+direction_x*amount_x] = field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
+    frame = 2
+    frame_wrap = True
 
-    # d_func = {}
+    # arr = np.random.randint(0, 0x100, (h, w), dtype=np.uint8)
+    arr_bits = np.array([[list(itertools.chain(*[list(map(int, bin(b)[2:].zfill(8))) for b in v])) for v in row] for row in pix], dtype=np.uint8).transpose(2, 0, 1)
+    # sys.exit()
 
-    # exec(funcs_str, d_vars, d_func)
+    amount_bit_automaton = arr_bits.shape[0]
 
-    # assert 'rng' in d_func.keys()
+    l_bit_automaton = [BitAutomaton(h=h, w=w, frame=frame, frame_wrap=frame_wrap, funcs_str=funcs_str) for _ in range(0, amount_bit_automaton)]
 
-    # # test if each function starting with 'fun_' is returning a boolean array!
-    # l_func_name = []
-    # for func_name in d_func.keys():
-    #     if func_name[:4] != 'fun_':
-    #         continue
+    for bit_automaton, bits in zip(l_bit_automaton, arr_bits):
+        bit_automaton.set_field(bits)
 
-    #     l_func_name.append(func_name)
+    def convert_bit_field_to_pix(l_bit_automaton):
+        assert len(l_bit_automaton) == 24 # 24 bits
 
-    #     print("func_name: {}".format(func_name))
-    #     v = d_func[func_name]()
-    #     assert v.dtype == np.bool
-    #     assert v.shape == field_size
+        arr = np.array([np.sum([bit_automaton<<j for j, bit_automaton in zip(range(7, -1, -1), l_bit_automaton[8*i:8*(i+1)])], axis=0) for i in range(0, 3)], dtype=np.uint8)
+        return arr.transpose(1, 2, 0)
 
-    # # check, if every function name is appearing starting from 0 to upwards in ascending order!
-    # assert np.all(np.diff(np.sort([int(v.replace('fun_', '')) for v in l_func_name])) == 1)
+    pix2 = convert_bit_field_to_pix(l_bit_automaton)
+    assert np.all(pix2 == pix)
 
-    # # g = d_func['rng']()
+    print("i: {}".format(0))
+    Image.fromarray(pix2).save(path_images_save + '{:04}.png'.format(0))
+
+    for i in range(1, 100):
+        print("i: {}".format(i))
+        for bit_automaton in l_bit_automaton:
+            bit_automaton.execute_func(3)
+        pix2 = convert_bit_field_to_pix(l_bit_automaton)
+        Image.fromarray(pix2).save(path_images_save + '{:04}.png'.format(i))
