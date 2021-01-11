@@ -80,7 +80,11 @@ def fun_3():
     return (a==2)|(a==3)
 def fun_4():
     return n == 1
+def fun_5():
+    return l == 1
 """
+
+    # TODO: create a randomizing new functions!
 
     # h = 3
     # w = 4
@@ -131,6 +135,6 @@ def fun_4():
     for i in range(1, 100):
         print("i: {}".format(i))
         for bit_automaton in l_bit_automaton:
-            bit_automaton.execute_func(3)
+            bit_automaton.execute_func(5)
         pix2 = convert_bit_field_to_pix(l_bit_automaton)
         Image.fromarray(pix2).save(path_images_save + '{:04}.png'.format(i))
