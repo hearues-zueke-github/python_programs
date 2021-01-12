@@ -1,4 +1,8 @@
 import numpy as np
+from types import FunctionType
+
+def copy_function(f, d_glob={}):
+    return FunctionType(f.__code__, d_glob, f.__name__, f.__defaults__, f.__closure__)
 
 class BitAutomaton(Exception):
     __slot__ = [
@@ -6,11 +10,11 @@ class BitAutomaton(Exception):
         'frame', 'frame_wrap',
         'field_size', 'field',
         'field_frame_size', 'field_frame',
-        'd_vars', 'd_func', 'funcs_str',
-        'l_func', 's_func_nr', 'l_func_name',
+        'd_vars',
+        'l_func', 'func_rng', 's_func_nr',
     ]
 
-    def __init__(self, h, w, frame, frame_wrap, funcs_str):
+    def __init__(self, h, w, frame, frame_wrap, l_func=None, func_rng=None):
         self.h = h
         self.w = w
         
@@ -18,10 +22,10 @@ class BitAutomaton(Exception):
         self.frame_wrap = frame_wrap
         
         self.field_size = (h, w)
-        self.field = np.zeros(self.field_size, dtype=np.uint8)
+        self.field = np.zeros(self.field_size, dtype=np.bool)
 
         self.field_frame_size = (h+frame*2, w+frame*2)
-        self.field_frame = np.zeros(self.field_frame_size, dtype=np.uint8)
+        self.field_frame = np.zeros(self.field_frame_size, dtype=np.bool)
 
         self.d_vars = {}
         self.d_vars['n'] = self.field_frame[frame:-frame, frame:-frame]
@@ -43,37 +47,17 @@ class BitAutomaton(Exception):
                 self.d_vars[direction_y+str(amount_y)+direction_x+str(amount_x)] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
                 self.d_vars[direction_y*amount_y+direction_x*amount_x] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
 
-        self.d_func = {}
-
-        self.funcs_str = funcs_str
-
-        exec(funcs_str, self.d_vars, self.d_func)
-
-        assert 'rng' in self.d_func.keys()
-
-        # test if each function starting with 'fun_' is returning a boolean array!
-        self.l_func_name = []
-        for func_name in self.d_func.keys():
-            if func_name[:4] != 'fun_':
-                continue
-
-            self.l_func_name.append(func_name)
-
-            # print("func_name: {}".format(func_name))
-            v = self.d_func[func_name]()
-            assert v.dtype == np.bool
-            assert v.shape == self.field_size
-
-        # check, if every function name is appearing starting from 0 to upwards in ascending order!
-        assert np.all(np.diff(np.sort([int(v.replace('fun_', '')) for v in self.l_func_name])) == 1)
-
-        self.l_func = [self.d_func[func_name] for func_name in self.l_func_name]
-        self.s_func_nr = {i for i in range(0, len(self.l_func_name))}
+        if l_func is not None:
+            self.l_func = [copy_function(f, self.d_vars) for f in l_func]
+            self.s_func_nr = set(range(0, len(l_func)))
+        if func_rng is not None:
+            self.func_rng = copy_function(func_rng, self.d_vars)
 
 
     def set_field(self, field):
+        assert isinstance(field, np.ndarray)
         assert field.shape == self.field_size
-        assert np.all((field==0)|(field==1))
+        assert field.dtype == np.bool
         self.field = field
         self.fill_field_frame()
 
@@ -99,7 +83,7 @@ class BitAutomaton(Exception):
 
     def execute_func(self, n):
         assert n in self.s_func_nr
-        self.field = (self.l_func[n]()).astype(np.uint8)
+        self.field = self.l_func[n]()
         self.fill_field_frame()
 
 
