@@ -39,7 +39,6 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 
-
 sys.path.append('..')
 import utils
 from utils_multiprocessing_manager import MultiprocessingManager
