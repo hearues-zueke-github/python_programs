@@ -1,8 +1,8 @@
 import numpy as np
-from types import FunctionType
 
-def copy_function(f, d_glob={}):
-    return FunctionType(f.__code__, d_glob, f.__name__, f.__defaults__, f.__closure__)
+import sys
+sys.path.append("../")
+from utils_function import copy_function
 
 class BitAutomaton(Exception):
     __slot__ = [
@@ -14,7 +14,7 @@ class BitAutomaton(Exception):
         'l_func', 'func_rng', 's_func_nr',
     ]
 
-    def __init__(self, h, w, frame, frame_wrap, l_func=None, func_rng=None):
+    def __init__(self, h, w, frame, frame_wrap, l_func=None, func_inv=None, func_rng=None):
         self.h = h
         self.w = w
         
@@ -42,7 +42,8 @@ class BitAutomaton(Exception):
             self.d_vars[direction+str(amount)] = self.field_frame[frame:frame+h, frame+i:frame+i+w]
             self.d_vars[direction*amount] = self.field_frame[frame:frame+h, frame+i:frame+i+w]
 
-        for direction_y, amount_y, i_y in l_up+l_empty+l_down:
+        for direction_y, amount_y, i_y in l_up+l_down:
+        # for direction_y, amount_y, i_y in l_up+l_empty+l_down:
             for direction_x, amount_x, i_x in l_left+l_empty+l_right:
                 self.d_vars[direction_y+str(amount_y)+direction_x+str(amount_x)] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
                 self.d_vars[direction_y*amount_y+direction_x*amount_x] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
@@ -50,6 +51,8 @@ class BitAutomaton(Exception):
         if l_func is not None:
             self.l_func = [copy_function(f, self.d_vars) for f in l_func]
             self.s_func_nr = set(range(0, len(l_func)))
+        if func_inv is not None:
+            self.d_vars['inv'] = copy_function(func_inv)
         if func_rng is not None:
             self.func_rng = copy_function(func_rng, self.d_vars)
 
@@ -82,6 +85,7 @@ class BitAutomaton(Exception):
 
 
     def execute_func(self, n):
+        # print('execute_func: n: {}'.format(n))
         assert n in self.s_func_nr
         self.field = self.l_func[n]()
         self.fill_field_frame()
