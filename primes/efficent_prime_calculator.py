@@ -139,10 +139,16 @@ def get_primes_from_first_prims(first_primes, first_prims, prod, n_parts=10, n_m
 
 
 if __name__ == "__main__":
-    first_primes = np.array([2, 3, 5, 7, 11, 13, 17, 19])
+    sys.exit()
+
+    # first_primes = np.array([2, 3, 5, 7, 11, 13, 17, 19])
     # prods = 2*3*5*7*11*13*17*19
-    prods = 2*3*5*7*11*13*17
+    # prods = 2*3*5*7*11*13*17
     # prods = 2*3*5*7*11*13
+    
+    # first_primes = np.array([2, 3, 5, 7, 11, 13, 17, 19])
+    # first_primes = np.array([2, 3, 5, 7])
+    # prods = 2*3*5*7
 
     ls = []
     for i  in range(2, 7+1):
@@ -151,6 +157,9 @@ if __name__ == "__main__":
         first_prims, prod = get_first_prims(first_primes_part)
         ls_p, ls_np = get_primes_from_first_prims(first_primes_part, first_prims, prod, n_parts=prods//prod, n_max=prods*20)
         ls.append((ls_p, ls_np))
+
+    print("len(ls): {}".format(len(ls)))
+    sys.exit()
 
     plt.figure()
 

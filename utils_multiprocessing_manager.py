@@ -39,7 +39,11 @@ class MultiprocessingManager(Exception):
                     pipe_out.send((worker_nr, "Finished 'func_def_new'"))
                 elif name == 'func_def_exec':
                     func_name, func_args = args
-                    ret_val = d_func[func_name](*func_args)
+                    try:
+                        ret_val = d_func[func_name](*func_args)
+                    except:
+                        print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, func_args, worker_nr))
+                        ret_val = None
                     ret_tpl = (worker_nr, ret_val)
                     pipe_out.send(ret_tpl)
                 elif name == 'test_ret':
