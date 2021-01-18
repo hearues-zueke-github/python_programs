@@ -43,7 +43,6 @@ class BitAutomaton(Exception):
             self.d_vars[direction*amount] = self.field_frame[frame:frame+h, frame+i:frame+i+w]
 
         for direction_y, amount_y, i_y in l_up+l_down:
-        # for direction_y, amount_y, i_y in l_up+l_empty+l_down:
             for direction_x, amount_x, i_x in l_left+l_empty+l_right:
                 self.d_vars[direction_y+str(amount_y)+direction_x+str(amount_x)] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]
                 self.d_vars[direction_y*amount_y+direction_x*amount_x] = self.field_frame[frame+i_y:frame+i_y+h, frame+i_x:frame+i_x+w]

@@ -16,6 +16,7 @@ from typing import List, Dict, Set, Mapping, Any, Tuple
 from memory_tempfile import MemoryTempfile
 tempfile = MemoryTempfile()
 
+from datetime import datetime
 from collections import defaultdict
 from copy import deepcopy
 from dotmap import DotMap
@@ -115,7 +116,14 @@ def rng(seed=0):
     l_var = [v for v in bit_automaton.d_vars.keys() if not any([c in l_digits for c in v])]
     print("l_var: {}".format(l_var))
 
-    def get_random_function_str_body_dm(func_nr : int, l_var : List[str], n_and : int, n_or : int) -> str:
+    def get_random_function_str_body_dm(
+        func_nr : int,
+        l_var : List[str],
+        n_and_min : int,
+        n_and_max : int,
+        n_or_min : int,
+        n_or_max : int,
+    ) -> str:
         l_vars_inv = [f'inv({v})' for v in l_var]
 
         arr_var = np.vstack((l_var, l_vars_inv))
@@ -127,15 +135,21 @@ def rng(seed=0):
         s = ''
         l_new_var = []
         l_l_chosen_var = []
+        l_arr_var_names = []
         l_formel_and = []
+        n_or = np.random.randint(n_or_min, n_or_max + 1)
         for i_or in range(0, n_or):
             new_var = f'a_{i_or}'
             l_new_var.append(new_var)
 
+            n_and = np.random.randint(n_and_min, n_and_max + 1)
             arr_chosen_var = np.unique(np.random.choice(arr_var_i, (n_and, )))
             arr_inv_var = np.random.choice(arr_var_row, (arr_chosen_var.shape[0], ))
 
-            formel_and = ' & '.join(np.sort(arr_var[arr_inv_var, arr_chosen_var]))
+            arr_var_names = np.sort(arr_var[arr_inv_var, arr_chosen_var])
+            l_arr_var_names.append(arr_var_names)
+
+            formel_and = ' & '.join(arr_var_names)
             l_formel_and.append(formel_and)
 
         l_former_and_sorted = sorted(set(l_formel_and))
@@ -147,11 +161,26 @@ def rng(seed=0):
         s += f' return {last_formel}\n'
         return DotMap(locals(), dynamic_=None)
 
-    n_and = 5
-    n_or = 10
-    n_func = 12
+    # TODO: save the data to a file too!
+    n_func_min = 1
+    n_func_max = 1
+    # n_func_min = 5
+    # n_func_max = 25
+    n_or_min = 8
+    n_or_max = 15
+    n_and_min = 4
+    n_and_max = 6
 
-    l_dm_local = [get_random_function_str_body_dm(func_nr=i, l_var=l_var, n_and=n_and, n_or=n_or) for i in range(0, n_func)]
+    n_func = np.random.randint(n_func_min, n_func_max + 1)
+    l_dm_local = [
+        get_random_function_str_body_dm(
+            func_nr=i,
+            l_var=l_var,
+            n_and_min=n_and_min,
+            n_and_max=n_and_max,
+            n_or_min=n_or_min,
+            n_or_max=n_or_max,
+        ) for i in range(0, n_func)]
     l_func_str_body = [dm.s for dm in l_dm_local]
 
     l_func_str_body_sorted  = sorted(set(l_func_str_body))
@@ -185,19 +214,48 @@ def rng(seed=0):
     # img = Image.open(image_path)
     # pix = np.array(img)
 
-    pix = np.random.randint(0, 255, (100, 150, 3), dtype=np.uint8)
+    pix_orig = np.random.randint(0, 255, (100, 150, 3), dtype=np.uint8)
 
-    h, w = pix.shape[:2]
+    def extract_bits_from_pix(pix : np.ndarray) -> np.ndarray:
+        pix_bits = np.array([(channel>>i)&0x1 for channel in pix.transpose(2, 0, 1) for i in range(7, -1, -1)], dtype=np.uint8)
+        return pix_bits
+        # return pix_bits.transpose(1, 2, 0)
 
-    path_images_save = os.path.join(TEMP_DIR, 'save_images/test_other')
-    # path_images_save = os.path.join(TEMP_DIR, 'save_images/{}/'.format(file_name.split('.')[0]))
-    utils.mkdirs(path_images_save)
 
-    file_path_funcs = os.path.join(path_images_save, 'test_functions_python.py')
+    # def extract_rgb_from_pix(pix : np.ndarray) -> np.ndarray:
+    #     return pix.transpose(2, 0, 1)
+
+    pix_bits = extract_bits_from_pix(pix_orig)
+
+    pix = pix_bits[0]*255
+    # pix = pix_bits[:1]
+
+
+    h, w = pix_bits.shape[1:]
+    # h, w = pix_bits.shape[:2]
+    # sys.exit()
+
+
+    # folder_name = 'test_other'
+    folder_name_suffix = '{}_{}'.format(
+        datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S'),
+        ''.join(np.random.choice(list(string.hexdigits), (8, ))).upper(),
+    )
+    folder_name = f'test_other_{folder_name_suffix}'
+    dir_path_save_images = os.path.join(TEMP_DIR, 'save_images/')
+    dir_path_images = os.path.join(dir_path_save_images, folder_name)
+    # dir_path_images = os.path.join(TEMP_DIR, 'save_images/{}/'.format(file_name.split('.')[0]))
+    utils.mkdirs(dir_path_images)
+    
+    dit_path_combined_images = os.path.join(dir_path_save_images, 'combined_images')
+    utils.mkdirs(dit_path_combined_images)
+
+    file_path_funcs = os.path.join(dir_path_images, 'test_functions_python.py')
     with open(file_path_funcs, 'w') as f:
         f.write(funcs_str)
 
-    arr_bits = np.array([[list(itertools.chain(*[list(map(int, bin(b)[2:].zfill(8))) for b in v])) for v in row] for row in pix], dtype=np.uint8).transpose(2, 0, 1)
+    arr_bits = pix_bits[:1]
+    # arr_bits = np.array([[list(itertools.chain(*[list(map(int, bin(b)[2:].zfill(8))) for b in v])) for v in row] for row in pix], dtype=np.uint8).transpose(2, 0, 1)
 
     amount_bit_automaton = arr_bits.shape[0]
 
@@ -206,20 +264,43 @@ def rng(seed=0):
     for bit_automaton, bits in zip(l_bit_automaton, arr_bits):
         bit_automaton.set_field(bits.astype(np.bool))
 
-    def convert_bit_field_to_pix(l_bit_automaton):
+    def convert_bit_field_to_pix_1_bit(l_bit_automaton):
+        assert len(l_bit_automaton) == 1 # 1 bits
+
+        arr = (l_bit_automaton[0]<<0).astype(np.uint8) * 255
+        return arr
+
+
+    def convert_bit_field_to_pix_8_bit(l_bit_automaton):
+        assert len(l_bit_automaton) == 8 # 8 bits
+
+        arr = np.sum([bit_automaton<<j for j, bit_automaton in zip(range(7, -1, -1), l_bit_automaton)], axis=0).astype(np.uint8)
+        return arr
+
+
+    def convert_bit_field_to_pix_24_bit(l_bit_automaton):
         assert len(l_bit_automaton) == 24 # 24 bits
 
         arr = np.array([np.sum([bit_automaton<<j for j, bit_automaton in zip(range(7, -1, -1), l_bit_automaton[8*i:8*(i+1)])], axis=0) for i in range(0, 3)], dtype=np.uint8)
         return arr.transpose(1, 2, 0)
 
-    pix2 = convert_bit_field_to_pix(l_bit_automaton)
+    convert_bit_field_to_pix = convert_bit_field_to_pix_1_bit
+    # convert_bit_field_to_pix = convert_bit_field_to_pix_8_bit
+    # convert_bit_field_to_pix = convert_bit_field_to_pix_24_bit
+
+    pix2 = convert_bit_field_to_pix(l_bit_automaton[:1])
     assert np.all(pix2 == pix)
 
-    print("i: {}".format(0))
-    file_path = os.path.join(path_images_save, '{:04}.png'.format(0))
-    Image.fromarray(pix2).save(file_path)
 
-    iterations_amount = 200
+    print("i: {}".format(0))
+    file_path = os.path.join(dir_path_images, '{:04}.png'.format(0))
+    Image.fromarray(pix2).save(file_path)
+    
+    l_pix = [pix2]
+
+    cols = 5
+    rows = 10
+    iterations_amount = cols * rows
     l_func_nr = list(range(0, len(l_func)))
     amount_function_mod = len(l_func_nr)
     rng = func_rng(seed=0)
@@ -232,5 +313,73 @@ def rng(seed=0):
             # bit_automaton.execute_func(5)
             bit_automaton.execute_func(func_nr)
         pix2 = convert_bit_field_to_pix(l_bit_automaton)
-        file_path = os.path.join(path_images_save, '{:04}.png'.format(i))
+        file_path = os.path.join(dir_path_images, '{:04}.png'.format(i))
         Image.fromarray(pix2).save(file_path)
+
+        l_pix.append(pix2)
+
+    arr_pixs = np.array(l_pix)//255
+
+    amount_historic_numbers = (frame * 2 + 1)**2 + 1
+    # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
+
+    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 3*amount_historic_numbers), dtype=np.int)
+
+    for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
+        pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int)
+        pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        pix1xor2 = pix1 ^ pix2
+        pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        for move_y in range(-frame, frame+1, 1):
+            for move_x in range(-frame, frame+1, 1):
+                pix1_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
+                pix2_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
+                pix1xor2_sum_ranges += np.roll(np.roll(pix1xor2, move_x, axis=1), move_y, axis=0)
+
+        u1, c1 = np.unique(pix1_sum_ranges, return_counts=True)
+        u2, c2 = np.unique(pix2_sum_ranges, return_counts=True)
+        u1xor2, c1xor2 = np.unique(pix1xor2_sum_ranges, return_counts=True)
+        arr_row = arr_historic_ranges[i]
+        arr_row[u1 + amount_historic_numbers*0] = c1
+        arr_row[u2 + amount_historic_numbers*1] = c2
+        arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
+
+    d_obj = {}
+    d_obj['frame'] = frame
+    d_obj['frame_wrap'] = frame_wrap
+    d_obj['l_bit_automaton'] = l_bit_automaton
+    d_obj['arr_pixs'] = arr_pixs
+    d_obj['arr_historic_ranges'] = arr_historic_ranges
+
+    with gzip.open(os.path.join(dir_path_images, 'd_obj.pkl.gz'), 'wb') as f:
+        dill.dump(d_obj, f)
+
+    sys.exit()
+
+    h_space_horizontal = l_pix[0].shape[0]
+    w_space_horizontal = 10
+    arr_space_horizontal = np.zeros((h_space_horizontal, w_space_horizontal), dtype=np.uint8) + 0x80
+
+    def combine_l_pix_horizontal(l_pix_part : List[np.ndarray]) -> np.ndarray:
+        l = [l_pix_part[0]]
+        for pix in l_pix_part[1:]:
+            l.append(arr_space_horizontal)
+            l.append(pix)
+        return np.hstack(l)
+
+    l_pix_horizontal = [combine_l_pix_horizontal(l_pix[cols*i:cols*(i+1)]) for i in range(0, rows)]
+
+    w_space_vertical = l_pix_horizontal[0].shape[1]
+    h_space_vertical = 10
+    arr_space_vertical = np.zeros((h_space_vertical, w_space_vertical), dtype=np.uint8) + 0x80
+
+    def combine_l_pix_vertical(l_pix_part : List[np.ndarray]) -> np.ndarray:
+        l = [l_pix_part[0]]
+        for pix in l_pix_part[1:]:
+            l.append(arr_space_vertical)
+            l.append(pix)
+        return np.vstack(l)
+    
+    pix_vertical = combine_l_pix_vertical(l_pix_horizontal)
+    file_path = os.path.join(dit_path_combined_images, '{}.png'.format(folder_name))
+    Image.fromarray(pix_vertical).save(file_path)
