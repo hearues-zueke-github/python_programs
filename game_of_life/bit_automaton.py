@@ -14,7 +14,11 @@ class BitAutomaton(Exception):
         'l_func', 'func_rng', 's_func_nr',
     ]
 
-    def __init__(self, h, w, frame, frame_wrap, l_func=None, func_inv=None, func_rng=None):
+    def __init__(self):
+        pass
+
+
+    def init_vals(self, h, w, frame, frame_wrap, l_func=None, func_inv=None, func_rng=None):
         self.h = h
         self.w = w
         
@@ -54,6 +58,8 @@ class BitAutomaton(Exception):
             self.d_vars['inv'] = copy_function(func_inv)
         if func_rng is not None:
             self.func_rng = copy_function(func_rng, self.d_vars)
+
+        return self
 
 
     def set_field(self, field):

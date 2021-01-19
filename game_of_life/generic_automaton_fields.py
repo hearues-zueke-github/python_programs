@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6
 
 # -*- coding: utf-8 -*-
 
@@ -44,6 +44,9 @@ import global_object_getter_setter
 import utils
 from utils_function import copy_function
 
+sys.path.append("../clustering/")
+import utils_cluster
+
 from bit_automaton import BitAutomaton
 
 def range_gen(g, n):
@@ -55,7 +58,7 @@ def range_gen(g, n):
             break
 
 def prepare_functions(funcs_str, frame):
-    bit_automaton = BitAutomaton(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
+    bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
     
     d_vars = bit_automaton.d_vars
     field_size = bit_automaton.field_size
@@ -97,10 +100,15 @@ def prepare_functions(funcs_str, frame):
 
 
 if __name__ == '__main__':
+    # with gzip.open('/run/user/1000/save_images/test_other_2021-01-18_09:18:00_1C04BE34/dm_obj.pkl.gz', 'rb') as f:
+    #     dm_obj = dill.load(f)
+
+    # sys.exit()
+
     frame = 2
     frame_wrap = True
     
-    bit_automaton = BitAutomaton(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
+    bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
 
     funcs_str_inv = "def inv(x):\n return ~x\n"
     funcs_str_rng = """
@@ -259,7 +267,7 @@ def rng(seed=0):
 
     amount_bit_automaton = arr_bits.shape[0]
 
-    l_bit_automaton = [BitAutomaton(h=h, w=w, frame=frame, frame_wrap=frame_wrap, l_func=l_func, func_inv=func_inv, func_rng=func_rng) for _ in range(0, amount_bit_automaton)]
+    l_bit_automaton = [BitAutomaton().init_vals(h=h, w=w, frame=frame, frame_wrap=frame_wrap, l_func=l_func, func_inv=func_inv, func_rng=func_rng) for _ in range(0, amount_bit_automaton)]
 
     for bit_automaton, bits in zip(l_bit_automaton, arr_bits):
         bit_automaton.set_field(bits.astype(np.bool))
@@ -344,15 +352,17 @@ def rng(seed=0):
         arr_row[u2 + amount_historic_numbers*1] = c2
         arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
 
-    d_obj = {}
-    d_obj['frame'] = frame
-    d_obj['frame_wrap'] = frame_wrap
-    d_obj['l_bit_automaton'] = l_bit_automaton
-    d_obj['arr_pixs'] = arr_pixs
-    d_obj['arr_historic_ranges'] = arr_historic_ranges
+    # TODO: find dynamic_ in other files too! correct this in every files!
+    dm_obj = DotMap(_dynamic=None)
+    dm_obj['frame'] = frame
+    dm_obj['frame_wrap'] = frame_wrap
+    dm_obj['l_bit_automaton'] = l_bit_automaton
+    dm_obj['arr_pixs'] = arr_pixs
+    dm_obj['arr_historic_ranges'] = arr_historic_ranges
+    dm_obj['func_str'] = l_func_str_sorted[0]
 
-    with gzip.open(os.path.join(dir_path_images, 'd_obj.pkl.gz'), 'wb') as f:
-        dill.dump(d_obj, f)
+    with gzip.open(os.path.join(dir_path_images, utils_cluster.dm_obj_file_name), 'wb') as f:
+        dill.dump(dm_obj, f)
 
     sys.exit()
 

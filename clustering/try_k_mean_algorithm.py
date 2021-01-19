@@ -45,6 +45,8 @@ from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
 import utils
 
+import utils_cluster
+
 if __name__ == '__main__':
     l_n = [30, 100, 84]
 
@@ -55,27 +57,9 @@ if __name__ == '__main__':
 
     points = np.vstack(l_v)
 
-    def calculate_clusters(points, cluster_amount, iterations):
-        point_dim = points.shape[1]
-        cluster_points = points[np.random.permutation(np.arange(0, len(points)))[:cluster_amount]].copy()
-        print("before cluster_points:\n{}".format(cluster_points))
-
-        # calc new clusters!
-        for i_nr in range(1, iterations + 1):
-            print("i_nr: {}".format(i_nr))
-
-            arr_argmin = np.argmin(np.sum((points.reshape((-1, 1, point_dim)) - cluster_points.reshape((1, -1, point_dim)))**2, axis=2), axis=1)
-
-            for i in range(0, cluster_amount):
-                arr = points[arr_argmin==i]
-                cluster_points[i] = np.mean(arr, axis=0)
-            
-            print("- after cluster_points:\n{}".format(cluster_points))
-
-        return cluster_points
     # sys.exit()
 
-    cluster_points = calculate_clusters(points, 4, 100)
+    cluster_points, arr_error = utils_cluster.calculate_clusters(points, 4, 100)
 
     xs, ys = points.T
     xs_c, ys_c = cluster_points.T
@@ -84,5 +68,9 @@ if __name__ == '__main__':
 
     plt.plot(xs, ys, color='#0000FF', marker='.', ms=2., ls='')
     plt.plot(xs_c, ys_c, color='#00FF00', marker='.', ms=8., ls='')
+
+    plt.figure()
+
+    plt.plot(np.arange(0, arr_error.shape[0]), arr_error, color='#00FF00', marker='.', ms=8., ls='-')
 
     plt.show()
