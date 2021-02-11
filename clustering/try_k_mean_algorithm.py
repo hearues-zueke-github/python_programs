@@ -28,8 +28,6 @@ from os.path import expanduser
 
 import itertools
 
-import matplotlib.pyplot as plt
-
 import multiprocessing as mp
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
@@ -47,30 +45,49 @@ import utils
 
 import utils_cluster
 
-if __name__ == '__main__':
-    l_n = [30, 100, 84]
+def main():
+    l_n = [380, 180, 284]
 
     l_mean = [(1, 3), (4, 8), (-1, 5)]
     l_std = [(1., 2.), (1., 0.7), (0.5, 1.25)]
 
-    l_v = [np.random.normal(mean, std, (n, 2)) for n, mean, std in zip(l_n, l_mean, l_std)]
+    l_v = [np.random.normal(mean, std, (n, 2)).astype(np.float128) for n, mean, std in zip(l_n, l_mean, l_std)]
 
     points = np.vstack(l_v)
 
+    cluster_amount = 3
+    iterations = 100
+
+    assert len(utils_cluster.l_color) >= cluster_amount
     # sys.exit()
 
-    cluster_points, arr_error = utils_cluster.calculate_clusters(points, 4, 100)
+    cluster_points, l_cluster_points_correspond, arr_error, l_error_cluster, l_cluster = utils_cluster.calculate_clusters(
+        points=points,
+        cluster_amount=cluster_amount,
+        iterations=iterations,
+    )
 
-    xs, ys = points.T
-    xs_c, ys_c = cluster_points.T
+    utils_cluster.get_plots(
+        cluster_points=cluster_points,
+        l_cluster_points_correspond=l_cluster_points_correspond,
+        arr_error=arr_error,
+        l_error_cluster=l_error_cluster,
+    )
 
-    plt.figure()
+    # xs, ys = points.T
 
-    plt.plot(xs, ys, color='#0000FF', marker='.', ms=2., ls='')
-    plt.plot(xs_c, ys_c, color='#00FF00', marker='.', ms=8., ls='')
+    dm =  utils_cluster.do_clustering_silhouette(points, l_cluster, cluster_amount)
+    l_cluster_val_s = dm.l_cluster_val_s
 
-    plt.figure()
+    # l_arr_val_s = np.array([(np.min(arr_val_s), np.median(arr_val_s), np.max(arr_val_s)) for arr_val_s in l_cluster_val_s])
+    # pprint(l_arr_val_s)
 
-    plt.plot(np.arange(0, arr_error.shape[0]), arr_error, color='#00FF00', marker='.', ms=8., ls='-')
+    l_mean_val_s = [np.mean(l) for l in l_cluster_val_s]
+    print('l_mean_val_s:')
+    pprint(l_mean_val_s)
 
-    plt.show()
+    return DotMap(locals(), _dynamic=None)
+
+
+if __name__ == '__main__':
+    dm = main()

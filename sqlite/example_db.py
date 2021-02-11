@@ -26,7 +26,6 @@ def create_table_colors(conn):
     conn.commit()
 
 
-
 def get_whole_table(conn, table_name):
     cur = conn.cursor()
     cur.execute('SELECT * FROM {}'.format(table_name))

@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     # sys.exit()
 
-    frame = 2
+    frame = 1
     frame_wrap = True
     
     bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
@@ -113,10 +113,10 @@ if __name__ == '__main__':
     funcs_str_inv = "def inv(x):\n return ~x\n"
     funcs_str_rng = """
 def rng(seed=0):
-    a = seed
-    while True:
-        a = ((a + 19) ^ 0x2343) % 15232
-        yield a % 13
+ a = seed
+ while True:
+  a = ((a + 19) ^ 0x2343) % 15232
+  yield a % 13
 
 """
 
@@ -174,9 +174,9 @@ def rng(seed=0):
     n_func_max = 1
     # n_func_min = 5
     # n_func_max = 25
-    n_or_min = 8
-    n_or_max = 15
-    n_and_min = 4
+    n_or_min = 2
+    n_or_max = 10
+    n_and_min = 2
     n_and_max = 6
 
     n_func = np.random.randint(n_func_min, n_func_max + 1)
@@ -255,8 +255,8 @@ def rng(seed=0):
     # dir_path_images = os.path.join(TEMP_DIR, 'save_images/{}/'.format(file_name.split('.')[0]))
     utils.mkdirs(dir_path_images)
     
-    dit_path_combined_images = os.path.join(dir_path_save_images, 'combined_images')
-    utils.mkdirs(dit_path_combined_images)
+    dir_path_combined_images = os.path.join(dir_path_save_images, 'combined_images')
+    utils.mkdirs(dir_path_combined_images)
 
     file_path_funcs = os.path.join(dir_path_images, 'test_functions_python.py')
     with open(file_path_funcs, 'w') as f:
@@ -326,14 +326,34 @@ def rng(seed=0):
 
         l_pix.append(pix2)
 
-    arr_pixs = np.array(l_pix)//255
+    arr_pixs = np.array(l_pix) // 255
 
     amount_historic_numbers = (frame * 2 + 1)**2 + 1
     # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
 
-    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 3*amount_historic_numbers), dtype=np.int)
+    def calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix):
+        pix_sum_ranges = np.zeros(pix.shape, dtype=np.int)
+        
+        for move_y, move_x in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
+            pix_sum_ranges += np.roll(np.roll(pix, move_x, axis=1), move_y, axis=0)
+        
+        pix_erosion = (pix_sum_ranges == 5).astype(np.uint8)
+        pix_dilation = (pix_sum_ranges == 5).astype(np.uint8)
 
-    for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
+        pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int)
+        pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        for move_y in range(-frame, frame+1, 1):
+            for move_x in range(-frame, frame+1, 1):
+                pix_erosion_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
+                pix_dilation_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
+
+        u_e, c_e = np.unique(pix_erosion_sum_ranges, return_counts=True)
+        u_d, c_d = np.unique(pix_dilation_sum_ranges, return_counts=True)
+
+        return u_e, c_e, u_d, c_d
+
+
+    def calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_row):
         pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int)
         pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
         pix1xor2 = pix1 ^ pix2
@@ -347,10 +367,26 @@ def rng(seed=0):
         u1, c1 = np.unique(pix1_sum_ranges, return_counts=True)
         u2, c2 = np.unique(pix2_sum_ranges, return_counts=True)
         u1xor2, c1xor2 = np.unique(pix1xor2_sum_ranges, return_counts=True)
-        arr_row = arr_historic_ranges[i]
+
+        u1_e, c1_e, u1_d, c1_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1)
+        u2_e, c2_e, u2_d, c2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix2)
+        u1xor2_e, c1xor2_e, u1xor2_d, c1xor2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1xor2)
+
         arr_row[u1 + amount_historic_numbers*0] = c1
         arr_row[u2 + amount_historic_numbers*1] = c2
         arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
+
+        arr_row[u1_e + amount_historic_numbers*3] = c1_e
+        arr_row[u1_d + amount_historic_numbers*4] = c1_d
+        arr_row[u2_e + amount_historic_numbers*5] = c2_e
+        arr_row[u2_d + amount_historic_numbers*6] = c2_d
+        arr_row[u1xor2_e + amount_historic_numbers*7] = c1xor2_e
+        arr_row[u1xor2_d + amount_historic_numbers*8] = c1xor2_d
+
+    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int)
+
+    for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
+        calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_historic_ranges[i])
 
     # TODO: find dynamic_ in other files too! correct this in every files!
     dm_obj = DotMap(_dynamic=None)
@@ -360,11 +396,13 @@ def rng(seed=0):
     dm_obj['arr_pixs'] = arr_pixs
     dm_obj['arr_historic_ranges'] = arr_historic_ranges
     dm_obj['func_str'] = l_func_str_sorted[0]
+    dm_obj['_version'] = utils_cluster.__version__
 
     with gzip.open(os.path.join(dir_path_images, utils_cluster.dm_obj_file_name), 'wb') as f:
         dill.dump(dm_obj, f)
 
     sys.exit()
+
 
     h_space_horizontal = l_pix[0].shape[0]
     w_space_horizontal = 10
@@ -391,5 +429,5 @@ def rng(seed=0):
         return np.vstack(l)
     
     pix_vertical = combine_l_pix_vertical(l_pix_horizontal)
-    file_path = os.path.join(dit_path_combined_images, '{}.png'.format(folder_name))
+    file_path = os.path.join(dir_path_combined_images, '{}.png'.format(folder_name))
     Image.fromarray(pix_vertical).save(file_path)
