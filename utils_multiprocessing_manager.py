@@ -19,14 +19,14 @@ class MultiprocessingManager(Exception):
         self.pipes_recv_main, self.pipes_send_worker = list(zip(*[Pipe(duplex=False) for _ in range(0, self.worker_amount)]))
 
         self.l_worker_proc = [
-            Process(target=self.worker_thread, args=(i, pipe_in, pipe_out))
+            Process(target=self._worker_thread, args=(i, pipe_in, pipe_out))
             for i, pipe_in, pipe_out in zip(range(0, self.worker_amount), self.pipes_recv_worker, self.pipes_send_worker)
         ]
         for proc in self.l_worker_proc:
             proc.start()
 
 
-    def worker_thread(self, worker_nr, pipe_in, pipe_out):
+    def _worker_thread(self, worker_nr, pipe_in, pipe_out):
         d_func = {}
         while True:
             if pipe_in.poll():
