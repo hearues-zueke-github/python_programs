@@ -46,26 +46,36 @@ import utils
 import utils_cluster
 
 def main():
-    l_n = [380, 180, 284]
+    l_n_mean_std = [
+        (380, (1, 3), (1., 2.), ),
+        (180, (4, 8), (1., 0.7), ),
+        (284, (-1, 5), (0.5, 1.25), ),
+        (450, (2, -1), (0.6, 2.25), ),
+    ]
 
-    l_mean = [(1, 3), (4, 8), (-1, 5)]
-    l_std = [(1., 2.), (1., 0.7), (0.5, 1.25)]
-
-    l_v = [np.random.normal(mean, std, (n, 2)).astype(np.float128) for n, mean, std in zip(l_n, l_mean, l_std)]
+    l_v = [np.random.normal(mean, std, (n, 2)).astype(np.float128) for n, mean, std in l_n_mean_std]
 
     points = np.vstack(l_v)
 
-    cluster_amount = 3
+    cluster_amount = len(l_n_mean_std)
     iterations = 100
 
     assert len(utils_cluster.l_color) >= cluster_amount
     # sys.exit()
 
-    cluster_points, l_cluster_points_correspond, arr_error, l_error_cluster, l_cluster = utils_cluster.calculate_clusters(
+    calc_cluster_data = utils_cluster.calculate_clusters(
         points=points,
         cluster_amount=cluster_amount,
         iterations=iterations,
     )
+
+    globals()['calc_cluster_data'] = calc_cluster_data
+
+    cluster_points = calc_cluster_data.cluster_points
+    l_cluster_points_correspond = calc_cluster_data.l_cluster_points_correspond
+    arr_error = calc_cluster_data.arr_error
+    l_error_cluster = calc_cluster_data.l_error_cluster
+    l_cluster = calc_cluster_data.arr_argmin
 
     utils_cluster.get_plots(
         cluster_points=cluster_points,

@@ -1,6 +1,8 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6
+#! /usr/bin/env -S /usr/bin/time /usr/bin/pypy3.7 -i
 
 # -*- coding: utf-8 -*-
+
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6 -i
 
 import dill
 import gzip
@@ -43,6 +45,7 @@ from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
 import global_object_getter_setter
 import utils
 from utils_function import copy_function
+from utils_multiprocessing_manager import MultiprocessingManager
 
 sys.path.append("../clustering/")
 import utils_cluster
@@ -51,13 +54,24 @@ from bit_automaton import BitAutomaton
 
 def range_gen(g, n):
     i = 0
-    while (v := next(g)) != None:
+    v = next(g)
+    while v != None:
         yield v
+        v = next(g)
         i += 1
         if i == n:
             break
 
-def prepare_functions(funcs_str, frame):
+# def range_gen(g, n):
+#     i = 0
+#     while (v := next(g)) != None:
+#         yield v
+#         i += 1
+#         if i == n:
+#             break
+
+
+def prepare_functions(funcs_str, frame) -> Tuple[List[Any], Any, Any, int]:
     bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
     
     d_vars = bit_automaton.d_vars
@@ -70,6 +84,7 @@ def prepare_functions(funcs_str, frame):
     assert 'rng' in d_func_keys
     assert 'inv' in d_func_keys
     assert 'l_func' in d_func_keys
+    assert 'start_seed' in d_func_keys
 
     func_inv = copy_function(d_func['inv'])
 
@@ -96,15 +111,12 @@ def prepare_functions(funcs_str, frame):
     func_inv = d_func['inv']
     func_rng = d_func['rng']
 
-    return l_func, func_inv, func_rng
+    start_seed = d_func['start_seed']
+
+    return l_func, func_inv, func_rng, start_seed
 
 
-if __name__ == '__main__':
-    # with gzip.open('/run/user/1000/save_images/test_other_2021-01-18_09:18:00_1C04BE34/dm_obj.pkl.gz', 'rb') as f:
-    #     dm_obj = dill.load(f)
-
-    # sys.exit()
-
+def create_new_automaton():
     frame = 1
     frame_wrap = True
     
@@ -172,8 +184,8 @@ def rng(seed=0):
     # TODO: save the data to a file too!
     n_func_min = 1
     n_func_max = 1
-    # n_func_min = 5
-    # n_func_max = 25
+    # n_func_min = 2
+    # n_func_max = 4
     n_or_min = 2
     n_or_max = 10
     n_and_min = 2
@@ -198,20 +210,22 @@ def rng(seed=0):
     func_str = ', '.join([func_name for func_name in l_func_name])
     funcs_str_func = '\n'.join(l_func_str_sorted)
     
-    func_list_str = 'l_func = [{}]\n'.format(func_str)
+    func_list_str = 'l_func = [{}]'.format(func_str)
 
     funcs_str = '\n'.join([
         inspect.cleandoc(funcs_str_rng)+'\n',
         funcs_str_inv,
         funcs_str_func,
         func_list_str,
+        'start_seed = 0',
+        '\n',
     ])
 
     # sys.exit()
 
     # TODO: create some random functions too!
 
-    l_func, func_inv, func_rng = prepare_functions(funcs_str=funcs_str, frame=frame)
+    l_func, func_inv, func_rng, start_seed = prepare_functions(funcs_str=funcs_str, frame=frame)
 
 
     # path_images = PATH_ROOT_DIR + 'images/'
@@ -257,6 +271,9 @@ def rng(seed=0):
     
     dir_path_combined_images = os.path.join(dir_path_save_images, 'combined_images')
     utils.mkdirs(dir_path_combined_images)
+
+    dir_path_combined_images_xor = os.path.join(dir_path_save_images, 'combined_images_xor')
+    utils.mkdirs(dir_path_combined_images_xor)
 
     file_path_funcs = os.path.join(dir_path_images, 'test_functions_python.py')
     with open(file_path_funcs, 'w') as f:
@@ -311,7 +328,7 @@ def rng(seed=0):
     iterations_amount = cols * rows
     l_func_nr = list(range(0, len(l_func)))
     amount_function_mod = len(l_func_nr)
-    rng = func_rng(seed=0)
+    rng = func_rng(seed=start_seed)
     for i in range(1, iterations_amount):
     # for i in range(1, 100):
         func_nr = l_func_nr[next(rng) % amount_function_mod]
@@ -332,7 +349,7 @@ def rng(seed=0):
     # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
 
     def calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix):
-        pix_sum_ranges = np.zeros(pix.shape, dtype=np.int)
+        pix_sum_ranges = np.zeros(pix.shape, dtype=np.int_)
         
         for move_y, move_x in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
             pix_sum_ranges += np.roll(np.roll(pix, move_x, axis=1), move_y, axis=0)
@@ -340,8 +357,8 @@ def rng(seed=0):
         pix_erosion = (pix_sum_ranges == 5).astype(np.uint8)
         pix_dilation = (pix_sum_ranges == 5).astype(np.uint8)
 
-        pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int)
-        pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
+        pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
         for move_y in range(-frame, frame+1, 1):
             for move_x in range(-frame, frame+1, 1):
                 pix_erosion_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
@@ -354,10 +371,10 @@ def rng(seed=0):
 
 
     def calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_row):
-        pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int)
-        pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
+        pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
         pix1xor2 = pix1 ^ pix2
-        pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int)
+        pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
         for move_y in range(-frame, frame+1, 1):
             for move_x in range(-frame, frame+1, 1):
                 pix1_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
@@ -383,7 +400,7 @@ def rng(seed=0):
         arr_row[u1xor2_e + amount_historic_numbers*7] = c1xor2_e
         arr_row[u1xor2_d + amount_historic_numbers*8] = c1xor2_d
 
-    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int)
+    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int_)
 
     for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
         calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_historic_ranges[i])
@@ -401,33 +418,71 @@ def rng(seed=0):
     with gzip.open(os.path.join(dir_path_images, utils_cluster.dm_obj_file_name), 'wb') as f:
         dill.dump(dm_obj, f)
 
-    sys.exit()
+    # sys.exit()
+
+    def combine_all_pix(l_pix, w_space_horizontal=10, h_space_vertical=10):
+        h_space_horizontal = l_pix[0].shape[0]
+        # w_space_horizontal = 10
+        arr_space_horizontal = np.zeros((h_space_horizontal, w_space_horizontal), dtype=np.uint8) + 0x80
+
+        def combine_l_pix_horizontal(l_pix_part : List[np.ndarray]) -> np.ndarray:
+            l = [l_pix_part[0]]
+            for pix in l_pix_part[1:]:
+                l.append(arr_space_horizontal)
+                l.append(pix)
+            return np.hstack(l)
+
+        l_pix_horizontal = [combine_l_pix_horizontal(l_pix[cols*i:cols*(i+1)]) for i in range(0, rows)]
+
+        w_space_vertical = l_pix_horizontal[0].shape[1]
+        # h_space_vertical = 10
+        arr_space_vertical = np.zeros((h_space_vertical, w_space_vertical), dtype=np.uint8) + 0x80
+
+        def combine_l_pix_vertical(l_pix_part : List[np.ndarray]) -> np.ndarray:
+            l = [l_pix_part[0]]
+            for pix in l_pix_part[1:]:
+                l.append(arr_space_vertical)
+                l.append(pix)
+            return np.vstack(l)
+        
+        pix_vertical = combine_l_pix_vertical(l_pix_horizontal)
+
+        return pix_vertical
+
+    pix_combine = combine_all_pix(l_pix=l_pix)
+    file_path_combine = os.path.join(dir_path_combined_images, '{}.png'.format(folder_name))
+    Image.fromarray(pix_combine).save(file_path_combine)
+
+    l_pix_xor = [np.zeros(l_pix[0].shape, dtype=np.uint8) + 0x40] + [pix1 ^ pix2 for pix1, pix2 in zip(l_pix[:-1], l_pix[1:])]
+    pix_combine_xor = combine_all_pix(l_pix=l_pix_xor)
+    file_path_combine_xor = os.path.join(dir_path_combined_images_xor, '{}.png'.format(folder_name))
+    Image.fromarray(pix_combine_xor).save(file_path_combine_xor)
 
 
-    h_space_horizontal = l_pix[0].shape[0]
-    w_space_horizontal = 10
-    arr_space_horizontal = np.zeros((h_space_horizontal, w_space_horizontal), dtype=np.uint8) + 0x80
-
-    def combine_l_pix_horizontal(l_pix_part : List[np.ndarray]) -> np.ndarray:
-        l = [l_pix_part[0]]
-        for pix in l_pix_part[1:]:
-            l.append(arr_space_horizontal)
-            l.append(pix)
-        return np.hstack(l)
-
-    l_pix_horizontal = [combine_l_pix_horizontal(l_pix[cols*i:cols*(i+1)]) for i in range(0, rows)]
-
-    w_space_vertical = l_pix_horizontal[0].shape[1]
-    h_space_vertical = 10
-    arr_space_vertical = np.zeros((h_space_vertical, w_space_vertical), dtype=np.uint8) + 0x80
-
-    def combine_l_pix_vertical(l_pix_part : List[np.ndarray]) -> np.ndarray:
-        l = [l_pix_part[0]]
-        for pix in l_pix_part[1:]:
-            l.append(arr_space_vertical)
-            l.append(pix)
-        return np.vstack(l)
+if __name__ == '__main__':
+    # with gzip.open('/run/user/1000/save_images/test_other_2021-01-18_09:18:00_1C04BE34/dm_obj.pkl.gz', 'rb') as f:
+    #     dm_obj = dill.load(f)
     
-    pix_vertical = combine_l_pix_vertical(l_pix_horizontal)
-    file_path = os.path.join(dir_path_combined_images, '{}.png'.format(folder_name))
-    Image.fromarray(pix_vertical).save(file_path)
+    # create_new_automaton()
+    # sys.exit()
+
+    def create_many_new_automaton(n: int) -> None:
+        np.random.seed()
+        for i in range(0, n):
+            print("i: {}".format(i))
+            create_new_automaton()
+
+    mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+
+    print('Define new Function!')
+    mult_proc_mng.define_new_func('func_create_many_new_automaton', create_many_new_automaton)
+
+    print('Do the jobs!!')
+    l_arguments = []
+    l_ret = mult_proc_mng.do_new_jobs(
+        ['func_create_many_new_automaton']*mult_proc_mng.cpu_count,
+        [(30, )]*mult_proc_mng.cpu_count,
+    )
+    print("len(l_ret): {}".format(len(l_ret)))
+
+    del mult_proc_mng

@@ -18,19 +18,43 @@ dm_obj_file_name = 'dm_obj.pkl.gz'
 l_hex_str = ['00', '40', '80', 'C0', 'FF']
 l_color = ['#{}{}{}'.format(col_r, col_g, col_b) for col_r in l_hex_str for col_g in l_hex_str for col_b in l_hex_str]
 
-def calculate_clusters(points : np.ndarray, cluster_amount : int, iterations : int) \
--> Tuple[np.ndarray, List[np.ndarray], np.ndarray, List[List[np.float128]], np.ndarray]:
+class CalcClusterData(Exception):
+    __slot__ = [
+        'cluster_points',
+        'l_cluster_points_correspond',
+        'arr_error',
+        'l_error_cluster',
+        'arr_argmin',
+    ]
+
+    def __init__(
+        self,
+        cluster_points: np.ndarray,
+        l_cluster_points_correspond: List[np.ndarray],
+        arr_error: np.ndarray,
+        l_error_cluster: List[List[np.float128]],
+        arr_argmin: np.ndarray
+    ):
+        self.cluster_points = cluster_points
+        self.l_cluster_points_correspond = l_cluster_points_correspond
+        self.arr_error = arr_error
+        self.l_error_cluster = l_error_cluster
+        self.arr_argmin = arr_argmin
+
+
+def calculate_clusters(points: np.ndarray, cluster_amount: int, iterations: int, epsilon: float=0.0001) \
+-> CalcClusterData:
     point_dim = points.shape[1]
     # cluster_amount <= points.shape[0] !!!
     cluster_points = points[np.random.permutation(np.arange(0, len(points)))[:cluster_amount]].copy()
     # print("before cluster_points:\n{}".format(cluster_points))
 
     # calc new clusters!
-    l_error : List[np.float128] = []
-    l_error_cluster : List[List[np.float128]] = [[] for _ in range(0, cluster_amount)]
+    l_error: List[np.float128] = []
+    l_error_cluster: List[List[np.float128]] = [[] for _ in range(0, cluster_amount)]
 
-    cluster_points_prev : np.ndarray = cluster_points.copy()
-    i_nr : int
+    cluster_points_prev: np.ndarray = cluster_points.copy()
+    i_nr: int
     for i_nr in range(0, iterations + 1):
         arr_sums_diff = np.sqrt(np.sum((points.reshape((-1, 1, point_dim)) - cluster_points.reshape((1, -1, point_dim)))**2, axis=2))
 
@@ -45,9 +69,9 @@ def calculate_clusters(points : np.ndarray, cluster_amount : int, iterations : i
 
         l_error_cluster_one = []
 
-        i : int
+        i: int
         for i in range(0, cluster_amount):
-            arr_idxs : np.ndarray = arr_argmin==i
+            arr_idxs: np.ndarray = arr_argmin==i
             if arr_idxs.shape[0] == 0:
                 continue
             arr = points[arr_idxs]
@@ -73,7 +97,7 @@ def calculate_clusters(points : np.ndarray, cluster_amount : int, iterations : i
     for i in range(0, cluster_amount):
         l_cluster_points_correspond.append(points[arr_argmin==i])
 
-    return cluster_points, l_cluster_points_correspond, arr_error, l_error_cluster, arr_argmin
+    return CalcClusterData(cluster_points, l_cluster_points_correspond, arr_error, l_error_cluster, arr_argmin)
 
 
 def get_plots(cluster_points, l_cluster_points_correspond, arr_error, l_error_cluster):

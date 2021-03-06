@@ -4,6 +4,33 @@ import time
 from collections import deque
 from multiprocessing import Process, Pipe
 
+'''
+Example of usage:
+
+def f(x):
+    return x**2
+
+mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+
+# # only for testing the responsivness!
+# mult_proc_mng.test_worker_threads_response()
+
+print('Define new Function!')
+mult_proc_mng.define_new_func('func_f', f)
+print('Do the jobs!!')
+l_arguments = [(x*2, ) for x in range(0, 100)]
+l_ret = mult_proc_mng.do_new_jobs(
+    ['func_f']*len(l_arguments),
+    l_arguments,
+)
+print("len(l_ret): {}".format(len(l_ret)))
+# print("l_ret: {}".format(l_ret))
+
+# # testing the responsivness again!
+# mult_proc_mng.test_worker_threads_response()
+del mult_proc_mng
+'''
+
 WORKER_SLEEP_TIME = 0.02
 MANAGER_SLEEP_TIME = 0.02
 
