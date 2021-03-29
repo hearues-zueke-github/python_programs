@@ -1,11 +1,7 @@
-// #include <stdio.h>
-
 #include "simple_library.h"
 
 int main(int argc, char* argv[]) {
-  // printf("Hello World!");
-
-  func_b(1, 3);
+   func_b(1, 2);
 
   return 0;
 }
