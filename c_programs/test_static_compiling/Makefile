@@ -30,6 +30,8 @@ all:
 	make simple_library
 	make main_with_simple_library
 	make main_without_simple_library
+
+all_optimized:
 	make simple_library_O2
 	make main_with_simple_library_O2
 	make main_without_simple_library_O2
