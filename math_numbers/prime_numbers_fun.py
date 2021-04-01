@@ -1,5 +1,7 @@
 #! /usr/bin/python2.7
 
+import sys
+
 import numpy as np
 
 def get_primes(n):
@@ -104,5 +106,13 @@ def sequence_3():
 
 
 if __name__ == "__main__":
+    n_max = 10000000
+    l_primes = list(get_primes(n_max))
+    
+    print("n_max: {}".format(n_max))
+    print("len(l_primes): {}".format(len(l_primes)))
+
+    sys.exit()
+
     # sequence_1()
     sequence_2()

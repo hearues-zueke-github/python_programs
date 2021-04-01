@@ -4,6 +4,33 @@ import time
 from collections import deque
 from multiprocessing import Process, Pipe
 
+'''
+Example of usage:
+
+def f(x):
+    return x**2
+
+mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+
+# # only for testing the responsivness!
+# mult_proc_mng.test_worker_threads_response()
+
+print('Define new Function!')
+mult_proc_mng.define_new_func('func_f', f)
+print('Do the jobs!!')
+l_arguments = [(x*2, ) for x in range(0, 100)]
+l_ret = mult_proc_mng.do_new_jobs(
+    ['func_f']*len(l_arguments),
+    l_arguments,
+)
+print("len(l_ret): {}".format(len(l_ret)))
+# print("l_ret: {}".format(l_ret))
+
+# # testing the responsivness again!
+# mult_proc_mng.test_worker_threads_response()
+del mult_proc_mng
+'''
+
 WORKER_SLEEP_TIME = 0.02
 MANAGER_SLEEP_TIME = 0.02
 
@@ -19,14 +46,14 @@ class MultiprocessingManager(Exception):
         self.pipes_recv_main, self.pipes_send_worker = list(zip(*[Pipe(duplex=False) for _ in range(0, self.worker_amount)]))
 
         self.l_worker_proc = [
-            Process(target=self.worker_thread, args=(i, pipe_in, pipe_out))
+            Process(target=self._worker_thread, args=(i, pipe_in, pipe_out))
             for i, pipe_in, pipe_out in zip(range(0, self.worker_amount), self.pipes_recv_worker, self.pipes_send_worker)
         ]
         for proc in self.l_worker_proc:
             proc.start()
 
 
-    def worker_thread(self, worker_nr, pipe_in, pipe_out):
+    def _worker_thread(self, worker_nr, pipe_in, pipe_out):
         d_func = {}
         while True:
             if pipe_in.poll():
@@ -39,7 +66,11 @@ class MultiprocessingManager(Exception):
                     pipe_out.send((worker_nr, "Finished 'func_def_new'"))
                 elif name == 'func_def_exec':
                     func_name, func_args = args
-                    ret_val = d_func[func_name](*func_args)
+                    try:
+                        ret_val = d_func[func_name](*func_args)
+                    except:
+                        print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, func_args, worker_nr))
+                        ret_val = None
                     ret_tpl = (worker_nr, ret_val)
                     pipe_out.send(ret_tpl)
                 elif name == 'test_ret':

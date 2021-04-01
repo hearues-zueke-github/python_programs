@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6 -i
 
 # -*- coding: utf-8 -*-
 
@@ -96,8 +96,11 @@ assert 1234567==convert_lst_bin_to_int(convert_int_to_lst_bin(1234567))
 assert [1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]==convert_int_to_lst_bin(convert_lst_bin_to_int([1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]))
 
 
-arr_prefix : np.ndarray = np.array(convert_int_to_lst_bin(0xabcd), dtype=np.uint8)
-arr_suffix : np.ndarray = np.array(convert_int_to_lst_bin(0x34bf), dtype=np.uint8)
+prefix_int : int = 0xabcd2533
+suffix_int : int = 0x34bf4634
+
+arr_prefix : np.ndarray = np.array(convert_int_to_lst_bin(prefix_int), dtype=np.uint8)
+arr_suffix : np.ndarray = np.array(convert_int_to_lst_bin(suffix_int), dtype=np.uint8)
 
 len_arr_prefix = arr_prefix.shape[0]
 len_arr_suffix = arr_suffix.shape[0]
@@ -121,8 +124,8 @@ if __name__ == '__main__':
     # MAX_WIDTH = 800
     # MAX_HEIGHT = 600
 
-    img : Image = Image.open(img_src_path)
-    pix : np.ndarray = np.array(img)
+    img_src_orig : Image = Image.open(img_src_path)
+    pix : np.ndarray = np.array(img_src_orig)
     if not os.path.exists(img_src_new_path):
         if len(pix.shape)==3:
             # remove alpha channel, if alpha is contained! also save the file again.
@@ -143,15 +146,19 @@ if __name__ == '__main__':
 
         img2.save(img_src_new_path)
 
-    img : Image = Image.open(img_src_new_path)
-    pix_orig : np.ndarray = np.array(img)
+    img_src : Image = Image.open(img_src_new_path)
+    pix_orig : np.ndarray = np.array(img_src)
 
     assert len(pix_orig.shape) == 3
     assert pix_orig.shape[2] == 3
 
+    shape_img_src : Tuple[int, int, int] = pix_orig.shape
+    print("shape_img_src: {}".format(shape_img_src))
+
     pix : np.ndarray = pix_orig.copy()
 
-    arr_1_bit :np.ndarray = (pix & 0x1).reshape((-1, ))
+    arr_1_bit : np.ndarray = (pix & 0x1).reshape((-1, ))
+    arr_1_bit_orig : np.ndarray = arr_1_bit.copy()
     len_arr_1_bit : int = arr_1_bit.shape[0]
 
     l_secret_str = [
@@ -159,6 +166,11 @@ if __name__ == '__main__':
         'this is',
         'a little test! 123?',
         """def print_some_stuff():\n print(\"Test! 123=!=!=!= xD\")""",
+        'lolololululululusfsfsdlfjsdlfjsdlfjsfjsfjsklfjksjfsjfsfjsdlfjafwefawoi',
+        'lolololululululusfsfsdlfjsdlf',
+        'lolololulululujsdlfjsfjsfjsklfjksjfsjfsfjsdlfjafwefawoi',
+        'lolololulululujsdlfjsfjsfjsklfjksjfsjfsfjsdlfjafwefawoi'*3,
+        'lolololulululujsdlfjsfjsfjsklfjksjfsjfsfjsdlfjafwefawoi'*6,
     ]
 
     # amount_secrets = 2
@@ -243,8 +255,14 @@ if __name__ == '__main__':
 
     pix_secret = (pix & 0xF8) | arr_1_bit.reshape(pix.shape)
 
+    pix_1_bit_orig = arr_1_bit_orig.reshape(shape_img_src) * 255
+    pix_1_bit = arr_1_bit.reshape(shape_img_src) * 255
+
+    Image.fromarray(pix_1_bit_orig).save('images/img_path_src_1bit_orig.png')
+    Image.fromarray(pix_1_bit).save('images/img_path_src_1bit_encoded_in.png')
+
     img_secret : Image = Image.fromarray(pix_secret)
-    img_secret.save(img_dst_path)    
+    img_secret.save(img_dst_path)
 
     
     img_src = Image.open(img_src_new_path)
