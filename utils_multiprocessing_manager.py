@@ -31,8 +31,8 @@ print("len(l_ret): {}".format(len(l_ret)))
 del mult_proc_mng
 '''
 
-WORKER_SLEEP_TIME = 0.02
-MANAGER_SLEEP_TIME = 0.02
+WORKER_SLEEP_TIME = 0.001
+MANAGER_SLEEP_TIME = 0.001
 
 class MultiprocessingManager(Exception):
     def __init__(self, cpu_count):
