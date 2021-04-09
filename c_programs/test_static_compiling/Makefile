@@ -1,5 +1,7 @@
 CC=gcc
-CFLAGS=-Wall # -fPIC # -static
+#CFLAGS=-Wall -fPIC -static
+CFLAGS=-Wall -Wl,--gc-sections -fdata-sections -ffunction-sections -Os -fPIC -static
+#CFLAGS=-Wall -Wl,--gc-sections -fdata-sections -ffunction-sections -Os # -fPIC -static
 OBJ_DIR=objs/
 
 .DEFAULT_GOAL=all
