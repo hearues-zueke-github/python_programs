@@ -70,17 +70,21 @@ if __name__ == '__main__':
 
     # field[:] = (field.flatten()+list(range(0, 9))).reshape((3, 3))
 
+    # The lengths of the different cluster sizes! for n=3 and in 2-d there are
+    # only lengths 1, 2 and 3.
     d_pos_list_clusters = {}
 
     # length 1
     d_pos_list_clusters[1] = [([y], [x]) for y in range(0, n) for x in range(0, n)]
     
+    # length 2
     d_pos_list_clusters[2] = \
         [([y, y+1], [x, x]) for y in range(0, n-1) for x in range(0, n)] + \
         [([y, y], [x, x+1]) for y in range(0, n) for x in range(0, n-1)] + \
         [([y, y+1], [x, x+1]) for y in range(0, n-1) for x in range(0, n-1)] + \
         [([y, y+1], [x+1, x]) for y in range(0, n-1) for x in range(0, n-1)]
 
+    # length 3
     d_pos_list_clusters[3] = \
         [([y, y+1, y+2], [x, x, x]) for y in range(0, n-2) for x in range(0, n)] + \
         [([y, y, y], [x, x+1, x+2]) for y in range(0, n) for x in range(0, n-2)] + \
