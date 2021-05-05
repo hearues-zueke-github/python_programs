@@ -108,6 +108,7 @@ class MultiprocessingManager(Exception):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
                 print("Doing job: worker_nr: {}".format(worker_nr))
 
+            finished_works = 0
             dq_pipe_i = deque(range(0, len_l_func_name))
             while len(dq_pipe_i) > 0:
                 pipe_i = dq_pipe_i.popleft()
@@ -122,12 +123,14 @@ class MultiprocessingManager(Exception):
                 worker_nr, ret_val = ret_tpl
                 l_ret.append(ret_val)
                 
-                print("Finished: worker_nr: {}".format(worker_nr))
+                finished_works += 1
+                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
         else:
             for worker_nr, (pipe_send, func_name, func_args) in enumerate(zip(self.pipes_send_main, l_func_name[:self.worker_amount], l_func_args[:self.worker_amount]), 0):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
                 print("Doing job: worker_nr: {}".format(worker_nr))
             
+            finished_works = 0
             pipe_i = 0
             for func_name, func_args in zip(l_func_name[self.worker_amount:], l_func_args[self.worker_amount:]):
                 while True:
@@ -142,7 +145,8 @@ class MultiprocessingManager(Exception):
                 worker_nr, ret_val = ret_tpl
                 l_ret.append(ret_val)
 
-                print("Finished: worker_nr: {}".format(worker_nr))
+                finished_works += 1
+                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 
                 pipe_send = self.pipes_send_main[pipe_i]
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
@@ -165,7 +169,8 @@ class MultiprocessingManager(Exception):
                 worker_nr, ret_val = ret_tpl
                 l_ret.append(ret_val)
                 
-                print("Finished: worker_nr: {}".format(worker_nr))
+                finished_works += 1
+                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 
         return l_ret
 

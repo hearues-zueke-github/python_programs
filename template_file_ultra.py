@@ -21,8 +21,17 @@ from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
 
-sys.path.append('..')
-from utils import mkdirs
+from pprint import pprint
+from typing import List, Set, Tuple, Dict, Union
+
+from PIL import Image
+
+import importlib.util as imp_util
+spec = imp_util.spec_from_file_location("utils", "../utils.py")
+utils = imp_util.module_from_spec(spec)
+spec.loader.exec_module(utils)
+
+mkdirs = utils.mkdirs
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
 HOME_DIR = os.path.expanduser("~")+"/"
