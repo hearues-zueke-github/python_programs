@@ -52,6 +52,7 @@ import utils_cluster
 
 from bit_automaton import BitAutomaton
 
+
 def range_gen(g, n):
     i = 0
     v = next(g)
@@ -100,7 +101,7 @@ def prepare_functions(funcs_str, frame) -> Tuple[List[Any], Any, Any, int]:
 
         # print("func_name: {}".format(func_name))
         v = d_func[func_name]()
-        assert v.dtype == np.bool
+        assert v.dtype == bool
         assert v.shape == field_size
 
     # check, if every function name is appearing starting from 0 to upwards in ascending order!
@@ -116,33 +117,34 @@ def prepare_functions(funcs_str, frame) -> Tuple[List[Any], Any, Any, int]:
     return l_func, func_inv, func_rng, start_seed
 
 
-def create_new_automaton():
-    frame = 1
-    frame_wrap = True
-    
-    bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
+def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
+    # frame = 1
+    # frame_wrap = True
+
+    bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=frame_wrap, l_func=[], func_inv=None,
+                                             func_rng=None)
 
     funcs_str_inv = "def inv(x):\n return ~x\n"
     funcs_str_rng = """
-def rng(seed=0):
- a = seed
- while True:
-  a = ((a + 19) ^ 0x2343) % 15232
-  yield a % 13
+    def rng(seed=0):
+     a = seed
+     while True:
+      a = ((a + 19) ^ 0x2343) % 15232
+      yield a % 13
 
-"""
+    """
 
     l_digits = string.digits
     l_var = [v for v in bit_automaton.d_vars.keys() if not any([c in l_digits for c in v])]
     print("l_var: {}".format(l_var))
 
     def get_random_function_str_body_dm(
-        func_nr : int,
-        l_var : List[str],
-        n_and_min : int,
-        n_and_max : int,
-        n_or_min : int,
-        n_or_max : int,
+            func_nr: int,
+            l_var: List[str],
+            n_and_min: int,
+            n_and_max: int,
+            n_or_min: int,
+            n_or_max: int,
     ) -> str:
         l_vars_inv = [f'inv({v})' for v in l_var]
 
@@ -163,8 +165,8 @@ def rng(seed=0):
             l_new_var.append(new_var)
 
             n_and = np.random.randint(n_and_min, n_and_max + 1)
-            arr_chosen_var = np.unique(np.random.choice(arr_var_i, (n_and, )))
-            arr_inv_var = np.random.choice(arr_var_row, (arr_chosen_var.shape[0], ))
+            arr_chosen_var = np.unique(np.random.choice(arr_var_i, (n_and,)))
+            arr_inv_var = np.random.choice(arr_var_row, (arr_chosen_var.shape[0],))
 
             arr_var_names = np.sort(arr_var[arr_inv_var, arr_chosen_var])
             l_arr_var_names.append(arr_var_names)
@@ -184,14 +186,13 @@ def rng(seed=0):
     # TODO: save the data to a file too!
     n_func_min = 1
     n_func_max = 1
-    # n_func_min = 2
-    # n_func_max = 4
     n_or_min = 2
     n_or_max = 10
     n_and_min = 2
     n_and_max = 6
 
     n_func = np.random.randint(n_func_min, n_func_max + 1)
+    # TODO: create many random images (e.g. 5 times) with the same function!
     l_dm_local = [
         get_random_function_str_body_dm(
             func_nr=i,
@@ -203,23 +204,32 @@ def rng(seed=0):
         ) for i in range(0, n_func)]
     l_func_str_body = [dm.s for dm in l_dm_local]
 
-    l_func_str_body_sorted  = sorted(set(l_func_str_body))
+    l_func_str_body_sorted = sorted(set(l_func_str_body))
     l_func_name = [dm.func_name for dm in l_dm_local[:len(l_func_str_body_sorted)]]
     l_func_str_sorted = [f'def {func_name}():\n{s}' for func_name, s in zip(l_func_name, l_func_str_body_sorted)]
 
     func_str = ', '.join([func_name for func_name in l_func_name])
     funcs_str_func = '\n'.join(l_func_str_sorted)
-    
+
     func_list_str = 'l_func = [{}]'.format(func_str)
 
     funcs_str = '\n'.join([
-        inspect.cleandoc(funcs_str_rng)+'\n',
+        inspect.cleandoc(funcs_str_rng) + '\n',
         funcs_str_inv,
         funcs_str_func,
         func_list_str,
         'start_seed = 0',
         '\n',
     ])
+
+    return locals()
+
+
+def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
+    funcs_str = d_function_data['funcs_str']
+    l_func_str_sorted = d_function_data['l_func_str_sorted']
+    frame = d_function_data['frame']
+    frame_wrap = d_function_data['frame_wrap']
 
     # sys.exit()
 
@@ -243,7 +253,6 @@ def rng(seed=0):
         return pix_bits
         # return pix_bits.transpose(1, 2, 0)
 
-
     # def extract_rgb_from_pix(pix : np.ndarray) -> np.ndarray:
     #     return pix.transpose(2, 0, 1)
 
@@ -252,11 +261,9 @@ def rng(seed=0):
     pix = pix_bits[0]*255
     # pix = pix_bits[:1]
 
-
     h, w = pix_bits.shape[1:]
     # h, w = pix_bits.shape[:2]
     # sys.exit()
-
 
     # folder_name = 'test_other'
     folder_name_suffix = '{}_{}'.format(
@@ -280,14 +287,17 @@ def rng(seed=0):
         f.write(funcs_str)
 
     arr_bits = pix_bits[:1]
-    # arr_bits = np.array([[list(itertools.chain(*[list(map(int, bin(b)[2:].zfill(8))) for b in v])) for v in row] for row in pix], dtype=np.uint8).transpose(2, 0, 1)
+    # arr_bits = np.array(
+    #     [[list(itertools.chain(*[list(map(int, bin(b)[2:].zfill(8))) for b in v])) for v in row] for row in pix],
+    #     dtype=np.uint8,
+    # ).transpose(2, 0, 1)
 
     amount_bit_automaton = arr_bits.shape[0]
 
     l_bit_automaton = [BitAutomaton().init_vals(h=h, w=w, frame=frame, frame_wrap=frame_wrap, l_func=l_func, func_inv=func_inv, func_rng=func_rng) for _ in range(0, amount_bit_automaton)]
 
     for bit_automaton, bits in zip(l_bit_automaton, arr_bits):
-        bit_automaton.set_field(bits.astype(np.bool))
+        bit_automaton.set_field(bits.astype(bool))
 
     def convert_bit_field_to_pix_1_bit(l_bit_automaton):
         assert len(l_bit_automaton) == 1 # 1 bits
@@ -295,13 +305,11 @@ def rng(seed=0):
         arr = (l_bit_automaton[0]<<0).astype(np.uint8) * 255
         return arr
 
-
     def convert_bit_field_to_pix_8_bit(l_bit_automaton):
         assert len(l_bit_automaton) == 8 # 8 bits
 
         arr = np.sum([bit_automaton<<j for j, bit_automaton in zip(range(7, -1, -1), l_bit_automaton)], axis=0).astype(np.uint8)
         return arr
-
 
     def convert_bit_field_to_pix_24_bit(l_bit_automaton):
         assert len(l_bit_automaton) == 24 # 24 bits
@@ -316,7 +324,6 @@ def rng(seed=0):
     pix2 = convert_bit_field_to_pix(l_bit_automaton[:1])
     assert np.all(pix2 == pix)
 
-
     print("i: {}".format(0))
     file_path = os.path.join(dir_path_images, '{:04}.png'.format(0))
     Image.fromarray(pix2).save(file_path)
@@ -329,8 +336,8 @@ def rng(seed=0):
     l_func_nr = list(range(0, len(l_func)))
     amount_function_mod = len(l_func_nr)
     rng = func_rng(seed=start_seed)
-    for i in range(1, iterations_amount):
     # for i in range(1, 100):
+    for i in range(1, iterations_amount):
         func_nr = l_func_nr[next(rng) % amount_function_mod]
         print("i: {}, func_nr: {}".format(i, func_nr))
 
@@ -345,67 +352,73 @@ def rng(seed=0):
 
     arr_pixs = np.array(l_pix) // 255
 
-    amount_historic_numbers = (frame * 2 + 1)**2 + 1
+    # amount_historic_numbers = (frame * 2 + 1)**2 + 1
     # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
 
-    def calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix):
-        pix_sum_ranges = np.zeros(pix.shape, dtype=np.int_)
-        
-        for move_y, move_x in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
-            pix_sum_ranges += np.roll(np.roll(pix, move_x, axis=1), move_y, axis=0)
-        
-        pix_erosion = (pix_sum_ranges == 5).astype(np.uint8)
-        pix_dilation = (pix_sum_ranges == 5).astype(np.uint8)
+    # def calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix):
+    #     pix_sum_ranges = np.zeros(pix.shape, dtype=np.int_)
+    #
+    #     for move_y, move_x in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
+    #         pix_sum_ranges += np.roll(np.roll(pix, move_x, axis=1), move_y, axis=0)
+    #
+    #     pix_erosion = (pix_sum_ranges == 5).astype(np.uint8)
+    #     pix_dilation = (pix_sum_ranges == 5).astype(np.uint8)
+    #
+    #     pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
+    #     pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
+    #     for move_y in range(-frame, frame+1, 1):
+    #         for move_x in range(-frame, frame+1, 1):
+    #             pix_erosion_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
+    #             pix_dilation_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
+    #
+    #     u_e, c_e = np.unique(pix_erosion_sum_ranges, return_counts=True)
+    #     u_d, c_d = np.unique(pix_dilation_sum_ranges, return_counts=True)
+    #
+    #     return u_e, c_e, u_d, c_d
 
-        pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
-        pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-        for move_y in range(-frame, frame+1, 1):
-            for move_x in range(-frame, frame+1, 1):
-                pix_erosion_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
-                pix_dilation_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
+    # def calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_row):
+    #     pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
+    #     pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
+    #     pix1xor2 = pix1 ^ pix2
+    #     pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
+    #     for move_y in range(-frame, frame+1, 1):
+    #         for move_x in range(-frame, frame+1, 1):
+    #             pix1_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
+    #             pix2_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
+    #             pix1xor2_sum_ranges += np.roll(np.roll(pix1xor2, move_x, axis=1), move_y, axis=0)
+    #
+    #     u1, c1 = np.unique(pix1_sum_ranges, return_counts=True)
+    #     u2, c2 = np.unique(pix2_sum_ranges, return_counts=True)
+    #     u1xor2, c1xor2 = np.unique(pix1xor2_sum_ranges, return_counts=True)
+    #
+    #     u1_e, c1_e, u1_d, c1_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1)
+    #     u2_e, c2_e, u2_d, c2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix2)
+    #     u1xor2_e, c1xor2_e, u1xor2_d, c1xor2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1xor2)
+    #
+    #     arr_row[u1 + amount_historic_numbers*0] = c1
+    #     arr_row[u2 + amount_historic_numbers*1] = c2
+    #     arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
+    #
+    #     arr_row[u1_e + amount_historic_numbers*3] = c1_e
+    #     arr_row[u1_d + amount_historic_numbers*4] = c1_d
+    #     arr_row[u2_e + amount_historic_numbers*5] = c2_e
+    #     arr_row[u2_d + amount_historic_numbers*6] = c2_d
+    #     arr_row[u1xor2_e + amount_historic_numbers*7] = c1xor2_e
+    #     arr_row[u1xor2_d + amount_historic_numbers*8] = c1xor2_d
 
-        u_e, c_e = np.unique(pix_erosion_sum_ranges, return_counts=True)
-        u_d, c_d = np.unique(pix_dilation_sum_ranges, return_counts=True)
+    # arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int_)
+    # for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
+    #     calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_historic_ranges[i])
 
-        return u_e, c_e, u_d, c_d
-
-
-    def calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_row):
-        pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
-        pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-        pix1xor2 = pix1 ^ pix2
-        pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-        for move_y in range(-frame, frame+1, 1):
-            for move_x in range(-frame, frame+1, 1):
-                pix1_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
-                pix2_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
-                pix1xor2_sum_ranges += np.roll(np.roll(pix1xor2, move_x, axis=1), move_y, axis=0)
-
-        u1, c1 = np.unique(pix1_sum_ranges, return_counts=True)
-        u2, c2 = np.unique(pix2_sum_ranges, return_counts=True)
-        u1xor2, c1xor2 = np.unique(pix1xor2_sum_ranges, return_counts=True)
-
-        u1_e, c1_e, u1_d, c1_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1)
-        u2_e, c2_e, u2_d, c2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix2)
-        u1xor2_e, c1xor2_e, u1xor2_d, c1xor2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1xor2)
-
-        arr_row[u1 + amount_historic_numbers*0] = c1
-        arr_row[u2 + amount_historic_numbers*1] = c2
-        arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
-
-        arr_row[u1_e + amount_historic_numbers*3] = c1_e
-        arr_row[u1_d + amount_historic_numbers*4] = c1_d
-        arr_row[u2_e + amount_historic_numbers*5] = c2_e
-        arr_row[u2_d + amount_historic_numbers*6] = c2_d
-        arr_row[u1xor2_e + amount_historic_numbers*7] = c1xor2_e
-        arr_row[u1xor2_d + amount_historic_numbers*8] = c1xor2_d
-
-    arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int_)
-
-    for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
-        calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_historic_ranges[i])
+    arr_historic_ranges = np.zeros((arr_pixs.shape[0], 2), dtype=np.int_)
+    for i, pix in enumerate(arr_pixs, 0):
+        sum_0 = np.sum(np.equal(pix, 0))
+        sum_1 = np.sum(np.equal(pix, 1))
+        arr_historic_ranges[i] = [sum_0, sum_1]
 
     # TODO: find dynamic_ in other files too! correct this in every files!
+    # dm_obj = 'test'
+    # dm_obj = {}
     dm_obj = DotMap(_dynamic=None)
     dm_obj['frame'] = frame
     dm_obj['frame_wrap'] = frame_wrap
@@ -462,7 +475,7 @@ def rng(seed=0):
 if __name__ == '__main__':
     # with gzip.open('/run/user/1000/save_images/test_other_2021-01-18_09:18:00_1C04BE34/dm_obj.pkl.gz', 'rb') as f:
     #     dm_obj = dill.load(f)
-    
+
     # create_new_automaton()
     # sys.exit()
 
@@ -470,9 +483,16 @@ if __name__ == '__main__':
         np.random.seed()
         for i in range(0, n):
             print("i: {}".format(i))
-            create_new_automaton()
+            d_func_data = create_random_function_data(frame=1, frame_wrap=True)
+            for _ in range(0, 5):
+                create_new_automaton(d_function_data=d_func_data)
 
-    mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+    # create_many_new_automaton(n=1)
+
+    # sys.exit(0)
+
+    mult_proc_mng = MultiprocessingManager(cpu_count=5)
+    # mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
 
     print('Define new Function!')
     mult_proc_mng.define_new_func('func_create_many_new_automaton', create_many_new_automaton)
@@ -480,9 +500,34 @@ if __name__ == '__main__':
     print('Do the jobs!!')
     l_arguments = []
     l_ret = mult_proc_mng.do_new_jobs(
-        ['func_create_many_new_automaton']*mult_proc_mng.cpu_count,
-        [(30, )]*mult_proc_mng.cpu_count,
+        ['func_create_many_new_automaton']*mult_proc_mng.worker_amount,
+        [(1, )]*mult_proc_mng.worker_amount,
+        # [(30,)] * mult_proc_mng.cpu_count,
     )
     print("len(l_ret): {}".format(len(l_ret)))
 
     del mult_proc_mng
+
+    l_dir_path = []
+    for root, dirs, _ in os.walk(os.path.join(TEMP_DIR, 'save_images')):
+        for directory in dirs:
+            if 'test_other_' in directory:
+                l_dir_path.append(os.path.join(root, directory))
+        break
+
+    print('len(l_dir_path): {}'.format(len(l_dir_path)))
+    l_dm_obj = []
+    l_arr_historic_ranges = []
+    l_func_str = []
+    for dir_path in l_dir_path:
+        file_path = os.path.join(dir_path, 'dm_obj.pkl.gz')
+        print('file_path: {}'.format(file_path))
+
+        with gzip.open(file_path, 'rb') as f:
+            dm_obj = dill.load(f)
+
+        l_dm_obj.append(dm_obj)
+        l_arr_historic_ranges.append(dm_obj.arr_historic_ranges)
+        l_func_str.append(dm_obj.func_str)
+
+    l_arr_historic_ranges_flat_norm = [arr.flatten() / np.max(arr) for arr in l_arr_historic_ranges]

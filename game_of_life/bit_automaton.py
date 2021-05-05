@@ -4,6 +4,8 @@ import sys
 sys.path.append("../")
 from utils_function import copy_function
 
+from typing import List, Tuple, Dict, Union
+
 class BitAutomaton(Exception):
     __slot__ = [
         'h', 'w',
@@ -17,8 +19,14 @@ class BitAutomaton(Exception):
     def __init__(self):
         pass
 
-
-    def init_vals(self, h, w, frame, frame_wrap, l_func=None, func_inv=None, func_rng=None):
+    def init_vals(
+            self,
+            h: int, w: int,
+            frame: int, frame_wrap: bool,
+            l_func: Union[List[str], None] = None,
+            func_inv: Union[str, None] = None,
+            func_rng: Union[str, None] = None
+    ):
         self.h = h
         self.w = w
         
@@ -61,14 +69,12 @@ class BitAutomaton(Exception):
 
         return self
 
-
-    def set_field(self, field):
+    def set_field(self, field: np.ndarray):
         assert isinstance(field, np.ndarray)
         assert field.shape == self.field_size
         assert field.dtype == np.bool
         self.field = field
         self.fill_field_frame()
-
 
     def fill_field_frame(self):
         self.field_frame[self.frame:-self.frame, self.frame:-self.frame] = self.field
@@ -88,13 +94,11 @@ class BitAutomaton(Exception):
             # do the top part copy to bottom
             self.field_frame[-self.frame:] = self.field_frame[self.frame:self.frame*2]
 
-
     def execute_func(self, n):
         # print('execute_func: n: {}'.format(n))
         assert n in self.s_func_nr
         self.field = self.l_func[n]()
         self.fill_field_frame()
-
 
     def __lshift__(self, n):
         return self.field << n
