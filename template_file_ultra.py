@@ -22,6 +22,8 @@ from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
 from pprint import pprint
+from typing import List, Set, Tuple, Dict, Union
+from PIL import Image
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
 HOME_DIR = os.path.expanduser("~")+"/"

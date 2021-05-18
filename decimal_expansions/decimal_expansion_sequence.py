@@ -14,30 +14,79 @@ import traceback
 
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
 
 from copy import deepcopy, copy
 from dotmap import DotMap
 from functools import reduce
 from memory_tempfile import MemoryTempfile
 from shutil import copyfile
+from pprint import pprint
+from typing import List, Set, Tuple, Dict, Union
+from PIL import Image
+
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
+HOME_DIR = os.path.expanduser("~")+"/"
+TEMP_DIR = MemoryTempfile().gettempdir()+"/"
+
+import importlib.util as imp_util
+
+# TODO: change the optaining of the git root folder from a config file first!
+spec = imp_util.spec_from_file_location("utils", os.path.join(HOME_DIR, "git/python_programs/utils.py"))
+utils = imp_util.module_from_spec(spec)
+spec.loader.exec_module(utils)
+
+mkdirs = utils.mkdirs
+
+spec = imp_util.spec_from_file_location("utils_multiprocessing_manager", os.path.join(HOME_DIR, "git/python_programs/utils_multiprocessing_manager.py"))
+utils_multiprocessing_manager = imp_util.module_from_spec(spec)
+spec.loader.exec_module(utils_multiprocessing_manager)
+
+MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+
+OBJS_DIR_PATH = PATH_ROOT_DIR+'objs/'
+mkdirs(OBJS_DIR_PATH)
 
 from decimal import Decimal as Dec, getcontext
 import math
 
 import mpmath
 
-sys.path.append('..')
-from utils import mkdirs
+def convert_n_to_base(n: int, base: int) -> List[int]:
+    if n == 0:
+        return [0]
 
-PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
-HOME_DIR = os.path.expanduser("~")+"/"
-TEMP_DIR = MemoryTempfile().gettempdir()+"/"
+    l_n: List[int] = []
 
-OBJS_DIR_PATH = PATH_ROOT_DIR+'objs/'
-mkdirs(OBJS_DIR_PATH)
+    while n > 0:
+        l_n.append(n % base)
+        n //= base
+
+    return l_n[::-1]
+
+
+class Number(Exception):
+    __slots__ = ['n', 'base', 'l_n']
+
+    def __init__(self, n, base):
+        self.n = n
+        self.base = base
+        self.l_n = convert_n_to_base(n, base)
+
+    def __repr__(self):
+        return f"Test(n={self.n}, base={self.base}, l_n={self.l_n})"
+
+    def __str__(self):
+        return self.__repr__()
+
 
 if __name__ == '__main__':
     print("Hello World!")
+    getcontext().prec = 100
+
+    num = Number(3, 5)
+
+    sys.exit()
 
     l_length_seq = []
     d_denominator = {}
