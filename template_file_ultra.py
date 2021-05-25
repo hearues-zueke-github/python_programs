@@ -25,9 +25,9 @@ from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union
 from PIL import Image
 
-PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))+"/"
-HOME_DIR = os.path.expanduser("~")+"/"
-TEMP_DIR = MemoryTempfile().gettempdir()+"/"
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+HOME_DIR = os.path.expanduser("~")
+TEMP_DIR = MemoryTempfile().gettempdir()
 
 import importlib.util as imp_util
 
@@ -44,7 +44,7 @@ spec.loader.exec_module(utils_multiprocessing_manager)
 
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
 
-OBJS_DIR_PATH = PATH_ROOT_DIR+'objs/'
+OBJS_DIR_PATH = PATH_ROOT_DIR+'objs'
 mkdirs(OBJS_DIR_PATH)
 
 if __name__ == '__main__':
