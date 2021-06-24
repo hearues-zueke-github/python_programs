@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9.5 -i
 
 # -*- coding: utf-8 -*-
 
@@ -25,26 +25,26 @@ from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union
 from PIL import Image
 
+CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
 TEMP_DIR = MemoryTempfile().gettempdir()
 
 import importlib.util as imp_util
 
-# TODO: change the optaining of the git root folder from a config file first!
-spec = imp_util.spec_from_file_location("utils", os.path.join(HOME_DIR, "git/python_programs/utils.py"))
+spec = imp_util.spec_from_file_location("utils", os.path.join(PATH_ROOT_DIR, "../utils.py"))
 utils = imp_util.module_from_spec(spec)
 spec.loader.exec_module(utils)
 
 mkdirs = utils.mkdirs
 
-spec = imp_util.spec_from_file_location("utils_multiprocessing_manager", os.path.join(HOME_DIR, "git/python_programs/utils_multiprocessing_manager.py"))
+spec = imp_util.spec_from_file_location("utils_multiprocessing_manager", os.path.join(PATH_ROOT_DIR, "../utils_multiprocessing_manager.py"))
 utils_multiprocessing_manager = imp_util.module_from_spec(spec)
 spec.loader.exec_module(utils_multiprocessing_manager)
 
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
 
-OBJS_DIR_PATH = PATH_ROOT_DIR+'objs'
+OBJS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
 mkdirs(OBJS_DIR_PATH)
 
 if __name__ == '__main__':
