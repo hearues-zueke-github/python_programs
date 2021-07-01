@@ -1,11 +1,10 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/pypy3.7 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9.5 -i
 
 # -*- coding: utf-8 -*-
 
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.8.6 -i
-
 import dill
 import gzip
+import hashlib
 import os
 import string
 import sys
@@ -39,40 +38,84 @@ TEMP_DIR = tempfile.gettempdir()+"/"
 from PIL import Image
 
 import numpy as np
+import pandas as pd
 
-sys.path.append("../")
-from utils_serialization import get_pkl_gz_obj, save_pkl_gz_obj
-import global_object_getter_setter
-import utils
-from utils_function import copy_function
-from utils_multiprocessing_manager import MultiprocessingManager
+sys.path.append('..')
+from utils_load_module import load_module_dynamically
 
-sys.path.append("../clustering/")
-import utils_cluster
+var_glob = globals()
+load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PATH_ROOT_DIR, "../utils.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_function', path=os.path.join(PATH_ROOT_DIR, "../utils_function.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_cluster', path=os.path.join(PATH_ROOT_DIR, "../clustering/utils_cluster.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PATH_ROOT_DIR, "../utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='cell_matrix_unique', path=os.path.join(PATH_ROOT_DIR, "../cell_math/cell_matrix_unique.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_serialization', path=os.path.join(PATH_ROOT_DIR, "../utils_serialization.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='bit_automaton', path=os.path.join(PATH_ROOT_DIR, "bit_automaton.py")))
 
-from bit_automaton import BitAutomaton
+mkdirs = utils.mkdirs
 
+copy_function = utils_function.copy_function
+
+MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+
+get_d_l_t_2d_cells = cell_matrix_unique.get_d_l_t_2d_cells
+
+get_pkl_gz_obj = utils_serialization.get_pkl_gz_obj
+save_pkl_gz_obj = utils_serialization.save_pkl_gz_obj
+load_pkl_gz_obj = utils_serialization.load_pkl_gz_obj
+
+BitAutomaton = bit_automaton.BitAutomaton
+
+DIR_PATH_SAVE_IMAGES = os.path.join(TEMP_DIR, 'save_images/')
+
+def range_gen_old(g, n):
+    try:
+        i = 0
+        if i >= n:
+            return
+        v = next(g)
+        while v != None:
+            yield v
+            v = next(g)
+            i += 1
+            if i >= n:
+                break
+    except StopIteration:
+        return
 
 def range_gen(g, n):
-    i = 0
-    v = next(g)
-    while v != None:
-        yield v
-        v = next(g)
-        i += 1
-        if i == n:
-            break
+    try:
+        i = 0
+        while ((i := i + 1) <= n) and ((v := next(g)) != None):
+            yield v
+    except StopIteration:
+        return
 
-# def range_gen(g, n):
-#     i = 0
-#     while (v := next(g)) != None:
-#         yield v
-#         i += 1
-#         if i == n:
-#             break
+    # return
+
+def gen_new_gen_nr1():
+    return iter(range(0, 100))
+
+l1 = list(range_gen_old(gen_new_gen_nr1(), 0))
+l2 = list(range_gen(gen_new_gen_nr1(), 0))
+assert l1 == l2
+
+l1 = list(range_gen_old(gen_new_gen_nr1(), 1))
+l2 = list(range_gen(gen_new_gen_nr1(), 1))
+assert l1 == l2
+
+l1 = list(range_gen_old(gen_new_gen_nr1(), 40))
+l2 = list(range_gen(gen_new_gen_nr1(), 40))
+assert l1 == l2
+
+l1 = list(range_gen_old(gen_new_gen_nr1(), 200))
+l2 = list(range_gen(gen_new_gen_nr1(), 200))
+assert l1 == l2
+
+# sys.exit()
 
 
-def prepare_functions(funcs_str, frame) -> Tuple[List[Any], Any, Any, int]:
+def prepare_functions(funcs_str: str, frame: int) -> Tuple[List[Any], Any, Any, int]:
     bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
     
     d_vars = bit_automaton.d_vars
@@ -225,7 +268,7 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
     return locals()
 
 
-def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
+def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> None:
     funcs_str = d_function_data['funcs_str']
     l_func_str_sorted = d_function_data['l_func_str_sorted']
     frame = d_function_data['frame']
@@ -246,7 +289,9 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
     # img = Image.open(image_path)
     # pix = np.array(img)
 
-    pix_orig = np.random.randint(0, 255, (100, 150, 3), dtype=np.uint8)
+    pix_height = 100
+    pix_width = 150
+    pix_orig = np.random.randint(0, 255, (pix_height, pix_width, 3), dtype=np.uint8)
 
     def extract_bits_from_pix(pix : np.ndarray) -> np.ndarray:
         pix_bits = np.array([(channel>>i)&0x1 for channel in pix.transpose(2, 0, 1) for i in range(7, -1, -1)], dtype=np.uint8)
@@ -258,7 +303,7 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
 
     pix_bits = extract_bits_from_pix(pix_orig)
 
-    pix = pix_bits[0]*255
+    pix = pix_bits[0] * 255
     # pix = pix_bits[:1]
 
     h, w = pix_bits.shape[1:]
@@ -271,16 +316,15 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
         ''.join(np.random.choice(list(string.hexdigits), (8, ))).upper(),
     )
     folder_name = f'test_other_{folder_name_suffix}'
-    dir_path_save_images = os.path.join(TEMP_DIR, 'save_images/')
-    dir_path_images = os.path.join(dir_path_save_images, folder_name)
+    dir_path_images = os.path.join(DIR_PATH_SAVE_IMAGES, folder_name)
     # dir_path_images = os.path.join(TEMP_DIR, 'save_images/{}/'.format(file_name.split('.')[0]))
-    utils.mkdirs(dir_path_images)
+    mkdirs(dir_path_images)
     
-    dir_path_combined_images = os.path.join(dir_path_save_images, 'combined_images')
-    utils.mkdirs(dir_path_combined_images)
+    dir_path_combined_images = os.path.join(DIR_PATH_SAVE_IMAGES, 'combined_images')
+    mkdirs(dir_path_combined_images)
 
-    dir_path_combined_images_xor = os.path.join(dir_path_save_images, 'combined_images_xor')
-    utils.mkdirs(dir_path_combined_images_xor)
+    dir_path_combined_images_xor = os.path.join(DIR_PATH_SAVE_IMAGES, 'combined_images_xor')
+    mkdirs(dir_path_combined_images_xor)
 
     file_path_funcs = os.path.join(dir_path_images, 'test_functions_python.py')
     with open(file_path_funcs, 'w') as f:
@@ -330,8 +374,11 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
     
     l_pix = [pix2]
 
-    cols = 5
-    rows = 10
+    # cols = 5
+    # rows = 10
+
+    cols = 10
+    rows = 18
     iterations_amount = cols * rows
     l_func_nr = list(range(0, len(l_func)))
     amount_function_mod = len(l_func_nr)
@@ -346,11 +393,34 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
             bit_automaton.execute_func(func_nr)
         pix2 = convert_bit_field_to_pix(l_bit_automaton)
         file_path = os.path.join(dir_path_images, '{:04}.png'.format(i))
-        Image.fromarray(pix2).save(file_path)
+        # Image.fromarray(pix2).save(file_path)
 
         l_pix.append(pix2)
 
     arr_pixs = np.array(l_pix) // 255
+
+    # find all unique v_2d_cells
+    s_2d_cells = set()
+    for t_2d_cells in l_t_2d_cells:
+        for v_2d_cells in t_2d_cells:
+            if v_2d_cells not in s_2d_cells:
+                s_2d_cells.add(v_2d_cells)
+
+    # create all possible arr_pixs_roll arrays
+    d_arr_pixs_roll = {}
+    for dy, dx in s_2d_cells:
+        d_arr_pixs_roll[(dy, dx)] = np.roll(np.roll(arr_pixs, dy, 1), dx, 2)
+
+    # get from all the cols * rows images the cluster_roll sum
+    l_sum_pix_cluster_roll = []
+    arr_pix_temp = np.zeros((rows * cols, pix_height, pix_width), dtype=np.uint8)
+    for t_2d_cells in l_t_2d_cells:
+        arr_pix_temp[:] = 1
+        for v_2d_cells in t_2d_cells:
+            arr_pix_temp &= d_arr_pixs_roll[v_2d_cells]
+        l_sum_pix_cluster_roll.append(np.sum(np.sum(arr_pix_temp, 2), 1))
+
+    arr_sum_pix_cluster_roll = np.array(l_sum_pix_cluster_roll).T
 
     # amount_historic_numbers = (frame * 2 + 1)**2 + 1
     # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
@@ -420,12 +490,23 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
     # dm_obj = 'test'
     # dm_obj = {}
     dm_obj = DotMap(_dynamic=None)
+    dm_obj['cols'] = cols
+    dm_obj['rows'] = rows
+    dm_obj['pix_height'] = pix_height
+    dm_obj['pix_width'] = pix_width
+
+    dm_obj['l_t_2d_cells'] = l_t_2d_cells
+    dm_obj['l_sum_pix_cluster_roll'] = l_sum_pix_cluster_roll
+    dm_obj['arr_sum_pix_cluster_roll'] = arr_sum_pix_cluster_roll
+
     dm_obj['frame'] = frame
     dm_obj['frame_wrap'] = frame_wrap
     dm_obj['l_bit_automaton'] = l_bit_automaton
     dm_obj['arr_pixs'] = arr_pixs
     dm_obj['arr_historic_ranges'] = arr_historic_ranges
+    dm_obj['l_func_str_sorted'] = l_func_str_sorted
     dm_obj['func_str'] = l_func_str_sorted[0]
+    dm_obj['func_str_hash'] = hashlib.sha512(dm_obj['func_str'].encode()).hexdigest()
     dm_obj['_version'] = utils_cluster.__version__
 
     with gzip.open(os.path.join(dir_path_images, utils_cluster.dm_obj_file_name), 'wb') as f:
@@ -462,6 +543,7 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
 
         return pix_vertical
 
+    # TODO: make this into separate functions too!
     pix_combine = combine_all_pix(l_pix=l_pix)
     file_path_combine = os.path.join(dir_path_combined_images, '{}.png'.format(folder_name))
     Image.fromarray(pix_combine).save(file_path_combine)
@@ -471,28 +553,55 @@ def create_new_automaton(d_function_data: Dict[Any, Any]) -> None:
     file_path_combine_xor = os.path.join(dir_path_combined_images_xor, '{}.png'.format(folder_name))
     Image.fromarray(pix_combine_xor).save(file_path_combine_xor)
 
+    return dm_obj
+
 
 if __name__ == '__main__':
-    # with gzip.open('/run/user/1000/save_images/test_other_2021-01-18_09:18:00_1C04BE34/dm_obj.pkl.gz', 'rb') as f:
+    # with gzip.open('/run/user/1000/save_images/test_other_2021-06-30_12:51:47_E7FD686A/dm_obj.pkl.gz', 'rb') as f:
     #     dm_obj = dill.load(f)
 
-    # create_new_automaton()
-    # sys.exit()
+    # # create_new_automaton()
 
-    def create_many_new_automaton(n: int) -> None:
+    d_l_t_2d_cells = get_d_l_t_2d_cells()
+    
+    l_t_2d_cells = d_l_t_2d_cells[(3, 3)]
+
+    # d_func_data = create_random_function_data(frame=1, frame_wrap=True)
+    # # for _ in range(0, 10):
+    # dm_obj = create_new_automaton(d_function_data=d_func_data, l_t_2d_cells=l_t_2d_cells)
+
+    root, l_dir, l_file = next(os.walk(DIR_PATH_SAVE_IMAGES))
+
+    d_root_to_dm = {}
+    l_dir_test_other = list(filter(lambda x: 'test_other_' in x, l_dir))
+    for dir_name in l_dir_test_other:
+        print("dir_name: {}".format(dir_name))
+
+        root_2, l_dir_2, l_file_2 = next(os.walk(os.path.join(root, dir_name)))
+        assert len(l_dir_2) == 0
+        assert 'test_functions_python.py' in l_file_2
+        assert 'dm_obj.pkl.gz' in l_file_2
+
+        dm = load_pkl_gz_obj(os.path.join(root_2, 'dm_obj.pkl.gz'))
+        d_root_to_dm[dir_name] = dm
+
+    sys.exit()
+
+    def create_many_new_automaton(n: int, iter_same_func: int, l_t_2d_cells: Any) -> None:
         np.random.seed()
         for i in range(0, n):
             print("i: {}".format(i))
             d_func_data = create_random_function_data(frame=1, frame_wrap=True)
-            for _ in range(0, 5):
-                create_new_automaton(d_function_data=d_func_data)
+            # use the same function iter_same_func times
+            for _ in range(0, iter_same_func):
+                create_new_automaton(d_function_data=d_func_data, l_t_2d_cells=l_t_2d_cells)
 
     # create_many_new_automaton(n=1)
 
     # sys.exit(0)
 
-    mult_proc_mng = MultiprocessingManager(cpu_count=5)
-    # mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+    # mult_proc_mng = MultiprocessingManager(cpu_count=7)
+    mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
 
     print('Define new Function!')
     mult_proc_mng.define_new_func('func_create_many_new_automaton', create_many_new_automaton)
@@ -501,7 +610,7 @@ if __name__ == '__main__':
     l_arguments = []
     l_ret = mult_proc_mng.do_new_jobs(
         ['func_create_many_new_automaton']*mult_proc_mng.worker_amount,
-        [(1, )]*mult_proc_mng.worker_amount,
+        [(1, 10, l_t_2d_cells)]*mult_proc_mng.worker_amount,
         # [(30,)] * mult_proc_mng.cpu_count,
     )
     print("len(l_ret): {}".format(len(l_ret)))

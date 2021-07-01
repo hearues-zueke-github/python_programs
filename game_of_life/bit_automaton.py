@@ -1,10 +1,19 @@
+import os
+import sys
+
 import numpy as np
 
-import sys
-sys.path.append("../")
-from utils_function import copy_function
-
 from typing import List, Tuple, Dict, Union
+
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+
+sys.path.append('..')
+from utils_load_module import load_module_dynamically
+
+var_glob = globals()
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_function', path=os.path.join(PATH_ROOT_DIR, "../utils_function.py")))
+
+copy_function = utils_function.copy_function
 
 class BitAutomaton(Exception):
     __slot__ = [
@@ -25,7 +34,7 @@ class BitAutomaton(Exception):
             frame: int, frame_wrap: bool,
             l_func: Union[List[str], None] = None,
             func_inv: Union[str, None] = None,
-            func_rng: Union[str, None] = None
+            func_rng: Union[str, None] = None,
     ):
         self.h = h
         self.w = w

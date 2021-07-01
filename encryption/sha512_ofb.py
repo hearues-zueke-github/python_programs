@@ -128,65 +128,7 @@ class Sbox2Bytes(Exception):
         return sbox
 
 
-def test_sbox_2bytes_nr_1():
-    seed_sbox = b'HelloWorld!f234t89hnf98fj9ew8r4nfq948t7nw9tnaw94nt41e2EWR123r23u'
-    
-    sbox_2bytes = Sbox2Bytes(seed_sbox=seed_sbox)
-    sbox_2bytes_2 = Sbox2Bytes(seed_sbox=seed_sbox)
-
-    assert np.all(sbox_2bytes.arr_matrix == sbox_2bytes_2.arr_matrix)
-    assert np.all(sbox_2bytes.sbox == sbox_2bytes_2.sbox)
-
-    assert hashlib.sha512(sbox_2bytes.arr_matrix.tobytes()).hexdigest() == 'd5f397e19281eb2aefd0ab92b9212a56c8e255b1947b73fcfc70a2af5a047335ca4cc7cf611543024228651769537ba6365ba5384c730e53acdeab1c27997fdd'
-    assert hashlib.sha512(sbox_2bytes.sbox.tobytes()).hexdigest() == '87069a30df84e27b6311a494df328649176362198a87a52b1f9a21e9a7958ecadd92b65fcdf6586835cac893d19586c5dca4b3e44d520ea480fe37379bffab9c'
-
-
-def test_sbox_2bytes_all():
-    test_sbox_2bytes_nr_1()
-
-
 if __name__ == '__main__':
     seed_sbox = b'HelloWorld!f234t89hnf98fj9ew8r4nfq948t7nw9tnaw94nt41e2EWR123r23v'
     
     sbox_2bytes = Sbox2Bytes(seed_sbox=seed_sbox)
-
-    fig, axs = plt.subplots(nrows=2, ncols=2)
-
-
-    l_y_u_mean = [np.mean(d['u_diff']) for d in sbox_2bytes.l_d_histogram_stats]
-    l_x_u_mean = list(range(1, len(l_y_u_mean) + 1))
-
-    ax = axs[0][0]
-    ax.plot(l_x_u_mean, l_y_u_mean, color='#0000FF', marker='o', linestyle='-')
-
-    ax.set_title('Mean of the u_diff array values')
-
-
-    l_y_c_mean = [np.mean(d['c_diff']) for d in sbox_2bytes.l_d_histogram_stats]
-    l_x_c_mean = list(range(1, len(l_y_c_mean) + 1))
-
-    ax = axs[1][0]
-    ax.plot(l_x_c_mean, l_y_c_mean, color='#0000FF', marker='o', linestyle='-')
-
-    ax.set_title('Mean of the c_diff array values')
-
-
-    l_y_u_median = [np.median(d['u_diff']) for d in sbox_2bytes.l_d_histogram_stats]
-    l_x_u_median = list(range(1, len(l_y_u_median) + 1))
-
-    ax = axs[0][1]
-    ax.plot(l_x_u_median, l_y_u_median, color='#0000FF', marker='o', linestyle='-')
-
-    ax.set_title('Median of the u_diff array values')
-
-
-    l_y_c_median = [np.median(d['c_diff']) for d in sbox_2bytes.l_d_histogram_stats]
-    l_x_c_median = list(range(1, len(l_y_c_median) + 1))
-
-    ax = axs[1][1]
-    ax.plot(l_x_c_median, l_y_c_median, color='#0000FF', marker='o', linestyle='-')
-
-    ax.set_title('Median of the c_diff array values')
-
-
-    plt.show()

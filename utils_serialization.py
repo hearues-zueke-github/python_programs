@@ -15,3 +15,8 @@ def get_pkl_gz_obj(func, file_path):
 def save_pkl_gz_obj(obj, file_path):
     with gzip.open(file_path, "wb") as f:
         dill.dump(obj, f)
+
+def load_pkl_gz_obj(file_path):
+    with gzip.open(file_path, "rb") as f:
+        obj = dill.load(f)
+    return obj
