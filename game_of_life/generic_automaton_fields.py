@@ -13,7 +13,6 @@ import textwrap
 
 from typing import List, Dict, Set, Mapping, Any, Tuple
 
-# import tempfile
 from memory_tempfile import MemoryTempfile
 tempfile = MemoryTempfile()
 
@@ -91,8 +90,6 @@ def range_gen(g, n):
     except StopIteration:
         return
 
-    # return
-
 def gen_new_gen_nr1():
     return iter(range(0, 100))
 
@@ -111,8 +108,6 @@ assert l1 == l2
 l1 = list(range_gen_old(gen_new_gen_nr1(), 200))
 l2 = list(range_gen(gen_new_gen_nr1(), 200))
 assert l1 == l2
-
-# sys.exit()
 
 
 def prepare_functions(funcs_str: str, frame: int) -> Tuple[List[Any], Any, Any, int]:
@@ -160,10 +155,7 @@ def prepare_functions(funcs_str: str, frame: int) -> Tuple[List[Any], Any, Any, 
     return l_func, func_inv, func_rng, start_seed
 
 
-def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
-    # frame = 1
-    # frame_wrap = True
-
+def create_random_function_data(frame: int = 1, frame_wrap: bool = True) -> DotMap:
     bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=frame_wrap, l_func=[], func_inv=None,
                                              func_rng=None)
 
@@ -179,6 +171,8 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
 
     l_digits = string.digits
     l_var = [v for v in bit_automaton.d_vars.keys() if not any([c in l_digits for c in v])]
+    del bit_automaton
+
     print("l_var: {}".format(l_var))
 
     def get_random_function_str_body_dm(
@@ -196,12 +190,12 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
         arr_var_row = np.arange(0, 2)
 
         func_name = f'fun_{func_nr}'
-        # s = f'def {func_name}():\n'
         s = ''
         l_new_var = []
         l_l_chosen_var = []
         l_arr_var_names = []
         l_formel_and = []
+        l_t_var_inv = []
         n_or = np.random.randint(n_or_min, n_or_max + 1)
         for i_or in range(0, n_or):
             new_var = f'a_{i_or}'
@@ -217,6 +211,11 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
             formel_and = ' & '.join(arr_var_names)
             l_formel_and.append(formel_and)
 
+            t_var_inv = tuple(sorted([(var_name, inv) for var_name, inv in zip(arr_var[0, arr_chosen_var], arr_inv_var)]))
+            l_t_var_inv.append(t_var_inv)
+
+        t_t_var_inv = tuple(sorted(l_t_var_inv))
+
         l_former_and_sorted = sorted(set(l_formel_and))
         for new_var, formel_and in zip(l_new_var, l_formel_and):
             s += f' {new_var} = {formel_and}\n'
@@ -224,7 +223,8 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
 
         last_formel = ' | '.join(l_new_var)
         s += f' return {last_formel}\n'
-        return DotMap(locals(), dynamic_=None)
+        dm = DotMap(locals(), _dynamic=None)
+        return dm
 
     # TODO: save the data to a file too!
     n_func_min = 1
@@ -265,7 +265,10 @@ def create_random_function_data(frame: int = 1, frame_wrap: bool = True):
         '\n',
     ])
 
-    return locals()
+    # globals()['loc'] = locals()
+    # sys.exit()
+
+    return DotMap(locals(), _dynamic=None)
 
 
 def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> None:
@@ -422,73 +425,13 @@ def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> 
 
     arr_sum_pix_cluster_roll = np.array(l_sum_pix_cluster_roll).T
 
-    # amount_historic_numbers = (frame * 2 + 1)**2 + 1
-    # e.g.: frame = 2 -> (2*2+1)**2 = 25, also zero included -> 26
-
-    # def calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix):
-    #     pix_sum_ranges = np.zeros(pix.shape, dtype=np.int_)
-    #
-    #     for move_y, move_x in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
-    #         pix_sum_ranges += np.roll(np.roll(pix, move_x, axis=1), move_y, axis=0)
-    #
-    #     pix_erosion = (pix_sum_ranges == 5).astype(np.uint8)
-    #     pix_dilation = (pix_sum_ranges == 5).astype(np.uint8)
-    #
-    #     pix_erosion_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
-    #     pix_dilation_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-    #     for move_y in range(-frame, frame+1, 1):
-    #         for move_x in range(-frame, frame+1, 1):
-    #             pix_erosion_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
-    #             pix_dilation_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
-    #
-    #     u_e, c_e = np.unique(pix_erosion_sum_ranges, return_counts=True)
-    #     u_d, c_d = np.unique(pix_dilation_sum_ranges, return_counts=True)
-    #
-    #     return u_e, c_e, u_d, c_d
-
-    # def calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_row):
-    #     pix1_sum_ranges = np.zeros(pix1.shape, dtype=np.int_)
-    #     pix2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-    #     pix1xor2 = pix1 ^ pix2
-    #     pix1xor2_sum_ranges = np.zeros(pix2.shape, dtype=np.int_)
-    #     for move_y in range(-frame, frame+1, 1):
-    #         for move_x in range(-frame, frame+1, 1):
-    #             pix1_sum_ranges += np.roll(np.roll(pix1, move_x, axis=1), move_y, axis=0)
-    #             pix2_sum_ranges += np.roll(np.roll(pix2, move_x, axis=1), move_y, axis=0)
-    #             pix1xor2_sum_ranges += np.roll(np.roll(pix1xor2, move_x, axis=1), move_y, axis=0)
-    #
-    #     u1, c1 = np.unique(pix1_sum_ranges, return_counts=True)
-    #     u2, c2 = np.unique(pix2_sum_ranges, return_counts=True)
-    #     u1xor2, c1xor2 = np.unique(pix1xor2_sum_ranges, return_counts=True)
-    #
-    #     u1_e, c1_e, u1_d, c1_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1)
-    #     u2_e, c2_e, u2_d, c2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix2)
-    #     u1xor2_e, c1xor2_e, u1xor2_d, c1xor2_d = calculate_pix_erosion_dilation_4_neighborhood_sum_ranges_unique(frame, pix1xor2)
-    #
-    #     arr_row[u1 + amount_historic_numbers*0] = c1
-    #     arr_row[u2 + amount_historic_numbers*1] = c2
-    #     arr_row[u1xor2 + amount_historic_numbers*2] = c1xor2
-    #
-    #     arr_row[u1_e + amount_historic_numbers*3] = c1_e
-    #     arr_row[u1_d + amount_historic_numbers*4] = c1_d
-    #     arr_row[u2_e + amount_historic_numbers*5] = c2_e
-    #     arr_row[u2_d + amount_historic_numbers*6] = c2_d
-    #     arr_row[u1xor2_e + amount_historic_numbers*7] = c1xor2_e
-    #     arr_row[u1xor2_d + amount_historic_numbers*8] = c1xor2_d
-
-    # arr_historic_ranges = np.zeros((arr_pixs.shape[0]-1, 9*amount_historic_numbers), dtype=np.int_)
-    # for i, (pix1, pix2) in enumerate(zip(arr_pixs[:-1], arr_pixs[1:]), 0):
-    #     calculate_pix_sum_ranges_unique(frame, pix1, pix2, arr_historic_ranges[i])
-
     arr_historic_ranges = np.zeros((arr_pixs.shape[0], 2), dtype=np.int_)
     for i, pix in enumerate(arr_pixs, 0):
         sum_0 = np.sum(np.equal(pix, 0))
         sum_1 = np.sum(np.equal(pix, 1))
         arr_historic_ranges[i] = [sum_0, sum_1]
 
-    # TODO: find dynamic_ in other files too! correct this in every files!
-    # dm_obj = 'test'
-    # dm_obj = {}
+    # TODO: find _dynamic in other files too! correct this in every files!
     dm_obj = DotMap(_dynamic=None)
     dm_obj['cols'] = cols
     dm_obj['rows'] = rows
@@ -501,22 +444,20 @@ def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> 
 
     dm_obj['frame'] = frame
     dm_obj['frame_wrap'] = frame_wrap
-    dm_obj['l_bit_automaton'] = l_bit_automaton
+    # dm_obj['l_bit_automaton'] = l_bit_automaton
     dm_obj['arr_pixs'] = arr_pixs
     dm_obj['arr_historic_ranges'] = arr_historic_ranges
-    dm_obj['l_func_str_sorted'] = l_func_str_sorted
     dm_obj['func_str'] = l_func_str_sorted[0]
+    dm_obj['l_func_str_sorted'] = l_func_str_sorted
     dm_obj['func_str_hash'] = hashlib.sha512(dm_obj['func_str'].encode()).hexdigest()
     dm_obj['_version'] = utils_cluster.__version__
+    dm_obj['d_function_data'] = d_function_data
 
     with gzip.open(os.path.join(dir_path_images, utils_cluster.dm_obj_file_name), 'wb') as f:
         dill.dump(dm_obj, f)
 
-    # sys.exit()
-
     def combine_all_pix(l_pix, w_space_horizontal=10, h_space_vertical=10):
         h_space_horizontal = l_pix[0].shape[0]
-        # w_space_horizontal = 10
         arr_space_horizontal = np.zeros((h_space_horizontal, w_space_horizontal), dtype=np.uint8) + 0x80
 
         def combine_l_pix_horizontal(l_pix_part : List[np.ndarray]) -> np.ndarray:
@@ -529,7 +470,6 @@ def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> 
         l_pix_horizontal = [combine_l_pix_horizontal(l_pix[cols*i:cols*(i+1)]) for i in range(0, rows)]
 
         w_space_vertical = l_pix_horizontal[0].shape[1]
-        # h_space_vertical = 10
         arr_space_vertical = np.zeros((h_space_vertical, w_space_vertical), dtype=np.uint8) + 0x80
 
         def combine_l_pix_vertical(l_pix_part : List[np.ndarray]) -> np.ndarray:
@@ -557,35 +497,62 @@ def create_new_automaton(d_function_data: Dict[Any, Any], l_t_2d_cells: Any) -> 
 
 
 if __name__ == '__main__':
+    # height = 10
+    # width = 16
+    # pix_bit = np.zeros((height, width), dtype=np.int8)
+
+    # pix_bit[:] = np.random.randint(0, 2, (height, width))
+
+    # arr = np.zeros((height, width, 3, 3), dtype=np.int8)
+
+    # for dy in range(0, 3):
+    #     for dx in range(0, 3):
+    #         arr[:, :, dy, dx] = np.roll(np.roll(pix_bit, -(dx - 1), 1), -(dy - 1), 0)
+
+    # arr_m = np.array([
+    #     [[1, 0, 0], [0, 1, 1], [1, 0, 0]],
+    #     [[0, 0, 0], [0, 1, 1], [0, 0, 0]],
+    #     [[0, 0, 0], [1, 1, 0], [0, 0, 0]],
+    #     [[0, 0, 0], [1, 0, 1], [0, 0, 0]],
+    # ])
+
+    # arr_m_sum = np.sum(np.sum(arr_m, -1), -1)
+
+    # pix_bit_new = np.any(np.sum(np.sum(arr.reshape((height, width, 1, 3, 3)) & arr_m, -1), -1) == arr_m_sum, -1).astype(np.int8)
+
+    # sys.exit()
     # with gzip.open('/run/user/1000/save_images/test_other_2021-06-30_12:51:47_E7FD686A/dm_obj.pkl.gz', 'rb') as f:
     #     dm_obj = dill.load(f)
-
-    # # create_new_automaton()
 
     d_l_t_2d_cells = get_d_l_t_2d_cells()
     
     l_t_2d_cells = d_l_t_2d_cells[(3, 3)]
 
+    # sys.exit(0)
+
     # d_func_data = create_random_function_data(frame=1, frame_wrap=True)
     # # for _ in range(0, 10):
     # dm_obj = create_new_automaton(d_function_data=d_func_data, l_t_2d_cells=l_t_2d_cells)
 
-    root, l_dir, l_file = next(os.walk(DIR_PATH_SAVE_IMAGES))
+    if False:
+        root, l_dir, l_file = next(os.walk(DIR_PATH_SAVE_IMAGES))
 
-    d_root_to_dm = {}
-    l_dir_test_other = list(filter(lambda x: 'test_other_' in x, l_dir))
-    for dir_name in l_dir_test_other:
-        print("dir_name: {}".format(dir_name))
+        d_root_to_dm = {}
+        l_dir_test_other = list(filter(lambda x: 'test_other_' in x, l_dir))
+        for dir_name in l_dir_test_other:
+            print("dir_name: {}".format(dir_name))
 
-        root_2, l_dir_2, l_file_2 = next(os.walk(os.path.join(root, dir_name)))
-        assert len(l_dir_2) == 0
-        assert 'test_functions_python.py' in l_file_2
-        assert 'dm_obj.pkl.gz' in l_file_2
+            root_2, l_dir_2, l_file_2 = next(os.walk(os.path.join(root, dir_name)))
+            assert len(l_dir_2) == 0
+            assert 'test_functions_python.py' in l_file_2
+            assert 'dm_obj.pkl.gz' in l_file_2
 
-        dm = load_pkl_gz_obj(os.path.join(root_2, 'dm_obj.pkl.gz'))
-        d_root_to_dm[dir_name] = dm
+            dm = load_pkl_gz_obj(os.path.join(root_2, 'dm_obj.pkl.gz'))
+            d_root_to_dm[dir_name] = dm
 
-    sys.exit()
+        sys.exit()
+
+    # sys.exit()
 
     def create_many_new_automaton(n: int, iter_same_func: int, l_t_2d_cells: Any) -> None:
         np.random.seed()
@@ -596,26 +563,30 @@ if __name__ == '__main__':
             for _ in range(0, iter_same_func):
                 create_new_automaton(d_function_data=d_func_data, l_t_2d_cells=l_t_2d_cells)
 
-    # create_many_new_automaton(n=1)
+    # create_many_new_automaton(n=1, iter_same_func=1, l_t_2d_cells=l_t_2d_cells)
 
     # sys.exit(0)
 
+    is_create_new_multiprocessing = False
+    # is_create_new_multiprocessing = True
+
     # mult_proc_mng = MultiprocessingManager(cpu_count=7)
-    mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
+    if is_create_new_multiprocessing:
+        mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
 
-    print('Define new Function!')
-    mult_proc_mng.define_new_func('func_create_many_new_automaton', create_many_new_automaton)
+        print('Define new Function!')
+        mult_proc_mng.define_new_func('func_create_many_new_automaton', create_many_new_automaton)
 
-    print('Do the jobs!!')
-    l_arguments = []
-    l_ret = mult_proc_mng.do_new_jobs(
-        ['func_create_many_new_automaton']*mult_proc_mng.worker_amount,
-        [(1, 10, l_t_2d_cells)]*mult_proc_mng.worker_amount,
-        # [(30,)] * mult_proc_mng.cpu_count,
-    )
-    print("len(l_ret): {}".format(len(l_ret)))
+        print('Do the jobs!!')
+        l_arguments = []
+        l_ret = mult_proc_mng.do_new_jobs(
+            ['func_create_many_new_automaton']*mult_proc_mng.worker_amount,
+            [(5, 10, l_t_2d_cells)]*mult_proc_mng.worker_amount,
+            # [(30,)] * mult_proc_mng.cpu_count,
+        )
+        print("len(l_ret): {}".format(len(l_ret)))
 
-    del mult_proc_mng
+        del mult_proc_mng
 
     l_dir_path = []
     for root, dirs, _ in os.walk(os.path.join(TEMP_DIR, 'save_images')):
@@ -624,19 +595,56 @@ if __name__ == '__main__':
                 l_dir_path.append(os.path.join(root, directory))
         break
 
+    l_dir_path = sorted(l_dir_path)
     print('len(l_dir_path): {}'.format(len(l_dir_path)))
     l_dm_obj = []
-    l_arr_historic_ranges = []
     l_func_str = []
-    for dir_path in l_dir_path:
+    l_t_t_var_inv = []
+    d_t_t_var_inv_to_t_t_var_inv_idx = {}
+    d_t_t_var_inv_idx_to_t_t_var_inv = {}
+    d_idx_to_dir_path = {}
+    # for idx, t_t_var_inv in enumerate(l_t_t_var_inv, 0):
+    #     d_t_t_var_inv_to_t_t_var_inv_idx[t_t_var_inv] = idx
+    #     d_t_t_var_inv_idx_to_t_t_var_inv[idx] = t_t_var_inv
+    l_dir_path_len = len(l_dir_path)
+    l_data = []
+    for i, dir_path in enumerate(l_dir_path, 1):
+    # for i, dir_path in enumerate(l_dir_path[:1], 1):
+        idx = i - 1
         file_path = os.path.join(dir_path, 'dm_obj.pkl.gz')
-        print('file_path: {}'.format(file_path))
+        print('Loading file {:4}/{:4}: {}'.format(i, l_dir_path_len, file_path))
 
         with gzip.open(file_path, 'rb') as f:
             dm_obj = dill.load(f)
 
         l_dm_obj.append(dm_obj)
-        l_arr_historic_ranges.append(dm_obj.arr_historic_ranges)
         l_func_str.append(dm_obj.func_str)
 
-    l_arr_historic_ranges_flat_norm = [arr.flatten() / np.max(arr) for arr in l_arr_historic_ranges]
+        t_t_var_inv = dm_obj.d_function_data.l_dm_local[0]['t_t_var_inv']
+        l_t_t_var_inv.append(t_t_var_inv)
+
+        d_t_t_var_inv_to_t_t_var_inv_idx[t_t_var_inv] = idx
+        d_t_t_var_inv_idx_to_t_t_var_inv[idx] = t_t_var_inv
+        d_idx_to_dir_path[idx] = dir_path
+
+        arr_sum_pix_cluster_roll = dm_obj.arr_sum_pix_cluster_roll
+        arr = arr_sum_pix_cluster_roll.astype(np.int64)
+        arr_concat_1st_2nd_deriv = np.concatenate((arr[:-2], arr[1:-1]-arr[:-2], (arr[2:]-arr[1:-1])-(arr[1:-1]-arr[:-2])), axis=1)
+        
+        l_data.extend([(idx, idx_img, arr_row) for idx_img, arr_row in enumerate(arr_concat_1st_2nd_deriv, 0)])
+
+    df = pd.DataFrame(data=l_data, columns=['idx', 'idx_img', 'arr_1st_2nd_deriv'], dtype=object)
+    df['t_1st_2nd_deriv'] = pd.Series(data=[tuple(arr.tolist()) for arr in df['arr_1st_2nd_deriv'].values], index=df.index, dtype=object)
+
+    arr_idx = df.duplicated(subset=['idx', 't_1st_2nd_deriv']).values
+    df_drop = df.loc[~arr_idx].copy().sort_values(by=['t_1st_2nd_deriv', 'idx'])
+
+    print("df.shape: {}".format(df.shape))
+    print("df_drop.shape: {}".format(df_drop.shape))
+
+    arr_idx = df_drop['idx'].values
+    arr_arr_1st_2nd_deriv = np.array([a.astype(np.int64) for a in df_drop['arr_1st_2nd_deriv'].values])
+    arr_t_1st_2nd_deriv = df_drop['t_1st_2nd_deriv'].values
+
+    u, c = np.unique(arr_t_1st_2nd_deriv, return_counts=True)
+    u2, c2 = np.unique(c, return_counts=True)

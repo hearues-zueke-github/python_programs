@@ -31,15 +31,17 @@ HOME_DIR = os.path.expanduser("~")
 TEMP_DIR = MemoryTempfile().gettempdir()
 
 # set the relative/absolute path where the utils_load_module.py file is placed!
-sys.path.append('.')
+sys.path.append('..')
 from utils_load_module import load_module_dynamically
 
 var_glob = globals()
 load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PATH_ROOT_DIR, "../utils.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PATH_ROOT_DIR, "../utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='prime_numbers_fun', path=os.path.join(PATH_ROOT_DIR, "../math_numbers/prime_numbers_fun.py")))
 
 mkdirs = utils.mkdirs
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+get_primes = prime_numbers_fun.get_primes
 
 OBJS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
 mkdirs(OBJS_DIR_PATH)
@@ -48,4 +50,5 @@ PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
 mkdirs(PLOTS_DIR_PATH)
 
 if __name__ == '__main__':
-    print("Hello World!")
+    l_prime = list(get_primes(n=1000))
+    print("l_prime: {}".format(l_prime))
