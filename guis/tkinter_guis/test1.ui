@@ -10,7 +10,7 @@
     </layout>
     <child>
       <object class="ttk.Label" id="lblMyLabel">
-        <property name="text" translatable="yes">test 1
+        <property name="text" translatable="yes">test 12
 </property>
         <layout>
           <property name="column">0</property>

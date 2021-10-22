@@ -295,7 +295,5 @@ if __name__ == "__main__":
     
     myWindow = MyWindowClass(None)
     myWindow.show()
-    # myWindow_2 = MyWindowClass(None)
-    # myWindow_2.show()
     
     app.exec_()
