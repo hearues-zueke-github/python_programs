@@ -31,12 +31,12 @@ class Window(tk.Frame):
 
         self.frames = [ImageTk.PhotoImage(
             Image.fromarray(np.zeros((128, 128, 3), dtype=np.uint8)+0x10*i),
-            format = 'gif -index %i' %(i))
+            format='gif -index %i' %(i))
             for i in range(0, 16)
         ]
         self.frames2 = [ImageTk.PhotoImage(
             Image.fromarray(np.zeros((128, 128, 3), dtype=np.uint8)+0x20*i),
-            format = 'gif -index %i' %(i))
+            format='gif -index %i' %(i))
             for i in range(0, 8)
         ]
 
@@ -44,7 +44,7 @@ class Window(tk.Frame):
         self.decrement_idx = 0
         # self.frames = [ImageTk.PhotoImage(
         #     Image.fromarray(np.random.randint(0, 256, (200, 300, 3), dtype=np.uint8)),
-        #     format = 'gif -index %i' %(i))
+        #     format='gif -index %i' %(i))
         #     for i in range(100)
         # ]
 
@@ -65,7 +65,7 @@ class Window(tk.Frame):
         # if ind < 0:
         #     ind = len(self.frames)-1
         ind = ind % len(self.frames)
-        print("ind: {}".format(ind))
+        print("update: ind: {}".format(ind))
 
         self.labl.configure(image=frame)
         self.after(100, self.update, ind)
@@ -75,7 +75,7 @@ class Window(tk.Frame):
         ind += 1
         if ind >= len(self.frames2):
             ind = 0
-        print("ind: {}".format(ind))
+        print("update2: ind: {}".format(ind))
 
         self.labl2.configure(image=frame)
         self.after(350, self.update2, ind)
@@ -115,7 +115,7 @@ class Window(tk.Frame):
         menu.add_cascade(label="Edit", menu=edit)
 
 
-        self.quitButton = tk.Button(self, text="Create Image",command=self.create_new_image)
+        self.quitButton = tk.Button(self, text="Create Image", command=self.create_new_image)
         self.quitButton.place(x=0, y=0)
 
 
