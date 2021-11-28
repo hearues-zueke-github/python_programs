@@ -65,6 +65,7 @@ def get_d_df(conn):
 if __name__=='__main__':
     conn = sqlite3.connect(os.path.join(constants.file_path_sqlite_db))
     
+    create_table_colors(conn=conn)
     d_df = get_d_df(conn=conn)
 
     # conn = sqlite3.connect('company.sqlite')
