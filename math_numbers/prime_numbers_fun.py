@@ -106,7 +106,7 @@ def sequence_3():
 
 
 if __name__ == "__main__":
-    n_max = 10000000
+    n_max = 100000
     l_primes = list(get_primes(n_max))
     
     print("n_max: {}".format(n_max))

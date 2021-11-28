@@ -30,15 +30,15 @@ CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
 TEMP_DIR = MemoryTempfile().gettempdir()
-PYTHON_PROGRMAS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
+PYTHON_PROGRAMS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
 
 # set the relative/absolute path where the utils_load_module.py file is placed!
-sys.path.append(PYTHON_PROGRMAS_DIR)
+sys.path.append(PYTHON_PROGRAMS_DIR)
 from utils_load_module import load_module_dynamically
 
 var_glob = globals()
-load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRMAS_DIR, "utils.py")))
-load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRMAS_DIR, "utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils_multiprocessing_manager.py")))
 
 mkdirs = utils.mkdirs
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
