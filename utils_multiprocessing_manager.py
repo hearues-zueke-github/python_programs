@@ -35,9 +35,10 @@ WORKER_SLEEP_TIME = 0.001
 MANAGER_SLEEP_TIME = 0.001
 
 class MultiprocessingManager(Exception):
-    def __init__(self, cpu_count):
+    def __init__(self, cpu_count, is_print_on=True):
         self.cpu_count = cpu_count
         self.worker_amount = self.cpu_count - 1
+        self.is_print_on = is_print_on
 
         # 1 proc for manager (class itself)
         # cpu_count-1 procs for the worker threads (processes)
@@ -69,7 +70,8 @@ class MultiprocessingManager(Exception):
                     try:
                         ret_val = d_func[func_name](*func_args)
                     except:
-                        print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, func_args, worker_nr))
+                        if self.is_print_on:
+                            print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, func_args, worker_nr))
                         ret_val = None
                     ret_tpl = (worker_nr, ret_val)
                     pipe_out.send(ret_tpl)
@@ -86,7 +88,8 @@ class MultiprocessingManager(Exception):
         for pipe_recv in self.pipes_recv_main:
             ret = pipe_recv.recv()
             worker_nr, text = ret
-            print("worker_nr: {}, text: {}".format(worker_nr, text))
+            if self.is_print_on:
+                print("worker_nr: {}, text: {}".format(worker_nr, text))
 
 
     def test_worker_threads_response(self):
@@ -96,7 +99,9 @@ class MultiprocessingManager(Exception):
         for pipe_recv in self.pipes_recv_main:
             ret = pipe_recv.recv()
             assert ret == 'IS WORKING!'
-        # print('IS WORKING OK!!!')
+        if self.is_print_on:
+            pass
+            # print('IS WORKING OK!!!')
 
 
     def do_new_jobs(self, l_func_name, l_func_args):
@@ -106,7 +111,8 @@ class MultiprocessingManager(Exception):
         if len_l_func_name <= self.worker_amount:
             for worker_nr, (pipe_send, func_name, func_args) in enumerate(zip(self.pipes_send_main, l_func_name, l_func_args), 0):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
-                print("Doing job: worker_nr: {}".format(worker_nr))
+                if self.is_print_on:
+                    print("Doing job: worker_nr: {}".format(worker_nr))
 
             finished_works = 0
             dq_pipe_i = deque(range(0, len_l_func_name))
@@ -124,11 +130,13 @@ class MultiprocessingManager(Exception):
                 l_ret.append(ret_val)
                 
                 finished_works += 1
-                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
+                if self.is_print_on:
+                    print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
         else:
             for worker_nr, (pipe_send, func_name, func_args) in enumerate(zip(self.pipes_send_main, l_func_name[:self.worker_amount], l_func_args[:self.worker_amount]), 0):
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
-                print("Doing job: worker_nr: {}".format(worker_nr))
+                if self.is_print_on:
+                    print("Doing job: worker_nr: {}".format(worker_nr))
             
             finished_works = 0
             pipe_i = 0
@@ -146,12 +154,14 @@ class MultiprocessingManager(Exception):
                 l_ret.append(ret_val)
 
                 finished_works += 1
-                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
+                if self.is_print_on:
+                    print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 
                 pipe_send = self.pipes_send_main[pipe_i]
                 pipe_send.send(('func_def_exec', (func_name, func_args)))
 
-                print("Doing job: worker_nr: {}".format(worker_nr))
+                if self.is_print_on:
+                    print("Doing job: worker_nr: {}".format(worker_nr))
                 
                 pipe_i = (pipe_i+1) % self.worker_amount
             
@@ -170,7 +180,8 @@ class MultiprocessingManager(Exception):
                 l_ret.append(ret_val)
                 
                 finished_works += 1
-                print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
+                if self.is_print_on:
+                    print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 
         return l_ret
 

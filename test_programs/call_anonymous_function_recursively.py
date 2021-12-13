@@ -51,5 +51,13 @@ mkdirs(OBJS_DIR_PATH)
 PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'plots')
 mkdirs(PLOTS_DIR_PATH)
 
+def main():
+    d = {}
+    d['f'] = lambda x: (print(f'x: {x}'), d['f'](x-1))[-1] if x > 0 else print('finished!')
+
+    return d
+
 if __name__ == '__main__':
-    print("Hello World!")
+    d = main()
+
+    (lambda g: (g.__setitem__('f', lambda x: (print(f'x: {x}'), g['f'](x-1))[-1] if x > 0 else print('finished!')), g['f'](5), 'YES')[-1])({})

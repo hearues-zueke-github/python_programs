@@ -51,5 +51,23 @@ mkdirs(OBJS_DIR_PATH)
 PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'plots')
 mkdirs(PLOTS_DIR_PATH)
 
+def bit_kth_remove(n, k):
+    print('Hello There')
+
+
+def find_and_execute_function():
+    with open('bits_challanges.py', 'r') as f:
+        content = f.read()
+
+    a = re.search(r'def bit_kth_remove\(n, k\):\n(    .*\n)+', content)
+    f_str = a.string[a.start():a.end()]
+
+    return content, f_str
+
 if __name__ == '__main__':
     print("Hello World!")
+
+    n = 123654
+    print("n: {}".format(n))
+    n_bits = bin(n)[2:]
+    print("n_bits: {}".format(n_bits))

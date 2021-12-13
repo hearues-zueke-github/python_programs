@@ -134,6 +134,11 @@ if __name__ == '__main__':
 
         for file_name in rootdirfile.l_file_name:
             file_path = os.path.join(root, file_name)
+
+            if os.path.islink(file_path):
+                l_file_path_link.append(file_path)
+                continue
+
             stat = os.stat(file_path)
 
             df.loc[row_nr] = [rel_root, file_name, 'f', stat, '']
@@ -204,46 +209,3 @@ if __name__ == '__main__':
         tar_obj.addfile(tarinfo=tarinfo, fileobj=bytes_file)
 
     tar_obj.close()
-
-    sys.exit()
-
-    # first attempt
-    root_first, _, _ = next(os.walk(src_folder_path))
-    len_root_first = len(root_first)
-    for iter_nr, (root, l_dir_name, l_file_name) in enumerate(os.walk(src_folder_path), 0):
-        root_short = root[len_root_first:]
-
-        for file_name in l_file_name:
-            src_file_path = os.path.join(root, file_name)
-            in_tar_file_path = os.path.join(root_short, file_name).lstrip('/')
-
-            if os.path.islink(src_file_path):
-                print('Skip link "{}"'.format(src_file_path))
-                l_file_path_link.append(src_file_path)
-                continue
-
-            print('copy "{}" -> "{}"'.format(src_file_path, in_tar_file_path))
-            try:
-                bytes_file = io.BytesIO()
-                with open(src_file_path, 'rb') as f:
-                    bytes_file.write(f.read())
-
-                tarinfo = tarfile.TarInfo(name=in_tar_file_path)
-                tarinfo.size = bytes_file.tell()
-                bytes_file.seek(0)
-                tar.addfile(tarinfo=tarinfo, fileobj=bytes_file)
-                # tar.addfile(tarinfo=tarinfo, fileobj=f)
-            except:
-                print('- Could not copy the file!')
-                l_file_path_failed.append(src_file_path)
-
-        # if iter_nr >= 5:
-        #     break
-
-    tar.close()
-
-    tar = tarfile.open(name=dst_file_path, mode='r:gz')
-    members = tar.getmembers()
-    # tar.close()
-
-    # TODO: create class for root and l_dir_name and l_file_name
