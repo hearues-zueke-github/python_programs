@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-using u32 = uint32_t;
-using u64 = uint64_t;
+using U32 = uint32_t;
+using U64 = uint64_t;
 
 #include <vector>
 #include <iomanip>

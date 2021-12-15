@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9.5 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9 # -i
 
 # -*- coding: utf-8 -*-
 
@@ -74,9 +74,9 @@ if __name__ == '__main__':
     # n = 3
 
     # TODO: need to make this multiprocessing able!
-    # for m in range(1, 16):
+    for m in range(1, 16):
     # for m in range(1, 5):
-    for m in range(5, 6):
+    # for m in range(5, 6):
     # for m in range(1, 101):
 
 
