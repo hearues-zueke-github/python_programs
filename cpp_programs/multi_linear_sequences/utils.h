@@ -1,5 +1,4 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <cstdint>
 
@@ -31,5 +30,3 @@ ostream& operator<<(ostream& os, const unordered_set<T>& obj);
 
 template<typename K, typename V>
 ostream& operator<<(ostream& os, const std::map<K, V>& obj);
-
-#endif // UTILS_H
