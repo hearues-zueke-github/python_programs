@@ -51,7 +51,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
 
     std::vector<KIdxStartEnd> vec_k_idx_start_end;
     const U64 k_idx_max = pow(m, n*2);
-    const U64 incrementer = [](const U64 incr) -> U64 {return (incr > 1000 ? 1000 : incr);}((k_idx_max / (U64)cpu_amount) + 1);
+    const U64 incrementer = [](const U64 incr) -> U64 {return (incr > 300 ? 300 : incr);}((k_idx_max / (U64)cpu_amount) + 1);
     // const U64 incrementer = 1000ull;
     for (U64 k_idx_start = 0ull; k_idx_start < k_idx_max; k_idx_start += incrementer) {
       U64 k_idx_end = k_idx_start + incrementer;

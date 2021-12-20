@@ -7,7 +7,7 @@ ThreadDataGeneric<InputType, ReturnType>::ThreadDataGeneric(
 ) : mutex(mutex_), cond_var(cond_var_),
     main_notify_thread(false), thread_notify_main(false),
     state(NONE),
-    var_input(), var_return(), // {
+    var_input(), var_return(),
     function(function_) {
 }
 
@@ -26,7 +26,6 @@ void ThreadDataGeneric<InputType, ReturnType>::start() {
         break;
       case ThreadState::START:
         // execute the function in the thread!
-        // calcCycleLengthAmounts(this->var_input, this->var_return);
         (*this->function)(this->var_input, this->var_return);
         break;
       case ThreadState::END:
@@ -48,12 +47,9 @@ void ThreadDataGeneric<InputType, ReturnType>::start() {
   }
 }
 
-struct InputTypeOwn_;
-struct ReturnTypeOwn_;
-
-template ThreadDataGeneric<struct InputTypeOwn_, struct ReturnTypeOwn_>::ThreadDataGeneric(
+template ThreadDataGeneric<InputTypeOwn, ReturnTypeOwn>::ThreadDataGeneric(
   std::mutex& mutex_, std::condition_variable& cond_var_,
-  void (*function_)(struct InputTypeOwn_&, struct ReturnTypeOwn_&)
+  void (*function_)(InputTypeOwn&, ReturnTypeOwn&)
 );
 
-template void ThreadDataGeneric<struct InputTypeOwn_, struct ReturnTypeOwn_>::start();
+template void ThreadDataGeneric<InputTypeOwn, ReturnTypeOwn>::start();
