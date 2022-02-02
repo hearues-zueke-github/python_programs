@@ -22,7 +22,7 @@ using std::cout;
 using std::endl;
 
 // TODO: make a function for aggregating the return values from the threads!
-void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min, const U32 m_max, const U32 cpu_amount, std::map<U32, std::map<U32, U32>>& map_m_to_map_len_cycle_to_count) {
+void calcCycleLengthAmountsMultiThreadingMainThread(const U32 dim, const U32 n, const U32 m_min, const U32 m_max, const U32 cpu_amount, std::map<U32, std::map<U32, U32>>& map_m_to_map_len_cycle_to_count) {
   std::vector<std::mutex> vec_mutex(cpu_amount);
   std::vector<std::condition_variable> vec_cond_var(cpu_amount);
   std::vector<ThreadData> vec_thread_data;
@@ -40,7 +40,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
 
   std::map<U32, U32> map_len_cycle_to_count_acc;
   for (U32 m = m_min; m <= m_max; ++m) {
-    cout << "n: " << n << ", m: " << m << endl;
+    cout << "dim: " << dim << ", n: " << n << ", m: " << m << endl;
 
     map_len_cycle_to_count_acc.clear();
 
@@ -51,7 +51,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
 
     std::vector<KIdxStartEnd> vec_k_idx_start_end;
     const U64 k_idx_max = pow(m, n*2);
-    const U64 incrementer = [](const U64 incr) -> U64 {return (incr > 1000 ? 1000 : incr);}((k_idx_max / (U64)cpu_amount) + 1);
+    const U64 incrementer = [](const U64 incr) -> U64 {return (incr > 300 ? 300 : incr);}((k_idx_max / (U64)cpu_amount) + 1);
     // const U64 incrementer = 1000ull;
     for (U64 k_idx_start = 0ull; k_idx_start < k_idx_max; k_idx_start += incrementer) {
       U64 k_idx_end = k_idx_start + incrementer;
@@ -71,6 +71,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
       const KIdxStartEnd& k_idx_star_end = vec_k_idx_start_end[i];
 
       InputTypeOwn& inp_var = thread_data.var_input;
+      inp_var.dim = dim;
       inp_var.n = n;
       inp_var.m = m;
       inp_var.k_idx_start = k_idx_star_end.k_idx_start;
@@ -139,6 +140,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
         const KIdxStartEnd& k_idx_star_end = vec_k_idx_start_end[i_k_idx];
 
         InputTypeOwn& inp_var = thread_data.var_input;
+        inp_var.dim = dim;
         inp_var.n = n;
         inp_var.m = m;
         inp_var.k_idx_start = k_idx_star_end.k_idx_start;
@@ -198,6 +200,7 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
     map_m_to_map_len_cycle_to_count.emplace(m, map_len_cycle_to_count_acc);
   }
 
+  // turn off the threads
   for (U32 i = 0; i < cpu_amount; ++i) {
     ThreadData& thread_data = vec_thread_data[i];
     { // stop all threads
@@ -211,39 +214,59 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
     }
   }
 
+  // join all threads
   for (U32 i = 0; i < cpu_amount; ++i) {
     threads[i].join();
   }
 }
 
 int main(int argc, char* argv[]) {
-  U32 cpu_amount = std::stoi(argv[4]);
-  // U32 cpu_amount = std::thread::hardware_concurrency() - 1;
-
-  const U32 n = std::stoi(argv[1]);
+  const U32 dim = std::stoi(argv[1]);
+  const U32 n = std::stoi(argv[2]);
   // const U32 n = 2;
   std::map<U32, std::map<U32, U32>> map_m_to_map_len_cycle_to_count;
 
-  const U32 m_min = std::stoi(argv[2]);
-  const U32 m_max = std::stoi(argv[3]);
+  const U32 m_min = std::stoi(argv[3]);
+  const U32 m_max = std::stoi(argv[4]);
   // const U32 m_min = 1;
   // const U32 m_max = 20;
-  calcCycleLengthAmountsMultiThreadingMainThread(n, m_min, m_max, cpu_amount, map_m_to_map_len_cycle_to_count);
+  
+  const U32 cpu_amount = std::stoi(argv[5]);
+  // U32 cpu_amount = std::thread::hardware_concurrency() - 1;
+  
+  calcCycleLengthAmountsMultiThreadingMainThread(dim, n, m_min, m_max, cpu_amount, map_m_to_map_len_cycle_to_count);
 
   // cout << "map_m_to_map_len_cycle_to_count: " << map_m_to_map_len_cycle_to_count << endl;
 
   // TODO: make other functions for gethering interesting other sequences!
-  std::vector<U32> sequence_m;
+  std::vector<U32> sequence_amount_m;
   std::vector<U32> sequence_a_m;
+  std::vector<U32> sequence_a_m_len;
 
-  for (const auto& map_len_cycle_to_count : map_m_to_map_len_cycle_to_count) {
-    const auto& iter = map_len_cycle_to_count.second.rbegin();
-    sequence_m.emplace_back(iter->first);
+  for (const auto& iter_map_len_cycle_to_count : map_m_to_map_len_cycle_to_count) {
+    const auto& iter = iter_map_len_cycle_to_count.second.rbegin();
+    sequence_amount_m.emplace_back(iter->first);
     sequence_a_m.emplace_back(iter->second);
+    sequence_a_m_len.emplace_back(iter_map_len_cycle_to_count.second.size());
   }
 
-  cout << "sequence_m: " << sequence_m << endl;
+  cout << "sequence_amount_m: " << sequence_amount_m << endl;
   cout << "sequence_a_m: " << sequence_a_m << endl;
+  cout << "sequence_a_m_len: " << sequence_a_m_len << endl;
+
+  std::vector<U32> vec_m;
+  for (const auto& iter_map_len_cycle_to_count : map_m_to_map_len_cycle_to_count) {
+    vec_m.emplace_back(iter_map_len_cycle_to_count.first);
+  }
+  std::sort(vec_m.begin(), vec_m.end());
+
+  for (U32 i = 0; i < vec_m.size(); ++i) {
+    const U32 m = vec_m[i];
+    const U32 amount_m = sequence_amount_m[i];
+    const U32 a_m = sequence_a_m[i];
+    const U32 a_m_len = sequence_a_m_len[i];
+    cout << "m: " << m << ", amount_m: " << amount_m << ", a_m: " << a_m << ", a_m_len: " << a_m_len << endl;
+  }
 
   return 0;
 }

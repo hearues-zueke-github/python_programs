@@ -4,6 +4,7 @@ template<typename InputType, typename ReturnType>
 struct ThreadDataGeneric;
 
 typedef struct InputTypeOwn_ {
+  U32 dim;
   U32 n;
   U32 m;
   U64 k_idx_start;
