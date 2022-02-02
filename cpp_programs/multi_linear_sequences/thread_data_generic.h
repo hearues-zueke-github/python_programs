@@ -26,5 +26,3 @@ struct ThreadDataGeneric {
   ThreadDataGeneric(std::mutex& mutex_, std::condition_variable& cond_var_, void (*function_)(InputType&, ReturnType&));
   void start();
 };
-
-template struct ThreadDataGeneric<InputTypeOwn, ReturnTypeOwn>;
