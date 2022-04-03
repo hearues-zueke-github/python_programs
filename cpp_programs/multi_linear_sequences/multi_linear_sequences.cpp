@@ -2,14 +2,15 @@
 
 // k_idx_start: inclusive, k_idx_end: exclusive
 void calcCycleLengthAmounts(InputTypeOwn& inp_var, ReturnTypeOwn& ret_var) {
+  const U32 dim = inp_var.dim;
   const U32 n = inp_var.n;
   const U32 m = inp_var.m;
   const U64 k_idx_start = inp_var.k_idx_start;
   const U64 k_idx_end = inp_var.k_idx_end;
   std::map<U32, U32>& map_len_cycle_to_count = ret_var.map_len_cycle_to_count;
 
-  GenerateAllCombVec vec_a = GenerateAllCombVec(n, m);
-  GenerateAllCombVec vec_k = GenerateAllCombVec(pow(n, 2), m, k_idx_start);
+  GenerateAllCombVec vec_a = GenerateAllCombVec(dim, n, m);
+  GenerateAllCombVec vec_k = GenerateAllCombVec(dim, pow(dim + 1, n), m, k_idx_start);
 
   ArrPrepand arr_prep = ArrPrepand(&vec_a);
 

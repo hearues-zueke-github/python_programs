@@ -19,14 +19,15 @@ typedef struct VecTempIter_ VecTempIter;
 struct GenerateAllCombVec_ {
   vector<U32> arr;
   U32 count;
+  U32 dim;
   U32 n;
   U32 m;
   bool isFinished;
-  GenerateAllCombVec_(const U32 n_, const U32 m_) :
-    arr(n_, 0), count(0), n(n_), m(m_), isFinished(false)
+  GenerateAllCombVec_(const U32 dim_, const U32 n_, const U32 m_) :
+    arr(n_, 0), count(0), dim(dim_), n(n_), m(m_), isFinished(false)
   {}
-  GenerateAllCombVec_(const U32 n_, const U32 m_, const U32 count_) :
-    GenerateAllCombVec_(n_, m_)
+  GenerateAllCombVec_(const U32 dim_, const U32 n_, const U32 m_, const U32 count_) :
+    GenerateAllCombVec_(dim_, n_, m_)
   {
     U32 c = count_;
     for (U32 i = 0; i < this->n; ++i) {
@@ -72,36 +73,65 @@ struct GenerateAllCombVec_ {
 
 struct ArrPrepand_ {
   const GenerateAllCombVec* arr_a;
+  U32 dim;
   U32 n;
   U32 n_2;
   U32 m;
   vector<U32> arr;
   ArrPrepand_(const GenerateAllCombVec* arr_a_) :
-    arr_a(arr_a_), n(arr_a_->n), n_2(pow(arr_a_->n, 2)), m(arr_a_->m), arr(n_2, 0)
+    arr_a(arr_a_), dim(arr_a_->dim), n(arr_a_->n), n_2(pow(dim + 1, n)), m(arr_a_->m), arr(n_2, 0)
   {
     this->arr[this->n_2 - 1] = 1;
   };
-  void prepand() {
-    switch (this->n) {
+  inline void prepand() {
+    switch (this->dim) {
       case 1:
-        this->arr[0] = this->arr_a->arr[0];
+        switch (this->n) {
+          case 1:
+            this->arr[0] = this->arr_a->arr[0];
+            break;
+          case 2:
+            this->arr[0] = (this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
+            this->arr[1] = this->arr_a->arr[0];
+            this->arr[2] = this->arr_a->arr[1];
+            break;
+          case 3:
+            this->arr[0] = (this->arr_a->arr[0] * this->arr_a->arr[1] * this->arr_a->arr[2]) % this->m;
+            this->arr[1] = (this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
+            this->arr[2] = (this->arr_a->arr[0] * this->arr_a->arr[2]) % this->m;
+            this->arr[3] = (this->arr_a->arr[1] * this->arr_a->arr[2]) % this->m;
+            this->arr[4] = this->arr_a->arr[0];
+            this->arr[5] = this->arr_a->arr[1];
+            this->arr[6] = this->arr_a->arr[2];
+            break;
+          default:
+            assert(false && "Not implemented for n > 3!");
+            break;
+        }
         break;
       case 2:
-        this->arr[0] = (this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
-        this->arr[1] = this->arr_a->arr[0];
-        this->arr[2] = this->arr_a->arr[1];
-        break;
-      case 3:
-        this->arr[0] = (this->arr_a->arr[0] * this->arr_a->arr[1] * this->arr_a->arr[2]) % this->m;
-        this->arr[1] = (this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
-        this->arr[2] = (this->arr_a->arr[0] * this->arr_a->arr[2]) % this->m;
-        this->arr[3] = (this->arr_a->arr[1] * this->arr_a->arr[2]) % this->m;
-        this->arr[4] = this->arr_a->arr[0];
-        this->arr[5] = this->arr_a->arr[1];
-        this->arr[6] = this->arr_a->arr[2];
+        switch (this->n) {
+          case 1:
+            this->arr[0] = this->arr_a->arr[0];
+            this->arr[1] = (this->arr_a->arr[0]*this->arr_a->arr[0]) % this->m;
+            break;
+          case 2:
+            this->arr[0] = (this->arr_a->arr[0]*this->arr_a->arr[0] * this->arr_a->arr[1]*this->arr_a->arr[1]) % this->m;
+            this->arr[1] = (this->arr_a->arr[0]*this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
+            this->arr[2] = (this->arr_a->arr[0] * this->arr_a->arr[1]*this->arr_a->arr[1]) % this->m;
+            this->arr[3] = (this->arr_a->arr[0]*this->arr_a->arr[0]) % this->m;
+            this->arr[4] = (this->arr_a->arr[1]*this->arr_a->arr[1]) % this->m;
+            this->arr[5] = (this->arr_a->arr[0] * this->arr_a->arr[1]) % this->m;
+            this->arr[6] = this->arr_a->arr[0];
+            this->arr[7] = this->arr_a->arr[1];
+            break;
+          default:
+            assert(false && "Not implemented for n > 1!");
+            break;
+        }
         break;
       default:
-        assert(false && "Not implemented for n > 3!");
+        assert(false && "Not implemented for dim > 1!");
         break;
     }
   }
