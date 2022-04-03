@@ -20,7 +20,7 @@ if __name__=='__main__':
         fl_y = fl(y)
         print("numer: {}, denom: {}, float(y): {}".format(numer, denom, float(y)))
         
-        if y.numerator%y.denominator==0 and fl_y==n:
+        if (y.numerator % y.denominator == 0) and (fl_y == n):
             break
 
         if is_increment_numerator:
