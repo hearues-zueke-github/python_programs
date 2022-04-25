@@ -78,85 +78,107 @@ if __name__ == '__main__':
     # print('Hello World!')
     argv = sys.argv
     n = int(argv[1])
-    m = int(argv[2])
+    # m = int(argv[2])
 
-    MAX_CYCLE_LEN = m**n
+    d_m_to_cycle_len = {}
+    for m in range(1, 11):
+        MAX_CYCLE_LEN = m**n
 
-    def get_missing_tpl_a(d_tpl_a):
-        s_all = set(range(0, MAX_CYCLE_LEN))
-        for k in d_tpl_a:
-            s_all.remove(get_num_from_base_lst(l=k, b=m))
-        missing_n = list(s_all)[0]
-        # print("- missing_n: {}".format(missing_n))
-        l_a_missing = convert_num_to_base_num(n=missing_n, b=m, min_len=n)
-        tpl_a_missing = tuple(l_a_missing)
-        assert tpl_a_missing not in d_tpl_a
-        return tpl_a_missing
+        def get_missing_tpl_a(d_tpl_a):
+            s_all = set(range(0, MAX_CYCLE_LEN))
+            for k in d_tpl_a:
+                s_all.remove(get_num_from_base_lst(l=k, b=m))
+            missing_n = list(s_all)[0]
+            # print("- missing_n: {}".format(missing_n))
+            l_a_missing = convert_num_to_base_num(n=missing_n, b=m, min_len=n)
+            tpl_a_missing = tuple(l_a_missing)
+            assert tpl_a_missing not in d_tpl_a
+            return tpl_a_missing
 
-    # s_cycle_len = set()
-    d_cycle_len = {}
-    for iters in range(0, 100000):
-        if iters % 1000 == 0:
-            print("iters: {}".format(iters))
+        # s_cycle_len = set()
+        d_cycle_len = {}
+        for iters in range(0, 20000):
+            if iters % 1000 == 0:
+                print(f"m: {m}, iters: {iters}")
 
-        arr_a = np.random.randint(0, m, (n, ))
-        arr_v_k = np.random.randint(0, m, (n, ))
-        arr_m_k = np.random.randint(0, m, (n, n))
+            arr_a = np.random.randint(0, m, (n, ))
+            arr_v_k = np.random.randint(0, m, (n, ))
+            arr_m_k = np.random.randint(0, m, (n, ))
+            # arr_m_k = np.random.randint(0, m, (n, n))
 
-        l_a = arr_a.tolist()
+            l_a = arr_a.tolist()
 
-        tpl_a = tuple(arr_a.tolist())
-        tpl_a_prev = tpl_a
-        d_tpl_a = {tpl_a: 0}
-        nr_tpl_a = 1
-        while True:
-            arr_a[:] = (arr_v_k + arr_m_k.dot(arr_a)) % m
-            tpl_a_prev = tpl_a
             tpl_a = tuple(arr_a.tolist())
+            tpl_a_prev = tpl_a
+            d_tpl_a = {tpl_a: 0}
+            nr_tpl_a = 1
+            while True:
+                a_next = np.sum((arr_v_k + arr_m_k * arr_a) % m) % m
+                arr_a[:-1] = arr_a[1:]
+                arr_a[-1] = a_next
+
+                # arr_a[:] = np.roll((arr_v_k + arr_m_k * arr_a) % m, 1)
+                
+                # arr_a[:] = (arr_v_k + arr_m_k * arr_a) % m
+                
+                tpl_a_prev = tpl_a
+                tpl_a = tuple(arr_a.tolist())
+                
+                if tpl_a in d_tpl_a:
+                    break
+
+                d_tpl_a[tpl_a] = nr_tpl_a
+                nr_tpl_a += 1
             
-            if tpl_a in d_tpl_a:
-                break
-
-            d_tpl_a[tpl_a] = nr_tpl_a
-            nr_tpl_a += 1
-        
-        cycle_len = d_tpl_a[tpl_a_prev] - d_tpl_a[tpl_a] + 1
-        if cycle_len not in d_cycle_len:
-            d_cycle_len[cycle_len] = {
-                'l_v_k': arr_v_k.tolist(),
-                'l_m_k': arr_m_k.tolist(),
-                'l_a': l_a,
-                'd_tpl_a': d_tpl_a,
-                'tpl_a': tpl_a,
-                'tpl_a_prev': tpl_a_prev,
-            }
-        elif cycle_len == MAX_CYCLE_LEN - 1:
-            d = d_cycle_len[cycle_len]
-            if 'missing_tpl_a' not in d:
-                d['missing_tpl_a'] = get_missing_tpl_a(d_tpl_a=d['d_tpl_a'])
-                # print("d['missing_tpl_a']: {}".format(d['missing_tpl_a']))
-            else:
-                missing_tpl_a = get_missing_tpl_a(d_tpl_a=d_tpl_a)
-                # print("maybe? missing_tpl_a: {}".format(missing_tpl_a))
-                l11 = list(reversed(d['missing_tpl_a']))
-                l12 = list(reversed(missing_tpl_a))
-
-                l21 = d['l_v_k']
-                l22 = arr_v_k.tolist()
-                if l11 > l12 or l11 == l12 and \
-                (l21 > l22 or l21 == l22 and sorted(d['l_m_k']) > sorted(arr_m_k.tolist())):
-                    d['l_v_k'] = arr_v_k.tolist()
-                    d['l_m_k'] = arr_m_k.tolist()
-                    d['l_a'] = l_a
-                    d['d_tpl_a'] = d_tpl_a
-                    d['tpl_a'] = tpl_a
-                    d['tpl_a_prev'] = tpl_a_prev
-                    d['missing_tpl_a'] = missing_tpl_a
+            cycle_len = d_tpl_a[tpl_a_prev] - d_tpl_a[tpl_a] + 1
+            if cycle_len not in d_cycle_len:
+                d_cycle_len[cycle_len] = {
+                    'l_v_k': arr_v_k.tolist(),
+                    'l_m_k': arr_m_k.tolist(),
+                    'l_a': l_a,
+                    'd_tpl_a': d_tpl_a,
+                    'tpl_a': tpl_a,
+                    'tpl_a_prev': tpl_a_prev,
+                }
+            elif cycle_len == MAX_CYCLE_LEN - 1 and n > 1:
+                d = d_cycle_len[cycle_len]
+                if 'missing_tpl_a' not in d:
+                    d['missing_tpl_a'] = get_missing_tpl_a(d_tpl_a=d['d_tpl_a'])
                     # print("d['missing_tpl_a']: {}".format(d['missing_tpl_a']))
-        # d_cycle_len[cycle_len] += 1
+                else:
+                    missing_tpl_a = get_missing_tpl_a(d_tpl_a=d_tpl_a)
+                    # print("maybe? missing_tpl_a: {}".format(missing_tpl_a))
+                    l11 = list(reversed(d['missing_tpl_a']))
+                    l12 = list(reversed(missing_tpl_a))
 
-    l_cycle_len = sorted(d_cycle_len.keys())
-    max_cycle_len = l_cycle_len[-1]
-    print(f"n: {n}, m: {m}, l_cycle_len: {l_cycle_len}")
+                    l21 = d['l_v_k']
+                    l22 = arr_v_k.tolist()
+                    if l11 > l12 or l11 == l12 and \
+                    (l21 > l22 or l21 == l22 and sorted(d['l_m_k']) > sorted(arr_m_k.tolist())):
+                        d['l_v_k'] = arr_v_k.tolist()
+                        d['l_m_k'] = arr_m_k.tolist()
+                        d['l_a'] = l_a
+                        d['d_tpl_a'] = d_tpl_a
+                        d['tpl_a'] = tpl_a
+                        d['tpl_a_prev'] = tpl_a_prev
+                        d['missing_tpl_a'] = missing_tpl_a
+                        # print("d['missing_tpl_a']: {}".format(d['missing_tpl_a']))
+            # d_cycle_len[cycle_len] += 1
 
-    print(f"d_cycle_len[{max_cycle_len}]: {d_cycle_len[max_cycle_len]}")
+        l_cycle_len = sorted(d_cycle_len.keys())
+        max_cycle_len = l_cycle_len[-1]
+        print(f"n: {n}, m: {m}, l_cycle_len: {l_cycle_len}")
+
+        d = d_cycle_len[max_cycle_len]
+        print(f"d_cycle_len[{max_cycle_len}]: {d_cycle_len[max_cycle_len]}")
+        print(f"n: {n}, m: {m}")
+        print(f"d['l_v_k']: {d['l_v_k']}")
+        print(f"d['l_m_k']: {d['l_m_k']}")
+
+        d_m_to_cycle_len[m] = max_cycle_len
+
+    print(f"d_m_to_cycle_len: {d_m_to_cycle_len}")
+    
+    print(f"n: {n}")
+    l_vals = [v for _, v in sorted(d_m_to_cycle_len.items())]
+    print(f"l_vals: {l_vals}")

@@ -42,22 +42,26 @@ def get_primes(n):
 
 
 def prime_factorization(n, ps):
-    lst = []
+    # lst = []
+    d = {}
 
     for p in ps:
         count = 0
         while n%p==0:
             count += 1
             n //= p
-        lst.append((p, count))
+        if count > 0:
+            d[p] = count
+        # lst.append((p, count))
         if n==1:
             break
 
-    return lst
+    # return lst
+    return d
 
 
 def get_prime_amount_timetable(n, ps):
-    timetable = np.zeros((len(ps), )).astype(np.int)
+    timetable = np.zeros((len(ps), )).astype(np.int64)
 
     for i, p in enumerate(ps):
         t = n//p
