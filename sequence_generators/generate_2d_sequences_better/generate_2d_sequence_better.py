@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.10 -i
 
 # -*- coding: utf-8 -*-
 
@@ -60,6 +60,7 @@ if __name__ == '__main__':
         return f
 
     n = 1024
+    # n = 128
     # n = 256
 
     # fac_const = 1
@@ -84,7 +85,8 @@ if __name__ == '__main__':
             for x in range(1, n):
                 arr[y, x] = f(a=arr[y-1, x], b=arr[y, x-1], c=arr[y-1, x-1])
 
-        arr_idx_to_val = (np.arange(0, 1.0000000000001, 1 / (m-1)) * 255).astype(np.uint8)
+        arr_idx_to_val = (np.arange(0, 1.0000000000001, 1 / (m-1)) * 256).astype(np.uint8)
+        arr_idx_to_val[-1] = 255
         assert arr_idx_to_val.shape[0] == m
 
         img = Image.fromarray(arr_idx_to_val[arr])
@@ -93,9 +95,21 @@ if __name__ == '__main__':
         # size = img.size
         # img = img.resize(size=(size[0]*factor_resize, size[1]*factor_resize), resample=Image.NONE)
 
-        img.save(os.path.join(dir_path_temp, f'm_{m:02}_fac_const_{fac_const:02}_fac_a_{fac_a:02}_fac_b_{fac_b:02}_fac_c_{fac_c:02}.png'))
+        base_file_name = f'm_{m:02}_fac_const_{fac_const:02}_fac_a_{fac_a:02}_fac_b_{fac_b:02}_fac_c_{fac_c:02}'
+        img.save(os.path.join(dir_path_temp, f"{base_file_name}.png"))
 
-        return ((m, fac_a, fac_b, fac_c), arr)
+        file_path_pkl = os.path.join(dir_path_temp, f"{base_file_name}.pkl")
+        with open(file_path_pkl, 'wb') as f:
+            dill.dump(dict(
+                m=m,
+                v_const=fac_const,
+                v_a=fac_a,
+                v_b=fac_b,
+                v_c=fac_c,
+                arr=arr,
+            ), f)
+
+        return ((m, fac_const, fac_a, fac_b, fac_c), arr)
 
     mult_proc_mng = MultiprocessingManager(cpu_count=mp.cpu_count())
 
@@ -106,8 +120,8 @@ if __name__ == '__main__':
     mult_proc_mng.define_new_func('func_f', f)
     print('Do the jobs!!')
     l_arguments = []
-    for _ in range(0, 300):
-        m = np.random.randint(2, 101, (1, ))[0]
+    for _ in range(0, 1):
+        m = np.random.randint(5, 10, (1, ))[0]
         l_arguments.append((m, )+tuple(np.random.randint(0, m, (4, )).tolist()))
     l_arguments = sorted(set(l_arguments))
     # for fac_c in range(0, m):
@@ -124,3 +138,5 @@ if __name__ == '__main__':
     # # testing the responsivness again!
     # mult_proc_mng.test_worker_threads_response()
     del mult_proc_mng
+
+    print(f"l_ret[0]:\n{l_ret[0]}")
