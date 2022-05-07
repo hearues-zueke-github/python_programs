@@ -1,5 +1,6 @@
 import dill
 import time
+import traceback
 
 from collections import deque
 from multiprocessing import Process, Pipe
@@ -71,7 +72,8 @@ class MultiprocessingManager(Exception):
                         ret_val = d_func[func_name](*func_args)
                     except:
                         if self.is_print_on:
-                            print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, func_args, worker_nr))
+                            print('Fail for func_name: {}, func_args: {}, at worker_nr: {}'.format(func_name, [str(arg)[:50] for arg in func_args], worker_nr))
+                            traceback.print_stack()
                         ret_val = None
                     ret_tpl = (worker_nr, ret_val)
                     pipe_out.send(ret_tpl)

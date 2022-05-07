@@ -75,201 +75,110 @@ def get_num_from_base_lst(l, b):
     return n
 
 if __name__ == '__main__':
+    # print('Hello World!')
     argv = sys.argv
-    
-    # m = int(argv[1])
-    # l_cycle_len = []
-    l_key_len = []
-    for m in range(1, 5):
-    # for m in range(1, 21):
-    # for m in range(21, 23):
-        MAX_CYCLE_LEN = m
+    n = int(argv[1])
+    # m = int(argv[2])
 
-        d_t_d_k_to_l_seq = {}
+    d_m_to_cycle_len = {}
+    for m in range(1, 11):
+        MAX_CYCLE_LEN = m**n
+
+        def get_missing_tpl_a(d_tpl_a):
+            s_all = set(range(0, MAX_CYCLE_LEN))
+            for k in d_tpl_a:
+                s_all.remove(get_num_from_base_lst(l=k, b=m))
+            missing_n = list(s_all)[0]
+            # print("- missing_n: {}".format(missing_n))
+            l_a_missing = convert_num_to_base_num(n=missing_n, b=m, min_len=n)
+            tpl_a_missing = tuple(l_a_missing)
+            assert tpl_a_missing not in d_tpl_a
+            return tpl_a_missing
+
+        # s_cycle_len = set()
         d_cycle_len = {}
-        s_t_d_k_vals = set()
-        for k in range(0, m):
-            for d in range(0, m):
-                a = 0
-                a_prev = a
-                d_a = {a: 0}
-                l_a = [a]
-                nr_tpl_a = 1
-                while True:
-                    a_next = (d + k * a) % m
-                    a_prev = a
-                    a = a_next
+        for iters in range(0, 20000):
+            if iters % 1000 == 0:
+                print(f"m: {m}, iters: {iters}")
 
-                    if a in d_a:
-                        break
+            arr_a = np.random.randint(0, m, (n, ))
+            arr_v_k = np.random.randint(0, m, (n, ))
+            arr_m_k = np.random.randint(0, m, (n, ))
+            # arr_m_k = np.random.randint(0, m, (n, n))
 
-                    d_a[a] = nr_tpl_a
-                    nr_tpl_a += 1
-                    l_a.append(a)
+            l_a = arr_a.tolist()
+
+            tpl_a = tuple(arr_a.tolist())
+            tpl_a_prev = tpl_a
+            d_tpl_a = {tpl_a: 0}
+            nr_tpl_a = 1
+            while True:
+                a_next = np.sum((arr_v_k + arr_m_k * arr_a) % m) % m
+                arr_a[:-1] = arr_a[1:]
+                arr_a[-1] = a_next
+
+                # arr_a[:] = np.roll((arr_v_k + arr_m_k * arr_a) % m, 1)
                 
-                cycle_len = d_a[a_prev] - d_a[a] + 1
-
-                if cycle_len == MAX_CYCLE_LEN:
-                    t_d_k = (d, k)
-                    if t_d_k not in s_t_d_k_vals:
-                        s_t_d_k_vals.add(t_d_k)
-                    d_t_d_k_to_l_seq[t_d_k] = l_a
-
-        l_t_d_k_vals = sorted(s_t_d_k_vals)
-        print(f"l_t_d_k_vals: {l_t_d_k_vals}")
-
-        t_d_k = l_t_d_k_vals[0]
-        # t_d_k = l_t_d_k_vals[len(l_t_d_k_vals) % 4]
-        l_a = d_t_d_k_to_l_seq[t_d_k]
-        d_a_next = {a1: a2 for a1, a2 in zip(l_a, l_a[1:]+l_a[:1])}
-
-        print(f"t_d_k: {t_d_k}")
-        print(f"- l_a: {l_a}")
-
-        # l_a_len = []
-
-        # d_n_to_d_cycle_len_to_l_t_unique = {}
-        d_cycle_len_to_l_t_unique = {}
-
-        # n = m
-        for n in range(m**2, m**2+1):
-        # for n in range(1, 19):
-            # d_cycle_len_to_l_t_unique = {}
-            # d_n_to_d_cycle_len_to_l_t_unique[n] = d_cycle_len_to_l_t_unique
-
-        # for n in range(1, 10):
-            s_t_avail = set(tuple(l) for l in get_all_combinations_repeat(2, n).tolist())
-            # s_t_used = set()
-            s_t_unique = set()
-
-            while s_t_avail:
-                t = s_t_avail.pop()
-                t_inv = tuple((i+1)%2 for i in t)
-                t_rev = t[::-1]
-                t_rev_inv = t_inv[::-1]
-
-                l_t = [t, t_inv, t_rev, t_rev_inv]
-                for _ in range(0, n-1):
-                    t = t[1:] + t[:1]
-                    t_inv = t_inv[1:] + t_inv[:1]
-                    t_rev = t_rev[1:] + t_rev[:1]
-                    t_rev_inv = t_rev_inv[1:] + t_rev_inv[:1]
-                    l_t.append(t)
-                    l_t.append(t_inv)
-                    l_t.append(t_rev)
-                    l_t.append(t_rev_inv)
-
-                for t in l_t:
-                    if t in s_t_avail:
-                        s_t_avail.remove(t)
-
-                s_t_unique.add(sorted(l_t)[0])
-
-            print(f"- n: {n}, s_t_unique: {s_t_unique}")
-            
-            # l_mult_factor = [i for i in range(1, n) if n % i == 0]
-            # for t_unique in sorted(s_t_unique):
-            #     is_inner_cycle = False
-            #     for mult_factor in l_mult_factor:
-            #         t_first = t_unique[:mult_factor]
-            #         if all([t_first == t_unique[mult_factor*i:mult_factor*(i+1)] for i in range(1, n // mult_factor)]):
-            #             is_inner_cycle = True
-            #             break
-            #     if is_inner_cycle:
-            #         s_t_unique.remove(t_unique)
-
-            # print(f"- n: {n}, removed some inner_cycles s_t_unique: {s_t_unique}")
-
-            # l_a_len.append(len(s_t_unique))
-            # continue
-            
-            # print(f"l_a_len: {l_a_len}")
-
-            # sys.exit()
-
-            # l_l_idx = [
-            #     [0, 0, 1],
-            #     [0, 1, 0],
-            #     [0, 1, 1],
-            #     [0, 0, 0, 1],
-            #     [0, 0, 1, 1],
-            #     [0, 1],
-            #     [0, 1, 0, 1],
-            #     [0, 0, 1, 0, 1, 1],
-            #     [0, 0, 0, 0, 1],
-            #     [0, 0, 0, 0, 1, 1],
-            #     [0, 0, 0, 0, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 1, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 0, 1],
-            #     [0, 0, 0, 0, 0, 0, 1, 0, 1],
-            #     [0, 0, 0, 0, 0, 1, 1, 0, 1],
-            #     [0, 0, 0, 0, 1, 1, 0, 0, 1],
-            #     [0, 0, 0, 0, 0, 1, 0, 1, 1],
-            #     [0, 0, 0, 0, 1, 0, 1, 0, 1],
-            #     [0, 0, 0, 0, 0, 1, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 1],
-            #     [0, 0, 0, 0, 0, 0, 1, 1],
-            #     [0, 0, 0, 0, 0, 1, 1, 1],
-            #     [0, 0, 0, 0, 1, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-            #     [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-            # ]
-            for t_idx in s_t_unique:
-            # for t_idx in l_l_idx:
-                la = [0, 0]
-                # t_idx = [0, 0, 1]
-                len_l_idx = len(t_idx)
-                idx_index = 0
-
-                ta = tuple(la)
-                d_ta_to_nr_tpl_a = {ta: 0}
-                la_prev = [0, 0]
-                d_ta = {ta: 0}
-                l_ta = [ta]
-                nr_tpl_a = 1
-
-                while True:
-                    la_prev[0] = la[0]
-                    la_prev[1] = la[1]
-
-                    idx = t_idx[idx_index]
-                    idx_index = (idx_index + 1) % len_l_idx
-
-                    a_next = d_a_next[la[idx]]
-                    # la_prev[idx] = la[idx]
-                    la[idx] = a_next
-
-                    ta = tuple(la)
-                    if ta in d_ta:
-                        break
-
-                    d_ta[ta] = nr_tpl_a
-                    nr_tpl_a += 1
-                    l_ta.append(ta)
+                # arr_a[:] = (arr_v_k + arr_m_k * arr_a) % m
                 
-                cycle_len = d_ta[tuple(la_prev)] - d_ta[ta] + 1
-                print()
-                print(f"t_idx: {t_idx}")
-                print(f"- cycle_len: {cycle_len}")
-                # print(f"- l_ta: {l_ta}")
+                tpl_a_prev = tpl_a
+                tpl_a = tuple(arr_a.tolist())
+                
+                if tpl_a in d_tpl_a:
+                    break
 
-                if cycle_len not in d_cycle_len_to_l_t_unique:
-                    d_cycle_len_to_l_t_unique[cycle_len] = []
+                d_tpl_a[tpl_a] = nr_tpl_a
+                nr_tpl_a += 1
+            
+            cycle_len = d_tpl_a[tpl_a_prev] - d_tpl_a[tpl_a] + 1
+            if cycle_len not in d_cycle_len:
+                d_cycle_len[cycle_len] = {
+                    'l_v_k': arr_v_k.tolist(),
+                    'l_m_k': arr_m_k.tolist(),
+                    'l_a': l_a,
+                    'd_tpl_a': d_tpl_a,
+                    'tpl_a': tpl_a,
+                    'tpl_a_prev': tpl_a_prev,
+                }
+            elif cycle_len == MAX_CYCLE_LEN - 1 and n > 1:
+                d = d_cycle_len[cycle_len]
+                if 'missing_tpl_a' not in d:
+                    d['missing_tpl_a'] = get_missing_tpl_a(d_tpl_a=d['d_tpl_a'])
+                    # print("d['missing_tpl_a']: {}".format(d['missing_tpl_a']))
+                else:
+                    missing_tpl_a = get_missing_tpl_a(d_tpl_a=d_tpl_a)
+                    # print("maybe? missing_tpl_a: {}".format(missing_tpl_a))
+                    l11 = list(reversed(d['missing_tpl_a']))
+                    l12 = list(reversed(missing_tpl_a))
 
-                d_cycle_len_to_l_t_unique[cycle_len].append(t_idx)
+                    l21 = d['l_v_k']
+                    l22 = arr_v_k.tolist()
+                    if l11 > l12 or l11 == l12 and \
+                    (l21 > l22 or l21 == l22 and sorted(d['l_m_k']) > sorted(arr_m_k.tolist())):
+                        d['l_v_k'] = arr_v_k.tolist()
+                        d['l_m_k'] = arr_m_k.tolist()
+                        d['l_a'] = l_a
+                        d['d_tpl_a'] = d_tpl_a
+                        d['tpl_a'] = tpl_a
+                        d['tpl_a_prev'] = tpl_a_prev
+                        d['missing_tpl_a'] = missing_tpl_a
+                        # print("d['missing_tpl_a']: {}".format(d['missing_tpl_a']))
+            # d_cycle_len[cycle_len] += 1
 
-        # if cycle_len == MAX_CYCLE_LEN:
-        #     t_d_k = (d, k)
-        #     if t_d_k not in s_t_d_k_vals:
-        #         s_t_d_k_vals.add(t_d_k)
-        #     d_t_d_k_to_l_seq[t_d_k] = l_a
+        l_cycle_len = sorted(d_cycle_len.keys())
+        max_cycle_len = l_cycle_len[-1]
+        print(f"n: {n}, m: {m}, l_cycle_len: {l_cycle_len}")
 
-        print(f"m: {m}, d_cycle_len_to_l_t_unique.keys(): {d_cycle_len_to_l_t_unique.keys()}")
-        l_key_len.append(len(d_cycle_len_to_l_t_unique))
+        d = d_cycle_len[max_cycle_len]
+        print(f"d_cycle_len[{max_cycle_len}]: {d_cycle_len[max_cycle_len]}")
+        print(f"n: {n}, m: {m}")
+        print(f"d['l_v_k']: {d['l_v_k']}")
+        print(f"d['l_m_k']: {d['l_m_k']}")
 
-    print(f"l_key_len: {l_key_len}")
+        d_m_to_cycle_len[m] = max_cycle_len
+
+    print(f"d_m_to_cycle_len: {d_m_to_cycle_len}")
+    
+    print(f"n: {n}")
+    l_vals = [v for _, v in sorted(d_m_to_cycle_len.items())]
+    print(f"l_vals: {l_vals}")

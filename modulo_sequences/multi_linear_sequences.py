@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9 # -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9 -i
 
 # -*- coding: utf-8 -*-
 
@@ -69,12 +69,13 @@ if __name__ == '__main__':
     l_amount_full_cycle = []
     l_amount_tk_1_cycle = []
 
+    dim = 1
     # n = 1
     n = 2
     # n = 3
 
     # TODO: need to make this multiprocessing able!
-    for m in range(1, 16):
+    for m in range(11, 15):
     # for m in range(1, 5):
     # for m in range(5, 6):
     # for m in range(1, 101):
@@ -83,7 +84,7 @@ if __name__ == '__main__':
         # method 2
         print('method 2')
         arr_a = get_all_combinations_repeat(n=n, m=m).astype(dtype=np.uint32).T
-        arr_k = get_all_combinations_repeat(n=2**n, m=m).astype(dtype=np.uint32)
+        arr_k = get_all_combinations_repeat(n=(dim+1)**n, m=m).astype(dtype=np.uint32)
         arr_mult_a = m**np.arange(arr_a.shape[0]-1, -1, -1, dtype=np.uint32)[::-1]
         arr_mult_k = m**np.arange(arr_k.shape[1]-1, -1, -1, dtype=np.uint32)[::-1]
 
@@ -96,29 +97,55 @@ if __name__ == '__main__':
         arr_temp = np.empty(arr_k.shape, dtype=np.uint32)
         arr_sum = np.empty((arr_k.shape[0], ), dtype=np.uint32)
 
-        if n == 1:
-            arr_a_prep = np.vstack((
-                arr_a[0],
-                np.ones((arr_a.shape[1], ), dtype=np.uint32),
-            )).T
-        elif n == 2:
-            arr_a_prep = np.vstack((
-                arr_a[0]*arr_a[1],
-                arr_a[0],
-                arr_a[1],
-                np.ones((arr_a.shape[1], ), dtype=np.uint32),
-            )).T
-        elif n == 3:
-            arr_a_prep = np.vstack((
-                arr_a[0]*arr_a[1]*arr_a[2],
-                arr_a[0]*arr_a[1],
-                arr_a[0]*arr_a[2],
-                arr_a[1]*arr_a[2],
-                arr_a[0],
-                arr_a[1],
-                arr_a[2],
-                np.ones((arr_a.shape[1], ), dtype=np.uint32),
-            )).T
+        if dim == 1:
+            if n == 1:
+                arr_a_prep = np.vstack((
+                    arr_a[0],
+                    np.ones((arr_a.shape[1], ), dtype=np.uint32),
+                )).T
+            elif n == 2:
+                arr_a_prep = np.vstack((
+                    arr_a[0]*arr_a[1],
+                    arr_a[0],
+                    arr_a[1],
+                    np.ones((arr_a.shape[1], ), dtype=np.uint32),
+                )).T
+            elif n == 3:
+                arr_a_prep = np.vstack((
+                    arr_a[0]*arr_a[1]*arr_a[2],
+                    arr_a[0]*arr_a[1],
+                    arr_a[0]*arr_a[2],
+                    arr_a[1]*arr_a[2],
+                    arr_a[0],
+                    arr_a[1],
+                    arr_a[2],
+                    np.ones((arr_a.shape[1], ), dtype=np.uint32),
+                )).T
+            else:
+                assert False and f"number n = {n} outside of the scope for dim = {dim}"
+        elif dim == 2:
+            if n == 1:
+                arr_a_prep = np.vstack((
+                    arr_a[0]**2,
+                    arr_a[0],
+                    np.ones((arr_a.shape[1], ), dtype=np.uint32),
+                )).T
+            elif n == 2:
+                arr_a_prep = np.vstack((
+                    arr_a[0]**2*arr_a[1]**2,
+                    arr_a[0]**2*arr_a[1],
+                    arr_a[0]*arr_a[1]**2,
+                    arr_a[0]**2,
+                    arr_a[1]**2,
+                    arr_a[0]*arr_a[1],
+                    arr_a[0],
+                    arr_a[1],
+                    np.ones((arr_a.shape[1], ), dtype=np.uint32),
+                )).T
+            else:
+                assert False and f"number n = {n} outside of the scope for dim = {dim}"
+        else:
+            assert False and f"dim = {dim} outside of the scope"
 
         arr_a_prep %= m
 
@@ -210,6 +237,8 @@ if __name__ == '__main__':
 
         l_amount_full_cycle.append((m, c_len[-1]))
         l_amount_tk_1_cycle.append((m, len(l_tk_empty_cycles)))
+
+        break
 
     print("n: {}".format(n))
     print("l_amount_full_cycle: {}".format(l_amount_full_cycle))

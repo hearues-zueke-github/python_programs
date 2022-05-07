@@ -1,0 +1,5 @@
+build/
+libspng-0.7.2/
+CImg/
+pngwriter/
+cmake-build-debug/
