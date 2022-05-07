@@ -1,4 +1,5 @@
 #include <iostream>
+// import iostream;
 #include <cmath>
 #include <vector>
 #include <assert.h>
@@ -217,15 +218,16 @@ void calcCycleLengthAmountsMultiThreadingMainThread(const U32 n, const U32 m_min
 }
 
 int main(int argc, char* argv[]) {
-  U32 cpu_amount = std::stoi(argv[4]);
-  // U32 cpu_amount = std::thread::hardware_concurrency() - 1;
-
-  const U32 n = std::stoi(argv[1]);
   // const U32 n = 2;
-  std::map<U32, std::map<U32, U32>> map_m_to_map_len_cycle_to_count;
+  const U32 n = std::stoi(argv[1]);
 
   const U32 m_min = std::stoi(argv[2]);
   const U32 m_max = std::stoi(argv[3]);
+  
+  U32 cpu_amount = std::stoi(argv[4]);
+  
+  std::map<U32, std::map<U32, U32>> map_m_to_map_len_cycle_to_count;
+  // U32 cpu_amount = std::thread::hardware_concurrency() - 1;
   // const U32 m_min = 1;
   // const U32 m_max = 20;
   calcCycleLengthAmountsMultiThreadingMainThread(n, m_min, m_max, cpu_amount, map_m_to_map_len_cycle_to_count);

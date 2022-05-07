@@ -75,6 +75,129 @@ def get_num_from_base_lst(l, b):
     return n
 
 if __name__ == '__main__':
+    # argv = sys.argv
+    # m = int(argv[1])
+
+    # l_amount_unique_roll = []
+    l_amount_base_l_seq = []
+    l_amount_unique_comb_l_seq = []
+    l_amount_max_possible_same_l_seq = []
+    # for m in range(5, 6):
+    for m in range(1, 41):
+        print(f"m: {m}")
+        MAX_CYCLE_LEN = m
+
+        d_t_d_k_to_l_seq = {}
+        d_cycle_len = {}
+        s_t_d_k_vals = set()
+        for k in range(0, m):
+            for d in range(0, m):
+                a = 0
+                a_prev = a
+                d_a = {a: 0}
+                l_a = [a]
+                nr_tpl_a = 1
+                while True:
+                    a_next = (d + k * a) % m
+                    a_prev = a
+                    a = a_next
+
+                    if a in d_a:
+                        break
+
+                    d_a[a] = nr_tpl_a
+                    nr_tpl_a += 1
+                    l_a.append(a)
+                
+                cycle_len = d_a[a_prev] - d_a[a] + 1
+
+                if cycle_len == MAX_CYCLE_LEN:
+                    t_d_k = (d, k)
+                    if t_d_k not in s_t_d_k_vals:
+                        s_t_d_k_vals.add(t_d_k)
+                    d_t_d_k_to_l_seq[t_d_k] = l_a
+
+        s_base_unique_t_seq = set([tuple(l_a) for l_a in d_t_d_k_to_l_seq.values()])
+        l_amount_base_l_seq.append(len(s_base_unique_t_seq))
+
+        l_t_d_k_vals = sorted(s_t_d_k_vals)
+        print(f"l_t_d_k_vals: {l_t_d_k_vals}")
+
+        d_t_seq_to_l_t_d_k = {tuple(l_seq): [t_d_k] for t_d_k, l_seq in d_t_d_k_to_l_seq.items()}
+
+        d_t_d_k_to_d_a_next = {}
+        for t_d_k, l_a in d_t_d_k_to_l_seq.items():
+            d_a_next = {a1: a2 for a1, a2 in zip(l_a, l_a[1:]+l_a[:1])}
+            d_t_d_k_to_d_a_next[t_d_k] = d_a_next
+
+        s_all_unique_comb_t_seq = set(s_base_unique_t_seq)
+        while True:
+            s_unique_comb_t_seq = set()
+            l_t_d_k = sorted(d_t_d_k_to_l_seq.keys())
+            d_t_d_k_comb_to_l_seq = {}
+            for t_d_k_1 in l_t_d_k:
+                # l_a_1 = d_t_d_k_to_l_seq[t_d_k_1]
+                d_a_next_1 = d_t_d_k_to_d_a_next[t_d_k_1]
+                for t_d_k_2 in l_t_d_k:
+                    # l_a_2 = d_t_d_k_to_l_seq[t_d_k_2]
+                    d_a_next_2 = d_t_d_k_to_d_a_next[t_d_k_2]
+
+                    a = 0
+                    l_a_1_2 = [a]
+                    for _ in range(0, m-1):
+                        a = d_a_next_2[d_a_next_1[a]]
+                        l_a_1_2.append(a)
+
+                    if len(set(l_a_1_2)) != m:
+                        continue
+
+                    # l_a_1_2 = [d_a_next_1[i] for i in l_a_2]
+                    t_a_1_2 = tuple(l_a_1_2)
+                    # print("t_d_k_1: {}, t_d_k_2: {}, t_a_1_2: {}".format(t_d_k_1, t_d_k_2, t_a_1_2))
+                    if t_a_1_2 not in s_all_unique_comb_t_seq:
+                        s_unique_comb_t_seq.add(t_a_1_2)
+                        d_t_d_k_comb_to_l_seq[(t_d_k_1, t_d_k_2)] = l_a_1_2
+
+                    d_t_seq_to_l_t_d_k[t_a_1_2].append((t_d_k_1, t_d_k_2))
+            break
+
+        l_amount_unique_t_d_k = [len(l) for l in d_t_seq_to_l_t_d_k.values()]
+        if all([v>1 for v in l_amount_unique_t_d_k]):
+            assert all([v==l_amount_unique_t_d_k[0] for v in l_amount_unique_t_d_k])
+            l_amount_max_possible_same_l_seq.append(l_amount_unique_t_d_k[0])
+        else:
+            l_amount_max_possible_same_l_seq.append(0)
+
+        l_amount_unique_comb_l_seq.append(len(s_unique_comb_t_seq))
+
+        print(f"s_unique_comb_t_seq: {s_unique_comb_t_seq}")
+        # t_d_k = l_t_d_k_vals[0]
+        # # t_d_k = l_t_d_k_vals[len(l_t_d_k_vals) % 4]
+        # l_a = d_t_d_k_to_l_seq[t_d_k]
+        # d_a_next = {a1: a2 for a1, a2 in zip(l_a, l_a[1:]+l_a[:1])}
+
+        # print(f"t_d_k: {t_d_k}")
+        # print(f"- l_a: {l_a}")
+
+        # s_t_unique_roll = set()
+        # for t_d_k, l_a in d_t_d_k_to_l_seq.items():
+        #     t_a = tuple(l_a)
+
+        #     if not t_a in s_t_unique_roll:
+        #         s_t_unique_roll.add(t_a)
+        #         for _ in range(0, m-1):
+        #             t_a = t_a[1:]+t_a[:1]
+        #             s_t_unique_roll.add(t_a)
+
+        # amount_unique_roll = len(s_t_unique_roll)
+        # l_amount_unique_roll.append(amount_unique_roll)
+
+    # print(f"l_amount_unique_roll: {l_amount_unique_roll}")
+    print(f"l_amount_base_l_seq: {l_amount_base_l_seq}")
+    print(f"l_amount_unique_comb_l_seq: {l_amount_unique_comb_l_seq}")
+
+    sys.exit()
+
     argv = sys.argv
     
     # m = int(argv[1])

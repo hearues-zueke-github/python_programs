@@ -21,6 +21,7 @@ from colorama import Fore, Style
 from copy import deepcopy
 from dotmap import DotMap
 from multiprocessing import Pipe, Process
+from numpy.random import Generator, PCG64
 
 class NeuralNetwork(Exception):
 	def f_sig(self, X):
@@ -79,10 +80,10 @@ class NeuralNetwork(Exception):
 
 	def get_random_bws(self, l_node_amount):
 		arr_bw = np.array([0]*(len(l_node_amount) - 1), dtype=object)
-		arr_bw[:] = [np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)).astype(np.float64) for m, n in zip(l_node_amount[:-1], l_node_amount[1:])]
+		arr_bw[:] = [self.rnd.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)).astype(np.float64) for m, n in zip(l_node_amount[:-1], l_node_amount[1:])]
 		return arr_bw
 	
-	def __init__(self, ):
+	def __init__(self, l_seed=[]):
 		self.dpi_quality = 500
 
 		self.bws_1 = None
@@ -123,6 +124,9 @@ class NeuralNetwork(Exception):
 		self.trained_depth = 0
 		self.trained_depth_prev = 0
 
+		self.seed_main = np.array(l_seed, dtype=np.uint32)
+		self.rnd = Generator(bit_generator=PCG64(seed=self.seed_main))
+
 		self.set_hidden_function("tanh")
 
 	def set_hidden_function(self, func_str):
@@ -144,7 +148,7 @@ class NeuralNetwork(Exception):
 	# mix_rate: is the percentage of mixing of the values from arr_bw_other into self.arr_bw. some of the values are replaced with the other bw!
 	def mix_arr_bw(self, arr_bw_other, mix_rate=0.1):
 		for bw, bw_other in zip(self.arr_bw, arr_bw_other):
-			arr_is_used = (np.random.random(bw.shape) <= mix_rate)
+			arr_is_used = (self.rnd.random(bw.shape) <= mix_rate)
 			if np.any(arr_is_used):
 				t_idx = np.where(arr_is_used)
 				bw[t_idx] = bw_other[t_idx]
@@ -152,24 +156,31 @@ class NeuralNetwork(Exception):
 	# mix_rate: how many of the 
 	def mutate_arr_bw(self, random_rate=0.1, change_rate=0.01): # by adding random values, the weights are beeing changed a bit
 		for bw in self.arr_bw:
-			arr_is_used = (np.random.random(bw.shape) <= random_rate)
+			arr_is_used = (self.rnd.random(bw.shape) <= random_rate)
 			if np.any(arr_is_used):
 				t_idx = np.where(arr_is_used)
-				bw[t_idx] += (np.random.random((np.sum(arr_is_used), ))-0.5)*2*change_rate # TODO: should be changed for each weight matrice indiviual!
+				bw[t_idx] += (self.rnd.random((np.sum(arr_is_used), ))-0.5)*2*change_rate # TODO: should be changed for each weight matrice indiviual!
 
 	def crossover_and_mutate(self, arr_bw_1, arr_bw_2, mix_rate, random_rate, change_factor):
 		for bw, bw1, bw2 in zip(self.arr_bw, arr_bw_1, arr_bw_2):
-			arr_is_used = (np.random.random(bw.shape) <= mix_rate)
+			arr_is_used = (self.rnd.random(bw.shape) <= mix_rate)
 			if np.any(arr_is_used):
 				t_idx_1 = np.where(arr_is_used)
 				t_idx_2 = np.where(~arr_is_used)
 				bw[t_idx_1] = bw1[t_idx_1]
 				bw[t_idx_2] = bw2[t_idx_2]
+			else:
+				bw[:] = bw1
 
-			arr_is_used = (np.random.random(bw.shape) <= random_rate)
+			arr_is_used = (self.rnd.random(bw.shape) <= random_rate)
 			if np.any(arr_is_used):
 				t_idx = np.where(arr_is_used)
-				bw[t_idx] += (np.random.random((np.sum(arr_is_used), ))-0.5)*2*change_factor
+				bw[t_idx] += (self.rnd.random((np.sum(arr_is_used), ))-0.5)*2*change_factor
+
+			bw_abs = np.abs(bw)
+			val_max = np.max(bw_abs)
+			if val_max > 10.:
+				bw[:] = bw * 10 / val_max
 
 	def calc_feed_forward(self, X):
 	# def calc_feed_forward(self, X, arr_bw):
