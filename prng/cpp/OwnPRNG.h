@@ -5,7 +5,7 @@
 #include <numeric>
 #include <vector>
 
-namespace OwnRND {
+namespace OwnPRNG {
 	#include "sha256.h"
 
 	using std::fill;
@@ -42,16 +42,68 @@ namespace OwnRND {
 
 		uint8_t vector_constant_[block_size];
 		
+		RandomNumberDevice(const size_t amount, const vector<uint8_t> vec_seed);
+
 		void hash_once_loop();
 		inline void hash_2_block(const size_t idx_0, const size_t idx_1);
 		inline bool are_block_equal(const uint8_t* block_0, const uint8_t* block_1);
-
-		RandomNumberDevice(const size_t amount);
 		void print_state();
 		void print_values();
 		void generate_new_values_uint64_t(vector<uint64_t>& vec, const size_t amount);
 		void generate_new_values_double(vector<double>& vec, const size_t amount);
 	};
+
+	RandomNumberDevice::RandomNumberDevice(const size_t amount, const vector<uint8_t> vec_seed) {
+		assert((amount % block_size) == 0);
+		assert(amount > block_size);
+
+		amount_ = amount;
+		amount_block_ = amount / block_size;
+		amount_vals_ = amount / sizeof(uint64_t);
+		vec_state_.resize(amount);
+		ptr_state_ = &vec_state_[0];
+		ptr_state_uint64_t_ = (uint64_t*)ptr_state_;
+		fill(ptr_state_, ptr_state_ + amount_, 0);
+
+		const size_t seed_len = vec_seed.size();
+		for (size_t i = 0; i < seed_len; ++i) {
+			ptr_state_[i % amount_] ^= vec_seed[i];
+		}
+
+	  idx_mult_ = 0;
+	  idx_xor_ = 0;
+
+		vec_mult_x_.resize(amount_vals_);
+		vec_mult_a_.resize(amount_vals_);
+		vec_mult_b_.resize(amount_vals_);
+		vec_xor_x_.resize(amount_vals_);
+		vec_xor_a_.resize(amount_vals_);
+		vec_xor_b_.resize(amount_vals_);
+
+		iota(vector_constant_, vector_constant_ + block_size, 1);
+
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_mult_x_[0], ptr_state_uint64_t_, amount_);
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_mult_a_[0], ptr_state_uint64_t_, amount_);
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_mult_b_[0], ptr_state_uint64_t_, amount_);
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_xor_x_[0], ptr_state_uint64_t_, amount_);
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_xor_a_[0], ptr_state_uint64_t_, amount_);
+		hash_once_loop(); hash_once_loop();
+		memcpy(&vec_xor_b_[0], ptr_state_uint64_t_, amount_);
+
+		// correct the values for the values a and b for mult and xor
+		for (size_t i = 0; i < amount_vals_; ++i) {
+			vec_mult_a_[i] += 1 - vec_mult_a_[i] % 4;
+			vec_mult_b_[i] += 1 - vec_mult_b_[i] % 2;
+
+			vec_xor_a_[i] += - vec_xor_a_[i] % 2;
+			vec_xor_b_[i] += 1 - vec_xor_b_[i] % 2;
+		}
+	}
 
 	void RandomNumberDevice::hash_once_loop() {
 		for (size_t i = 0; i < amount_block_; ++i) {
@@ -95,51 +147,6 @@ namespace OwnRND {
 			}
 		}
 		return true;
-	}
-
-	RandomNumberDevice::RandomNumberDevice(const size_t amount) {
-		assert((amount % block_size) == 0);
-		amount_ = amount;
-		amount_block_ = amount / block_size;
-		amount_vals_ = amount / sizeof(uint64_t);
-		vec_state_.resize(amount);
-		ptr_state_ = &vec_state_[0];
-		ptr_state_uint64_t_ = (uint64_t*)ptr_state_;
-		fill(ptr_state_, ptr_state_ + amount_, 0);
-
-	  idx_mult_ = 0;
-	  idx_xor_ = 0;
-
-		vec_mult_x_.resize(amount_vals_);
-		vec_mult_a_.resize(amount_vals_);
-		vec_mult_b_.resize(amount_vals_);
-		vec_xor_x_.resize(amount_vals_);
-		vec_xor_a_.resize(amount_vals_);
-		vec_xor_b_.resize(amount_vals_);
-
-		iota(vector_constant_, vector_constant_ + block_size, 1);
-
-		hash_once_loop();
-		memcpy(&vec_mult_x_[0], ptr_state_uint64_t_, amount_);
-		hash_once_loop();
-		memcpy(&vec_mult_a_[0], ptr_state_uint64_t_, amount_);
-		hash_once_loop();
-		memcpy(&vec_mult_b_[0], ptr_state_uint64_t_, amount_);
-		hash_once_loop();
-		memcpy(&vec_xor_x_[0], ptr_state_uint64_t_, amount_);
-		hash_once_loop();
-		memcpy(&vec_xor_a_[0], ptr_state_uint64_t_, amount_);
-		hash_once_loop();
-		memcpy(&vec_xor_b_[0], ptr_state_uint64_t_, amount_);
-
-		// correct the values for the values a and b for mult and xor
-		for (size_t i = 0; i < amount_vals_; ++i) {
-			vec_mult_a_[i] += 1 - vec_mult_a_[i] % 4;
-			vec_mult_b_[i] += 1 - vec_mult_b_[i] % 2;
-
-			vec_xor_a_[i] += - vec_xor_a_[i] % 2;
-			vec_xor_b_[i] += 1 - vec_xor_b_[i] % 2;
-		}
 	}
 
 	void RandomNumberDevice::print_state() {

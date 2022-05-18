@@ -1,4 +1,5 @@
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <stdint.h>
 #include <string>
@@ -7,7 +8,7 @@
 #include "fmt/format.h"
 #include "fmt/ranges.h"
 
-#include "OwnRND.h"
+#include "OwnPRNG.h"
 
 using std::cout;
 using std::copy;
@@ -18,56 +19,60 @@ using std::vector;
 using fmt::format;
 using fmt::print;
 
-using OwnRND::RandomNumberDevice;
+using OwnPRNG::RandomNumberDevice;
 
 int main(int argc, char* argv[]) {
-	print("Test!\n");
+	const size_t amount = std::stoull(argv[1]);
 
-	const uint32_t a = 0x12345678;
-	const uint8_t* b = (uint8_t*)&a;
-
-	vector<uint8_t> c(b, b+4);
-
-	print("a: 0x{:08X}\n", a);
-	print("c: ");
-	for (auto it = c.begin(); it != c.end(); ++it) {
-		print("0x{:02X}, ", *it);
-	}
-	print("\n");
-
-	RandomNumberDevice rnd = RandomNumberDevice(128);
-
+	const auto time_1 = std::chrono::high_resolution_clock::now();
+	RandomNumberDevice rnd = RandomNumberDevice(1024, {0x01});
 	rnd.print_state();
 	rnd.print_values();
 
-	const size_t amount = 100000000;
+	const auto time_2 = std::chrono::high_resolution_clock::now();
+	vector<uint64_t> vec1;
+	rnd.generate_new_values_uint64_t(vec1, 10);
+	print("vec1: {}\n", vec1);
+	vector<uint64_t> vec2;
+	rnd.generate_new_values_uint64_t(vec2, 11);
+	print("vec2: {}\n", vec2);
+	vector<uint64_t> vec3;
+	rnd.generate_new_values_uint64_t(vec3, 12);
+	print("vec3: {}\n", vec3);
+	vector<uint64_t> vec4;
+	rnd.generate_new_values_uint64_t(vec4, 13);
+	print("vec4: {}\n", vec4);
+	vector<uint64_t> vec5;
+	rnd.generate_new_values_uint64_t(vec5, 23);
+	print("vec5: {}\n", vec5);
+	vector<uint64_t> vec6;
+	rnd.generate_new_values_uint64_t(vec6, 5);
+	print("vec6: {}\n", vec6);
+	vector<uint64_t> vec7;
+	rnd.generate_new_values_uint64_t(vec7, 4);
+	print("vec7: {}\n", vec7);
+	vector<uint64_t> vec8;
+	rnd.generate_new_values_uint64_t(vec8, 31);
+	print("vec8: {}\n", vec8);
 
 	vector<uint64_t> vec;
 	rnd.generate_new_values_uint64_t(vec, amount);
-
 	// print("vec: {}\n", vec);
 
+	const auto time_3 = std::chrono::high_resolution_clock::now();
 	vector<double> vec_double;
 	rnd.generate_new_values_double(vec_double, amount);
-	
 	// print("vec_double: {}\n", vec_double);
-	print("Hello Test!\n");
+	
+	const auto time_4 = std::chrono::high_resolution_clock::now();
+	
+	const uint64_t duration_1 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_2-time_1).count();
+	const uint64_t duration_2 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_3-time_2).count();
+	const uint64_t duration_3 = std::chrono::duration_cast<std::chrono::nanoseconds>(time_4-time_3).count();
 
-	// SHA256_CTX ctx;
-	// uint8_t hash[32];
-	// string hashStr = "";
-
-	// SHA256Init(&ctx);
-	// SHA256Update(&ctx, rnd.ptr_state_, rnd.amount_);
-	// SHA256Final(&ctx, hash);
-
-	// char s[3];
-	// for (int i = 0; i < 32; i++) {
-	// 	sprintf(s, "%02x", hash[i]);
-	// 	hashStr += s;
-	// }
-
-	// print("hashStr: {}\n", hashStr);
+	print("duration_1: {}s\n", duration_1 / 1000000000.);
+	print("duration_2: {}s\n", duration_2 / 1000000000.);
+	print("duration_3: {}s\n", duration_3 / 1000000000.);
 
   return 0;
 }
