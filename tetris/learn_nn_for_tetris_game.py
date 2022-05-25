@@ -61,6 +61,8 @@ import utils_tetris
 from neuronal_network import NeuralNetwork
 from utils_multiprocessing_parallel import MultiprocessingParallelManager
 
+from tetris_game import TetrisGame
+
 TETRIS_TEMP_DIR = os.path.join(TEMP_DIR, "tetris_temp")
 mkdirs(TETRIS_TEMP_DIR)
 
@@ -70,10 +72,37 @@ if __name__ == '__main__':
 	field_w = 6
 	field_h = 20
 
-	d_pieces = utils_tetris.prepare_pieces(field_w=field_w)	
+	d_pieces = utils_tetris.prepare_pieces(field_w=field_w)
 
 	arr_tetris_pieces_rotate = d_pieces['arr_tetris_pieces_rotate']
 	df_piece_positions = d_pieces['df_piece_positions']
 	arr_tetris_pieces_base = d_pieces['arr_tetris_pieces_base']
 
 	n_pieces = arr_tetris_pieces_base.shape[0]
+
+	# create for each input a desired output, which is the best fitting!
+	# use the TetrisGame class for creating the fields!
+
+	dir_path_test = os.path.join(TETRIS_TEMP_DIR, 'test_folder')
+	mkdirs(dir_path_test)
+
+	# l_seed_main = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
+	# l_seed_prefix = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
+
+	l_hidden_neurons = [100]
+
+	l_seed_main = [0, 1]
+	l_seed_prefix = [0, 1]
+
+	game_nr = 123
+	tetris_game = TetrisGame(
+		game_nr=game_nr,
+		h=field_h,
+		w=field_w,
+		n_pieces=n_pieces,
+		arr_tetris_pieces_rotate=arr_tetris_pieces_rotate,
+		dir_path_picture=os.path.join(dir_path_test, f"game_{game_nr:03}"),
+		l_hidden_neurons=l_hidden_neurons,
+		l_seed_main=l_seed_main + [0, game_nr],
+		l_seed=l_seed_prefix + [0, game_nr],
+	)

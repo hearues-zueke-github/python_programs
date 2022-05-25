@@ -66,12 +66,13 @@ if __name__ == '__main__':
     PKL_GZ_DIR = os.path.join(TEMP_DIR, 'objs/modulo_linear_algebra')
     mkdirs(PKL_GZ_DIR)
 
-    n = 3
+    n = 2
 
     l_m_l_cycle_len_count = []
     l_len_l_cycle_len_count = []
-    for m in range(4, 5):
-    # for m in range(1, 11):
+    # for m in range(4, 5):
+    for m in range(5, 6):
+    # for m in range(31, 41):
         arr_combinations = get_all_combinations_repeat(m=m, n=n)
         len_arr_combinations = len(arr_combinations)
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
         # # only for testing the responsivness!
         # mult_proc_mng.test_worker_threads_response()
 
-        arr_x = np.random.randint(0, m, (n, ), dtype=np.uint16)
+        # arr_x = np.random.randint(0, m, (n, ), dtype=np.uint16)
 
         # # to get the reference for the chared memory! can be useful later for other projects
         # shm_arr_k = smm.SharedMemory(size=n * np.uint16().itemsize)

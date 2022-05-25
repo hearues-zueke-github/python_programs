@@ -1,4 +1,6 @@
+import glob
 import os
+import sys
 
 import numpy as np
 
@@ -7,6 +9,17 @@ from PIL import Image
 from numpy.random import Generator, PCG64
 
 from neuronal_network import NeuralNetwork
+
+HOME_DIR = os.path.expanduser("~")
+PYTHON_PROGRAMS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
+
+sys.path.append(PYTHON_PROGRAMS_DIR)
+from utils_load_module import load_module_dynamically
+
+var_glob = globals()
+load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils.py")))
+
+mkdirs = utils.mkdirs
 
 class TetrisGame():
 
@@ -40,9 +53,11 @@ class TetrisGame():
 		], dtype=np.uint8)
 
 		self.arr_pix = np.zeros((self.field_h + 2, self.field_w + 2 + 6), dtype=np.uint8)
+		self.y_next_piece = 3
 		self.draw_frames()
 
-		self.d_points_per_line_clear = {1: 1, 2: 3, 3: 6, 4: 10}
+		self.d_points_per_line_clear = {i: v for i, v in enumerate(np.cumsum(np.cumsum(np.arange(1, 4))), 1)}
+		# self.d_points_per_line_clear = {1: 1, 2: 3, 3: 6, 4: 10}
 		# self.d_points_per_line_clear = {k: v * field_w for k, v in self.d_points_per_line_clear.items()}
 
 		self.seed_main = np.array(l_seed_main, dtype=np.uint32)
@@ -50,12 +65,16 @@ class TetrisGame():
 		self.seed_orig = np.array(l_seed, dtype=np.uint32)
 		self.seed = self.seed_orig.copy()
 
+		self.arr_field_cell_multiply = np.zeros((self.field_h, self.field_w), dtype=np.int64)
+		self.arr_field_cell_multiply += np.arange(1, self.field_w+1)
+		self.arr_field_cell_multiply += np.arange(1, self.field_h+1).reshape((-1, 1))
+
 		# TODO: make a bag of pieces and choose one of them for the next piece
 		self.init_starting_values()
 
 		self.nn = NeuralNetwork(l_seed=self.seed_main)
-		self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+9*(self.field_w-1)] + l_hidden_neurons + [self.field_w+4])
-		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+h*w] + l_hidden_neurons + [w+4])
+		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+9*(self.field_w-1)] + l_hidden_neurons + [self.field_w+4])
+		self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+h*w] + l_hidden_neurons + [w+4])
 
 		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces+self.n_pieces+h*w, 100, 100, w+4])
 
@@ -95,21 +114,23 @@ class TetrisGame():
 		self.arr_used_piece_idx = np.zeros((self.n_pieces, ), dtype=np.int64)
 		self.arr_removing_lines = np.zeros((self.field_h, ), dtype=np.int64)
 
+		self.piece_cell_rest_points = 0
+
 	def draw_frames(self):
 		self.arr_pix[0:self.field_h+2, 0] = 8
 		self.arr_pix[0:self.field_h+2, self.field_w+1] = 8
 		self.arr_pix[0, 0:self.field_w+2] = 8
 		self.arr_pix[self.field_h+1, 0:self.field_w+2] = 8
 
-		self.arr_pix[8, self.field_w+2:self.field_w+2+6] = 9
-		self.arr_pix[8+5, self.field_w+2:self.field_w+2+6] = 9
-		self.arr_pix[8:8+5, self.field_w+2] = 9
-		self.arr_pix[8:8+5, self.field_w+2+5] = 9
+		self.arr_pix[self.y_next_piece, self.field_w+2:self.field_w+2+6] = 9
+		self.arr_pix[self.y_next_piece+5, self.field_w+2:self.field_w+2+6] = 9
+		self.arr_pix[self.y_next_piece:self.y_next_piece+5, self.field_w+2] = 9
+		self.arr_pix[self.y_next_piece:self.y_next_piece+5, self.field_w+2+5] = 9
 
 	def draw_next_piece(self):
 		arr_yx = self.arr_tetris_pieces_rotate[self.arr_piece_nr_idx_next[0]][0]
-		self.arr_pix[8+1:8+1+4, self.field_w+2+1:self.field_w+2+1+4] = 0
-		self.arr_pix[8+4-arr_yx[0], arr_yx[1]+self.field_w+2+1] = self.arr_piece_nr_idx_next[0] + 1
+		self.arr_pix[self.y_next_piece+1:self.y_next_piece+1+4, self.field_w+2+1:self.field_w+2+1+4] = 0
+		self.arr_pix[self.y_next_piece+4-arr_yx[0], arr_yx[1]+self.field_w+2+1] = self.arr_piece_nr_idx_next[0] + 1
 
 	def save_image(self):
 		self.arr_pix[1:1+self.field_h, 1:1+self.field_w] = np.flip(self.arr_field, axis=0)
@@ -129,6 +150,8 @@ class TetrisGame():
 
 			if not is_piece_placeable:
 				break
+		
+		self.piece_cell_rest_points = -np.sum(self.arr_field_cell_multiply[self.arr_field != 0])
 
 	def play_the_game_with_images_saving(self, max_pieces=100):
 		mkdirs(self.dir_path_picture)
@@ -148,6 +171,8 @@ class TetrisGame():
 			if not is_piece_placeable:
 				break
 
+		self.piece_cell_rest_points = -np.sum(self.arr_field_cell_multiply[self.arr_field != 0])
+
 	def place_next_piece(self, orientation=0, x=0):
 		piece_nr_idx = self.arr_piece_nr_idx_next[0]
 		self.arr_piece_nr_idx_next[:-1] = self.arr_piece_nr_idx_next[1:]
@@ -162,27 +187,25 @@ class TetrisGame():
 		arr_x[7*0+piece_nr_idx] = 1
 		for i, v_p in enumerate(self.arr_piece_nr_idx_next, 1):
 			arr_x[self.n_pieces*i+v_p] = 1
-		# arr_x[7*1+self.arr_piece_nr_idx_next[0]] = 1
-		# arr_x[7*2+self.arr_piece_nr_idx_next[1]] = 1
 
 		arr_height = np.argmin((np.flip(np.vstack(((1, )*self.arr_field.shape[1], self.arr_field)).T, 1) == 0) - 1, 1)
 		arr_height_diff = np.diff(arr_height)
 		arr_height_diff_sign = np.sign(arr_height_diff)
 		arr_height_diff_abs = np.abs(arr_height_diff)
 
-		max_val_diff = 4
-		arr_idx = arr_height_diff_abs > max_val_diff
-		arr_height_diff_prep = arr_height_diff.copy()
-		if np.any(arr_idx):
-			arr_height_diff_prep[arr_idx] = arr_height_diff_sign[arr_idx] * max_val_diff
+		arr_field_flat = self.arr_field.reshape((-1, )).copy()
+		arr_idx_piece = (arr_field_flat > 0)
+		arr_field_flat[arr_idx_piece] = 1
+		arr_field_flat[~arr_idx_piece] = -1
+		arr_x[self.n_pieces*(1+self.amount_next_piece):] = arr_field_flat
 
-		# arr_field_flat = self.arr_field.reshape((-1, )).copy()
-		# arr_idx_piece = (arr_field_flat > 0)
-		# arr_field_flat[arr_idx_piece] = 1
-		# arr_field_flat[~arr_idx_piece] = -1
-		# arr_x[self.n_pieces*(1+self.amount_next_piece):] = arr_field_flat
-		
-		arr_x[self.n_pieces*(1+self.amount_next_piece) + (arr_height_diff_prep+max_val_diff)+np.arange(0, arr_height_diff.shape[0])*9] = 1
+		# max_val_diff = 4
+		# arr_idx = arr_height_diff_abs > max_val_diff
+		# arr_height_diff_prep = arr_height_diff.copy()
+		# if np.any(arr_idx):
+		# 	arr_height_diff_prep[arr_idx] = arr_height_diff_sign[arr_idx] * max_val_diff
+
+		# arr_x[self.n_pieces*(1+self.amount_next_piece) + (arr_height_diff_prep+max_val_diff)+np.arange(0, arr_height_diff.shape[0])*9] = 1
 		
 		arr_y = self.nn.calc_feed_forward(X=arr_x.reshape((1, -1)))[0]
 

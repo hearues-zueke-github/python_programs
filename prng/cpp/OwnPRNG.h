@@ -49,6 +49,8 @@ namespace OwnPRNG {
 		inline bool are_block_equal(const uint8_t* block_0, const uint8_t* block_1);
 		void print_state();
 		void print_values();
+		inline uint64_t get_next_uint64_t();
+		inline double get_next_double();
 		void generate_new_values_uint64_t(vector<uint64_t>& vec, const size_t amount);
 		void generate_new_values_double(vector<double>& vec, const size_t amount);
 	};
@@ -183,6 +185,30 @@ namespace OwnPRNG {
 
 			print("- name: {}, vec: {}\n", rec.name_, *rec.vec_ptr_);
 		}
+	}
+
+	inline uint64_t RandomNumberDevice::get_next_uint64_t() {
+		const uint64_t val_mult_new = ((vec_mult_a_[idx_mult_] * vec_mult_x_[idx_mult_]) + vec_mult_b_[idx_mult_]) ^ vec_xor_x_[idx_xor_];
+		vec_mult_x_[idx_mult_] = val_mult_new;
+
+		++idx_mult_;
+		if (idx_mult_ >= amount_vals_) {
+			idx_mult_ = 0;
+
+			vec_xor_x_[idx_xor_] = (vec_xor_a_[idx_xor_] ^ vec_xor_x_[idx_xor_]) + vec_xor_b_[idx_xor_];
+
+			++idx_xor_;
+			if (idx_xor_ >= amount_vals_) {
+				idx_xor_ = 0;
+			}
+		}
+
+		return val_mult_new;
+	}
+
+	inline double RandomNumberDevice::get_next_double() {
+		const uint64_t val = get_next_uint64_t();
+		return min_val_double * (val & mask_uint64_float64);
 	}
 
 	void RandomNumberDevice::generate_new_values_uint64_t(vector<uint64_t>& vec, const size_t amount) {

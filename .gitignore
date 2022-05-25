@@ -92,3 +92,5 @@ cpp_programs/primes/*.o
 git_status.txt
 
 venv*/
+
+**/gmon.out

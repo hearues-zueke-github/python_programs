@@ -2,7 +2,6 @@
 
 # pip installed libraries
 import dill
-import glob
 import gzip
 import keyboard
 import os
@@ -601,8 +600,14 @@ class ManyTetrisGame():
 		self.rnd = Generator(bit_generator=PCG64(seed=self.seed))
 
 		self.l_l_column_sort = [
-			['lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed', 'lines_removed_points', 'pieces_placed', 'points', 'arr_removing_lines'],
-			['arr_removing_lines_points', 'lines_type_removed_reverse', 'lines_removed', 'lines_removed_points', 'pieces_placed', 'points', 'arr_removing_lines'],
+			# ['lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed', 'lines_removed_points', 'pieces_placed', 'points', 'arr_removing_lines'],
+			# ['max_line_at_once_remove', 'max_line_at_once_remove_times', 'lines_type_removed_reverse', 'piece_cell_rest_points', 'lines_removed_points', 'arr_removing_lines_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
+			['lines_removed_points', 'lines_type_removed_reverse', 'pieces_placed', 'piece_cell_rest_points', 'lines_removed', 'points', 'arr_removing_lines', 'arr_removing_lines_points'],
+			# ['max_line_at_once_remove', 'max_line_at_once_remove_times', 'arr_removing_lines_points', 'lines_type_removed_reverse', 'piece_cell_rest_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
+			# ['lines_type_removed_reverse', 'piece_cell_rest_points', 'lines_removed_points', 'arr_removing_lines_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
+			# ['lines_removed_points', 'lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
+			# ['arr_removing_lines_points', 'lines_type_removed_reverse', 'lines_removed', 'lines_removed_points', 'pieces_placed', 'points', 'arr_removing_lines'],
+			
 			# ['lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
 			# ['lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
 			# ['lines_removed_points', 'arr_removing_lines_points', 'lines_type_removed_reverse', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines'],
@@ -628,6 +633,10 @@ class ManyTetrisGame():
 		row['pieces_placed'] = tetris_game.pieces_placed
 		row['arr_removing_lines'] = tuple(tetris_game.arr_removing_lines.tolist())
 		row['arr_removing_lines_points'] = np.sum(tetris_game.arr_removing_lines * np.cumsum(np.arange(1, tetris_game.arr_removing_lines.shape[0]+1))[::-1])
+		row['piece_cell_rest_points'] = tetris_game.piece_cell_rest_points
+		i_argmax = np.argmax(tetris_game.lines_type_removed)
+		row['max_line_at_once_remove'] = i_argmax + 1
+		row['max_line_at_once_remove_times'] = tetris_game.lines_type_removed[i_argmax]
 		# row['arr_removing_lines_points'] = np.sum(tetris_game.arr_removing_lines * np.arange(1, tetris_game.arr_removing_lines.shape[0]+1)[::-1])
 
 	def init_tetris_game_in_df_games(self):
@@ -664,9 +673,14 @@ class ManyTetrisGame():
 		self.i_round_total = 0
 
 		self.l_round = []
+
 		self.l_points_best = []
 		self.l_points_mean_top = []
 		self.l_points_mean_all = []
+
+		self.l_lines_removed_best = []
+		self.l_lines_removed_mean_top = []
+		self.l_lines_removed_mean_all = []
 
 	def play_many_tetris_game(self):
 		max_game_nr = self.d_params['max_game_nr']
@@ -700,9 +714,14 @@ class ManyTetrisGame():
 
 		self.l_round.append(self.i_round_total)
 		self.i_round_total += 1
+
 		self.l_points_best.append(self.df_games['points'].values[0])
 		self.l_points_mean_top.append(np.mean(self.df_games['points'].values[:take_best_games]))
 		self.l_points_mean_all.append(np.mean(self.df_games['points'].values))
+
+		self.l_lines_removed_best.append(self.df_games['lines_removed'].values[0])
+		self.l_lines_removed_mean_top.append(np.mean(self.df_games['lines_removed'].values[:take_best_games]))
+		self.l_lines_removed_mean_all.append(np.mean(self.df_games['lines_removed'].values))
 
 		for i_round in range(1, max_round+1):
 			# self.seed[0] += 1
@@ -750,9 +769,14 @@ class ManyTetrisGame():
 
 			self.l_round.append(self.i_round_total)
 			self.i_round_total += 1
+
 			self.l_points_best.append(self.df_games['points'].values[0])
 			self.l_points_mean_top.append(np.mean(self.df_games['points'].values[:take_best_games]))
 			self.l_points_mean_all.append(np.mean(self.df_games['points'].values))
+
+			self.l_lines_removed_best.append(self.df_games['lines_removed'].values[0])
+			self.l_lines_removed_mean_top.append(np.mean(self.df_games['lines_removed'].values[:take_best_games]))
+			self.l_lines_removed_mean_all.append(np.mean(self.df_games['lines_removed'].values))
 
 		# plt.figure()
 
@@ -813,6 +837,24 @@ class ManyTetrisGame():
 		# plt.show()
 		plt.savefig(os.path.join(self.dir_path, f'plot_points_{self.suffix_file_path}.png'), dpi=300)
 
+
+		plt.figure()
+
+		p1, = plt.plot(self.l_round, self.l_lines_removed_best, marker='', linestyle='-', linewidth=0.5, label='best')
+		p2, = plt.plot(self.l_round, self.l_lines_removed_mean_top, marker='', linestyle='-', linewidth=0.5, label='mean_top')
+		p3, = plt.plot(self.l_round, self.l_lines_removed_mean_all, marker='', linestyle='-', linewidth=0.5, label='mean_all')
+
+		plt.legend(handles=[p1, p2, p3])
+
+		plt.title("Lines removed of each generation")
+
+		plt.xlabel("round/generation")
+		plt.ylabel("lines_removed")
+
+		# plt.show()
+		plt.savefig(os.path.join(self.dir_path, f'plot_lines_removed_{self.suffix_file_path}.png'), dpi=300)
+
+
 		arr_tetris_game = self.df_games['tetris_game'].values
 		arr_bw_top = np.array([tg.nn.arr_bw for tg in arr_tetris_game[:take_best_games*2]], dtype=object)
 		# arr_bw_top = np.array([tg.nn.arr_bw for tg in arr_tetris_game[:max_game_nr]], dtype=object)
@@ -860,7 +902,9 @@ class AccumulateManyTetrisGame():
 		self.df_game = pd.concat(self.l_df_game)
 		# l_column_sort = ['arr_removing_lines', 'lines_removed', 'lines_type_removed_reverse', 'lines_removed_points', 'pieces_placed', 'points']
 		# l_column_sort = ['lines_removed', 'arr_removing_lines', 'lines_type_removed_reverse', 'lines_removed_points', 'pieces_placed', 'points']
-		l_column_sort = ['lines_type_removed_reverse', 'arr_removing_lines_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines']
+		l_column_sort = ['lines_removed_points', 'lines_removed', 'piece_cell_rest_points', 'pieces_placed', 'points', 'arr_removing_lines', 'arr_removing_lines_points']
+		# l_column_sort = ['arr_removing_lines_points', 'piece_cell_rest_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines']
+		# l_column_sort = ['max_line_at_once_remove', 'max_line_at_once_remove_times', 'arr_removing_lines_points', 'piece_cell_rest_points', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points', 'arr_removing_lines']
 		self.df_game.sort_values(by=l_column_sort, inplace=True, ascending=False)
 		self.df_game.reset_index(drop=True, inplace=True)
 
@@ -889,7 +933,7 @@ if __name__ == '__main__':
 	# mean_from_n_games = 7 # TODO: maybe not needed?!?!
 
 	field_w = 6
-	field_h = 20
+	field_h = 10
 
 	d_pieces = utils_tetris.prepare_pieces(field_w=field_w)
 
@@ -912,12 +956,12 @@ if __name__ == '__main__':
 	max_game_nr = 60
 
 	mix_rate = 0.60
-	change_factor = 0.1725
-	random_rate = 0.15
+	change_factor = 0.2725
+	random_rate = 0.25
 
 	loop_kth_same_seed = 1
 	max_round = int(sys.argv[2])
-	max_pieces = 60
+	max_pieces = 35
 
 	d_params = dict(
 		elite_games=elite_games,
@@ -937,6 +981,8 @@ if __name__ == '__main__':
 	l_hidden_neurons = list(map(int, sys.argv[3].split(',')))
 	l_hidden_neurons_str = '_'.join(map(str, l_hidden_neurons))
 	# l_seed_main = [0, 0, 1]
+
+	max_many_tetris_games_iter = int(sys.argv[4])
 
 	# l_seed_main = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
 	# l_seed_prefix = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
@@ -995,7 +1041,7 @@ if __name__ == '__main__':
 	# kwargs_accumulate = {'min_amount': 2, 'max_amount': worker_amount, 'l_seed': [0, 1], 'amount_best_arr_bw': 7}
 	mult_proc_parallel_manager.init(iter_class=ManyTetrisGame, l_kwargs=l_kwargs, accumulate_class=AccumulateManyTetrisGame, kwargs_accumulate=kwargs_accumulate)
 
-	l_args_next = [(max_round, ) for _ in range(0, (100//worker_amount)*worker_amount)]
+	l_args_next = [(max_round, ) for _ in range(0, (max_many_tetris_games_iter//worker_amount)*worker_amount)]
 	df_games = mult_proc_parallel_manager.next(l_args_next=l_args_next, args_acc_next=())
 	mult_proc_parallel_manager.save(l_args_iter_save=[() for _ in range(0, worker_amount)])
 
@@ -1030,153 +1076,3 @@ if __name__ == '__main__':
 	# print(f"many_tetris_game_0.df_games.iloc[:5]:\n{many_tetris_game_0.df_games.iloc[:5]}")
 	# print(f"many_tetris_game_1.df_games.iloc[:5]:\n{many_tetris_game_1.df_games.iloc[:5]}")
 	# print(f"many_tetris_game_2.df_games.iloc[:5]:\n{many_tetris_game_2.df_games.iloc[:5]}")
-
-	sys.exit()
-
-	l_round = []
-	l_points_best = []
-	l_points_mean_top = []
-	l_points_mean_all = []
-
-	l_l_column_sort = [
-		# ['lines_type_removed_reverse', 'lines_removed_points', 'lines_removed', 'pieces_placed', 'points'],
-		['lines_removed', 'lines_type_removed_reverse', 'lines_removed_points', 'pieces_placed', 'points'],
-		# ['points', 'lines_type_removed_reverse', 'lines_removed_points', 'lines_removed', 'pieces_placed'],
-		# ['pieces_placed', 'lines_type_removed_reverse', 'lines_removed_points', 'lines_removed', 'points'],
-	]
-	l_column = ['tetris_game', 'game_nr']+l_l_column_sort[0]
-	df_games = pd.DataFrame(data=np.empty((max_game_nr, len(l_column))).tolist(), columns=l_column, dtype=object)
-
-	# arr_tetris_game = np.array([None]*max_game_nr, dtype=object)
-
-	# arr_bw_best = load_pkl_obj(os.path.join(TETRIS_TEMP_DIR, 'best_arr.pkl'))
-
-	suffix_file_path = f'field_w_{field_w}_field_h_{field_h}_hidden_neurons_{l_hidden_neurons_str}'
-	file_path_arr_bw_top = os.path.join(TETRIS_TEMP_DIR, f'arr_bw_top_{suffix_file_path}.pkl')
-	
-	if os.path.exists(file_path_arr_bw_top):
-		arr_bw_top = load_pkl_obj(file_path_arr_bw_top)
-	else:
-		arr_bw_top = None
-
-	def update_info_in_row(row, tetris_game):
-		row['points'] = tetris_game.points
-		row['lines_type_removed_reverse'] = tuple(tetris_game.lines_type_removed[::-1])
-		row['lines_removed'] = tetris_game.lines_removed
-		row['lines_removed_points'] = tetris_game.lines_removed_points
-		row['pieces_placed'] = tetris_game.pieces_placed
-
-	l_seed_prefix = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
-	max_pieces = 40
-	# max_pieces = 1000
-	i_round = 0
-	for game_nr in range(0, max_game_nr):
-		row = df_games.loc[game_nr]
-
-		tetris_game = TetrisGame(
-			game_nr=game_nr,
-			h=field_h,
-			w=field_w,
-			dir_path=os.path.join(TETRIS_GAMEFIELD_IMAGES_DIR, f"game_{game_nr:03}"),
-			l_hidden_neurons=l_hidden_neurons,
-			l_seed=l_seed_prefix+[0, game_nr],
-		)
-		row['tetris_game'] = tetris_game
-		row['game_nr'] = tetris_game.game_nr
-
-		if arr_bw_top is not None:
-			if game_nr < arr_bw_top.shape[0]:
-				tetris_game.nn.arr_bw = arr_bw_top[game_nr]
-
-		tetris_game.increment_seed()
-		tetris_game.play_the_game(max_pieces=max_pieces)
-
-		print(f"game_nr: {game_nr:4}, tetris_game.pieces_placed: {tetris_game.pieces_placed}, tetris_game.lines_removed: {tetris_game.lines_removed}")
-
-		update_info_in_row(row=row, tetris_game=tetris_game)
-
-	l_column_sort = l_l_column_sort[0]
-	df_games.sort_values(by=l_column_sort, inplace=True, ascending=False)
-	df_games.reset_index(drop=True, inplace=True)
-	print(f"df_games init:\n{df_games}")
-
-	self.df_games.seed
-
-	l_round.append(i_round)
-	l_points_best.append(df_games['points'].values[0])
-	l_points_mean_top.append(np.mean(df_games['points'].values[:take_best_games]))
-	l_points_mean_all.append(np.mean(df_games['points'].values))
-
-	for i_round in range(1, max_round+1):
-		random_rate_next = random_rate
-		# random_rate_next = random_rate * np.exp(-i_round * stretch_factor) * (1 - random_rate_max) + random_rate_max
-		print()
-		print(f"random_rate_next: {random_rate_next}")
-		print(f"l_hidden_neurons: {l_hidden_neurons}")
-
-		if i_round % loop_kth_same_seed == 0: # let the elits play every k-th game too!
-			for game_nr_current in range(elite_games, take_best_games):
-				row = df_games.loc[game_nr_current]
-				tetris_game = row['tetris_game']
-
-				# play again
-				tetris_game.increment_seed()
-				tetris_game.play_the_game(max_pieces=max_pieces)
-
-				update_info_in_row(row=row, tetris_game=tetris_game)
-
-		for game_nr_current in range(take_best_games, max_game_nr):
-			row = df_games.loc[game_nr_current]
-			tetris_game = row['tetris_game']
-
-			arr_idx_game = self.rnd.permutation(np.arange(0, take_best_games))[:2]
-			tetris_game_1 = df_games.loc[arr_idx_game[0]]['tetris_game']
-			tetris_game_2 = df_games.loc[arr_idx_game[1]]['tetris_game']
-			
-			tetris_game.nn.crossover_and_mutate(arr_bw_1=tetris_game_1.nn.arr_bw, arr_bw_2=tetris_game_2.nn.arr_bw, mix_rate=mix_rate, random_rate=random_rate_next, change_factor=change_factor)
-
-			# play again
-			tetris_game.increment_seed()
-			tetris_game.play_the_game(max_pieces=max_pieces)
-
-			update_info_in_row(row=row, tetris_game=tetris_game)
-
-		l_column_sort = l_l_column_sort[i_round % len(l_l_column_sort)]
-		print(f"l_column_sort: {l_column_sort}")
-		df_games.sort_values(by=l_column_sort, inplace=True, ascending=False)
-		df_games.reset_index(drop=True, inplace=True)
-		print(f"df_games round {i_round:5}:\n{df_games.loc[:take_best_games*2-1]}")
-
-		l_round.append(i_round)
-		l_points_best.append(df_games['points'].values[0])
-		l_points_mean_top.append(np.mean(df_games['points'].values[:take_best_games]))
-		l_points_mean_all.append(np.mean(df_games['points'].values))
-
-	# l_arr_x_1 = []
-	# l_arr_y_1 = []
-	# for tetris_game in df_games['tetris_game']:
-	# 	l_arr_x_1.extend(tetris_game.l_lines_cleared_l_arr_x[0])
-	# 	l_arr_y_1.extend(tetris_game.l_lines_cleared_l_arr_y[0])
-
-	# df_arr_x_y_1 = pd.DataFrame(data={'arr_x_1': l_arr_x_1, 'arr_y_1': l_arr_y_1}, columns=['arr_x_1', 'arr_y_1'])
-
-	plt.figure()
-
-	p1, = plt.plot(l_round, l_points_best, marker='', linestyle='-', linewidth=0.5, label='best')
-	p2, = plt.plot(l_round, l_points_mean_top, marker='', linestyle='-', linewidth=0.5, label='mean_top')
-	p3, = plt.plot(l_round, l_points_mean_all, marker='', linestyle='-', linewidth=0.5, label='mean_all')
-
-	plt.legend(handles=[p1, p2, p3])
-
-	plt.title("Points of each generation")
-
-	plt.xlabel("round/generation")
-	plt.ylabel("points")
-
-	# plt.show()
-	plt.savefig(os.path.join(TETRIS_TEMP_DIR, f'plot_points_{suffix_file_path}.png'), dpi=300)
-
-	arr_tetris_game = df_games['tetris_game'].values
-	arr_bw_top = np.array([tg.nn.arr_bw for tg in arr_tetris_game[:take_best_games]], dtype=object)
-
-	save_pkl_obj(arr_bw_top, file_path_arr_bw_top)

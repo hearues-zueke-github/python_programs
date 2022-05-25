@@ -52,4 +52,46 @@ PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'plots')
 mkdirs(PLOTS_DIR_PATH)
 
 if __name__ == '__main__':
-    print("Hello World!")
+    n_max = 20000
+    d = {}
+    for jump in range(1, 51):
+        print()
+
+        l = [0, 0]
+
+        for i in range(2, n_max):
+            i1 = l[i - 1]
+            i2 = l[i - 2]
+
+            x1 = l[i1]
+            x2 = l[i2]
+
+            j1 = (x1 + x2) % i
+            j2 = (x1 * x2) % i
+
+            xj_1 = l[j1]
+            xj_2 = l[j2]
+
+            # x = (x1 + x2 + jump) % i
+            x = (xj_1 + xj_2 + jump) % i
+
+            l.append(x)
+
+            if i > 100:
+                is_cycling = False
+                for j in range(1, i//3):
+                    if l[-j:] == l[-2*j:-j] and l[-1*j:] == l[-3*j:-2*j]:
+                        is_cycling = True
+                        break
+                if is_cycling:
+                    print("Is cycling!!")
+                    break
+
+        # print(f"jump: {jump}, l: {l}")
+        d[jump] = l
+        print(f"jump: {jump}")
+        u, c = np.unique(l, return_counts=True)
+        print(f"- u.shape: {u.shape}")
+        # print(f"- u: {u.tolist()}")
+        # print(f"- c: {c.tolist()}")
+

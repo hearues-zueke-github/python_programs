@@ -12,6 +12,7 @@ import string
 import subprocess
 import sys
 import time
+import traceback
 import tty
 import yaml
 
@@ -142,7 +143,8 @@ class MultiprocessingParallelManager():
 				except:
 					iter_class = None
 					iter_obj = None
-					pipe_send.send(("Could not create 'iter_obj'!", {}))
+					exec_stack = traceback.format_exc()
+					pipe_send.send(("Could not create 'iter_obj'!", {'exec_stack': exec_stack}))
 					continue
 				pipe_send.send(("Success", {}))
 			elif modus == "next":
@@ -158,7 +160,8 @@ class MultiprocessingParallelManager():
 				try:
 					ret_val = iter_obj.next(*args)
 				except:
-					pipe_send.send(("Could not execute 'iter_obj.next(*args)'!", {}))
+					exec_stack = traceback.format_exc()
+					pipe_send.send(("Could not execute 'iter_obj.next(*args)'!", {'exec_stack': exec_stack}))
 					continue
 				pipe_send.send(("Success", {'ret_val': ret_val}))
 			elif modus == "update":
@@ -190,7 +193,9 @@ class MultiprocessingParallelManager():
 				try:
 					iter_obj.save(*args)
 				except:
-					pipe_send.send(("Could not execute 'iter_obj.save(*args)'!", {}))
+					exec_stack = traceback.format_exc()
+					# exec_stack = f"{sys.exc_info()[2]}"
+					pipe_send.send(("Could not execute 'iter_obj.save(*args)'!", {'exec_stack': exec_stack}))
 					continue
 				pipe_send.send(("Success", {}))
 			elif modus == "exit":
@@ -213,7 +218,8 @@ class MultiprocessingParallelManager():
 			recv = pipe_recv.recv()
 			msg, ret_val = recv
 			if "Success" != msg:
-				print(f"Error for worker_id '{worker_id}' with the message: '{recv}'")
+				exec_stack = ret_val['exec_stack']
+				print(f"Error for worker_id '{worker_id}' with the message: '{msg}', except_stack: {exec_stack}")
 				is_all_ok = False
 		assert is_all_ok
 
@@ -264,7 +270,12 @@ class MultiprocessingParallelManager():
 				recv = self.l_pipe_parent_recv[worker_id].recv()
 				msg, d = recv
 				# print(f"msg: {msg}")
-				assert msg == "Success"
+				try:
+					assert msg == "Success"
+				except:
+					exec_stack = d['exec_stack']
+					print(f"Error for worker_id '{worker_id}' with the message: '{msg}', except_stack: {exec_stack}")
+					assert False
 				ret_val = d['ret_val']
 
 				self.accumulate_obj.accumulate(*ret_val)
@@ -309,7 +320,12 @@ class MultiprocessingParallelManager():
 		for worker_id in range(0, self.worker_amount):
 			recv = self.l_pipe_parent_recv[worker_id].recv()
 			msg, ret_val = recv
-			assert msg == 'Success'
+			try:
+				assert msg == 'Success'
+			except:
+				exec_stack = ret_val['exec_stack']
+				print(f"exec_stack:\n{exec_stack}")
+				assert False
 
 
 if __name__ == '__main__':
