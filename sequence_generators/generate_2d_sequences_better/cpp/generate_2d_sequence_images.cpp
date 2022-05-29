@@ -99,6 +99,39 @@ public:
 		}
 	}
 
+	inline void initModuloFirstRowFirstColumnMany(const uint64_t jump_max) {
+		vector<MatType>& vec = mat_.arr_;
+
+		const size_t rows = mat_.rows_;
+		const size_t cols = mat_.cols_;
+
+		{
+			uint64_t jump = 0;
+			uint64_t temp_val = 0;
+			for (size_t x = 0; x < cols; ++x) {
+				vec[x] = temp_val;
+				++jump;
+				if (jump >= jump_max) {
+					jump = 0;
+					temp_val = (temp_val + 1) % modulo_;
+				}
+			}
+		}
+
+		{
+			uint64_t jump = 0;
+			uint64_t temp_val = 0;
+			for (size_t y = 0; y < rows; ++y) {
+				vec[y * cols] = temp_val;
+				++jump;
+				if (jump >= jump_max) {
+					jump = 0;
+					temp_val = (temp_val + 1) % modulo_;
+				}
+			}
+		}
+	}
+
 	void sequenceNr1(const uint64_t v_const, const uint64_t v_a, const uint64_t v_b, const uint64_t v_c) {
 		v_const_ = v_const;
 		v_a_ = v_a;
@@ -110,6 +143,41 @@ public:
 
 		initZeroMatrix();
 		initModuloFirstRowFirstColumn();
+
+		vector<MatType>& vec = mat_.arr_;
+		for (size_t y = 1; y < rows; ++y) {
+			for (size_t x = 1; x < cols; ++x) {
+				const size_t i = (y - 0) * cols + (x - 0);
+				const size_t i_1 = (y - 1) * cols + (x - 0);
+				const size_t i_2 = (y - 0) * cols + (x - 1);
+				const size_t i_3 = (y - 1) * cols + (x - 1);
+
+				assert(i < mat_.amount_);
+				assert(i_1 < mat_.amount_);
+				assert(i_2 < mat_.amount_);
+				assert(i_3 < mat_.amount_);
+
+				uint64_t val = v_const;
+				val = (val + (uint64_t)vec[i_1] * v_a) % modulo_;
+				val = (val + (uint64_t)vec[i_2] * v_b) % modulo_;
+				val = (val + (uint64_t)vec[i_3] * v_c) % modulo_;
+
+				vec[i] = val;
+			}
+		}
+	}
+
+	void sequenceNr2(const uint64_t jump_max, const uint64_t v_const, const uint64_t v_a, const uint64_t v_b, const uint64_t v_c) {
+		v_const_ = v_const;
+		v_a_ = v_a;
+		v_b_ = v_b;
+		v_c_ = v_c;
+
+		const size_t rows = mat_.rows_;
+		const size_t cols = mat_.cols_;
+
+		initZeroMatrix();
+		initModuloFirstRowFirstColumnMany(jump_max);
 
 		vector<MatType>& vec = mat_.arr_;
 		for (size_t y = 1; y < rows; ++y) {
@@ -179,12 +247,15 @@ int main(const int argc, const char* argv[]) {
 
 	const int32_t height = std::stoi(argv[1]);
 	const int32_t width = std::stoi(argv[2]);
-	const uint32_t modulo = std::stoi(argv[3]);
-	const uint32_t v_const = std::stoi(argv[4]);
-	const uint32_t v_a = std::stoi(argv[5]);
-	const uint32_t v_b = std::stoi(argv[6]);
-	const uint32_t v_c = std::stoi(argv[7]);
+	const uint32_t jump_max = std::stoi(argv[3]);
+	const uint32_t modulo = std::stoi(argv[4]);
+	const uint32_t v_const = std::stoi(argv[5]);
+	const uint32_t v_a = std::stoi(argv[6]);
+	const uint32_t v_b = std::stoi(argv[7]);
+	const uint32_t v_c = std::stoi(argv[8]);
 	
+	const uint32_t modus = 2;
+
 	const int32_t color_depth = 3;
 	cimg_library::CImg<uint8_t> img(width, height, 1, color_depth, 0);
 
@@ -219,7 +290,13 @@ int main(const int argc, const char* argv[]) {
 	// 	for (uint32_t v_b = 0; v_b < modulo; ++v_b) {
 	// 		for (uint32_t v_c = 0; v_c < modulo; ++v_c) {
 	// 			for (uint32_t v_const = 0; v_const < modulo; ++v_const) {
-					sequence_2d.sequenceNr1(v_const, v_a, v_b, v_c);
+					if (modus == 1) {
+						sequence_2d.sequenceNr1(v_const, v_a, v_b, v_c);
+					} else if (modus == 2) {
+						sequence_2d.sequenceNr2(jump_max, v_const, v_a, v_b, v_c);
+					} else {
+						assert(false && "Number for modus is not defined!");
+					}
 
 					// TODO: combine the sequence with the creation of the image too! next step: add generic creating of pixel values per modulo!
 
@@ -234,7 +311,7 @@ int main(const int argc, const char* argv[]) {
 						}
 					}
 
-					const string base_name = format("m_{:04}_v_a_{:02}_v_b_{:02}_v_c_{:02}_v_const_{:02}", modulo, v_a, v_b, v_c, v_const);
+					const string base_name = format("m_{:03}_jump_max_{:02}_v_const_{:02}_v_a_{:02}_v_b_{:02}_v_c_{:02}", modulo, jump_max, v_const, v_a, v_b, v_c);
 					const path file_path = dir_path / format("{}.png", base_name);
 					img.save(file_path.string().c_str());
 

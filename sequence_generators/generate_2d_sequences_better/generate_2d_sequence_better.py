@@ -59,9 +59,9 @@ if __name__ == '__main__':
             return (a * fac_a + b * fac_b + c * fac_c + fac_const) % m
         return f
 
-    n = 1024
+    # n = 1024
     # n = 128
-    # n = 256
+    n = 256
 
     # fac_const = 1
     # assert fac_const >= 0 and fac_const < m
