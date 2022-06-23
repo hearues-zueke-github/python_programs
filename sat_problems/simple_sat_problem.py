@@ -186,7 +186,7 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_2x2():
 def get_rubiks_image(idxs, n):
     color_map = np.array([(idxs//n//n//6)%6, (idxs//n//6)%n, (idxs//6)%n, (idxs)%6]).T
 
-    fields = np.zeros((6, n, n), dtype=np.int)
+    fields = np.zeros((6, n, n), dtype=np.int64)
     for f, y, x, c in color_map:
         fields[f, y, x] = c+1
 
@@ -326,7 +326,7 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
                 cnfs.extend([[-v1, -v2] for i, v1 in enumerate(variable_names[:-1], 0) for v2 in variable_names[i+1:]])
 
     def get_var_num(l):
-        return l[0]*4*4*6+l[1]*4*6+l[2]*6+l[3]+1
+        return l[0]*4*4*6 + l[1]*4*6 + l[2]*6 + l[3]+1
     
     # add the restriction for each field (2x2) to not to have the same color!
     field_position_pairs = (
@@ -335,13 +335,13 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
         [[(j, i), (j+1, i+1)] for j in range(0, 3) for i in range(0, 3)]+
         [[(j, i+1), (j+1, i)] for j in range(0, 3) for i in range(0, 3)]
     )
-    for field_num in range(0, 6):
+    for field_num in range(0, 6): # 6, because cube has sides?!
         # break
         for c in colors:
             new_cnfs = [[-get_var_num([field_num]+list(v1)+[c]), -get_var_num([field_num]+list(v2)+[c])] for v1, v2 in field_position_pairs]
             cnfs.extend(new_cnfs)
 
-    new_var_num = 4*4*6*6+1
+    new_var_num = 6*4*4*6+1
     
     # add each corner with the colors at least once and most once!
     for tpl_cols in corner_colors:
@@ -373,7 +373,7 @@ def find_no_8_neighbor_same_color_for_rubiks_cube_4x4():
         lst_r_rows = []
         lst_s_row = [new_var_num+i for i in range(0, 5)]
         new_var_num += len(lst_s_row)
-        lst_s_rows.append(lst_s_row)    
+        lst_s_rows.append(lst_s_row)
         for i in range(0, 23):
             lst_s_row = [new_var_num+i for i in range(0, 5)]
             new_var_num += len(lst_s_row)
