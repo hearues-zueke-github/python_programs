@@ -1,17 +1,24 @@
 #pragma once
 
-#include <algorithm>
-#include <math.h>
+#include <iostream>
 #include <numeric>
 #include <vector>
+#include <cstring>
+#include <cassert>
+
+#include "fmt/core.h"
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 
 namespace OwnPRNG {
-	#include "sha256.h"
 
 	using std::fill;
 	using std::iota;
 	using std::vector;
+	using std::string;
 	using std::move;
+
+	#include "sha256.h"
 
 	using fmt::format;
 	using fmt::print;
@@ -53,6 +60,7 @@ namespace OwnPRNG {
 		inline double get_next_double();
 		void generate_new_values_uint64_t(vector<uint64_t>& vec, const size_t amount);
 		void generate_new_values_double(vector<double>& vec, const size_t amount);
+		void generate_new_vec_new_values_double(vector<double>*& vec, const size_t amount);
 	};
 
 	RandomNumberDevice::RandomNumberDevice(const size_t amount, const vector<uint8_t> vec_seed) {
@@ -236,11 +244,21 @@ namespace OwnPRNG {
 	void RandomNumberDevice::generate_new_values_double(vector<double>& vec, const size_t amount) {
 		vec.resize(amount);
 
-		vector<uint64_t> vec_uint64_t;
-		generate_new_values_uint64_t(vec_uint64_t, amount);
+		// vector<uint64_t> vec_uint64_t;
+		// generate_new_values_uint64_t(vec_uint64_t, amount);
 
 		for (size_t i = 0; i < amount; ++i) {
-			vec[i] = min_val_double * (vec_uint64_t[i] & mask_uint64_float64);
+			vec[i] = get_next_double();
+			// vec[i] = min_val_double * (vec_uint64_t[i] & mask_uint64_float64);
 		}
-	}
-}
+	};
+
+	void RandomNumberDevice::generate_new_vec_new_values_double(vector<double>*& vec, const size_t amount) {
+		vec = new vector<double>();
+		(*vec).resize(amount);
+
+		for (size_t i = 0; i < amount; ++i) {
+			(*vec)[i] = get_next_double();
+		}
+	};
+};
