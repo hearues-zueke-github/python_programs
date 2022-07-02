@@ -34,33 +34,17 @@ from cnf import CNF
 def solve_a_mixed_moving_puzzle(amount_turns, arr_field):
 	cnf_obj = CNF()
 
-	# amount_turns = 14
-
-	# amount_random_moves = 30
-	# l_move_random = np.random.randint(0, len(l_arr_row_nr_to_row), (amount_random_moves, ))
-
-	# failed for: rows: 5, cols: 2, amount_turns: 11, amount_random_moves: 30
-	# l_move_random = [3, 12, 10, 13, 0, 5, 0, 8, 1, 9, 1, 10, 4, 8, 9, 6, 13, 10, 3, 5, 11, 3, 1, 12, 1, 5, 2, 13, 9, 5]
-
-	# for move in l_move_random:
-	# 	arr_field_pos_temp, i, arr_row_to = l_arr_row_nr_to_row[move]
-	# 	arr_row_from = arr_field_pos_temp[i]
-
-	# 	arr_field[tuple(arr_row_to.transpose(1, 0).tolist())] = arr_field[tuple(arr_row_from.transpose(1, 0).tolist())]
-	# sys.exit()
-
 	l_l_v_field = [cnf_obj.get_new_variables(amount=amount_v) for _ in range(0, amount_turns + 1)]
 	l_d_field = [{(y, x): l_v_field[y*amount_v_row+x*amount_nums:y*amount_v_row+(x+1)*amount_nums] for y in range(0, rows) for x in range(0, cols)} for l_v_field in l_l_v_field]
 
 	l_l_v_dir = [cnf_obj.get_new_variables(amount=amount_directions) for _ in range(0, amount_turns)]
-	# l_v_dir_1 = cnf_obj.get_new_variables(amount=1+(rows+cols)*2)
 
-	# set the first field with the default values!
+	# set the last field with the default values!
 	l_v_field_default = l_l_v_field[-1]
 	s_non_neg_v = {l_v_field_default[i] for i in range(0, amount_v, amount_nums+1)}
 	cnf_obj.extend_cnfs(l_t_v=[(v, ) if v in s_non_neg_v else (-v, ) for v in l_v_field_default])
 
-	# set the goal for the finish field
+	# set the starting field on the first field
 	l_v_field_last = l_l_v_field[0]
 	cnf_obj.extend_cnfs(l_t_v=[
 		(l_v_field_last[row*amount_v_row + col*amount_nums + (arr_field[row, col] - 1)], ) for row in range(0, rows) for col in range(0, cols)
@@ -73,7 +57,7 @@ def solve_a_mixed_moving_puzzle(amount_turns, arr_field):
 		cnf_obj.extend_cnfs(l_t_v=cnfs_dir)
 
 
-	# all other moves
+	# all other moves (turns)
 	for l_v_dir, l_v_field_1, l_v_field_2, d_field_1, d_field_2 in zip(l_l_v_dir, l_l_v_field[:-1], l_l_v_field[1:], l_d_field[:-1], l_d_field[1:]):
 		# no move
 		v_move = l_v_dir[0]
@@ -105,66 +89,23 @@ def solve_a_mixed_moving_puzzle(amount_turns, arr_field):
 
 			cnf_obj.extend_cnfs(l_t_v=cnfs_move)
 
-	models_amount = 1
+	models_amount = 1 # only one, and only one solution is sufficent engough
 	with Glucose3(bootstrap_with=cnf_obj.cnfs) as m:
 		is_solvable = m.solve()
-		# print(f"is_solvable: {is_solvable}")
 
-		try:
-			assert is_solvable
-		except:
-			# print(f"rows: {rows}, cols: {cols}, amount_turns: {amount_turns}, amount_random_moves: {amount_random_moves}")
-			# print(f"l_move_random.tolist(): {l_move_random.tolist()}")
-			# assert False and "Not solvable!"
+		if not is_solvable:
 			return None
-		first_model = list(m.get_model())
-		# print(f"first_model: {first_model}")
-		# print()
 
 		models = [(i, m) for m, i in zip(m.enum_models(), range(0, models_amount))]
 
-	is_any_any_move_0 = False
-	l_l_move = []
-	for m in models:
-		l = m[1]
+	m = models[0]
+	l = m[1]
 
-		# l_arr = [np.zeros((rows, cols), dtype=np.int64) for _ in range(0, amount_turns + 1)]
-		# for arr, l_v_field in zip(l_arr, l_l_v_field):
-		# 	for i in l_v_field:
-		# 		var = l[i-1]
-		# 		if var > 0:
-		# 			var -= 1
-		# 			y = (var%amount_v)//amount_v_row
-		# 			x = (var%amount_v_row)//amount_nums
-		# 			val = var%amount_nums
+	l_temp = l[amount_v*(amount_turns+1):]
+	l_l_dir = [l_temp[amount_directions*i:amount_directions*(i+1)] for i in range(0, amount_turns)]
 
-		# 			if arr[y, x] != 0:
-		# 				assert False
-
-		# 			arr[y, x] = val + 1
-
-		l_temp = l[amount_v*(amount_turns+1):]
-		l_l_dir = [l_temp[amount_directions*i:amount_directions*(i+1)] for i in range(0, amount_turns)]
-
-		l_move = np.array([np.where(np.array(l_dir) > 0)[0] for l_dir in l_l_dir]).flatten().tolist()
-
-		l_l_move.append(l_move)
-
-		# print(f"m_i: {m[0]}")
-		# print(f"- l_move: {l_move}")
-		# for i, arr in enumerate(l_arr, 1):
-		# 	print(f"- i: {i}, arr:\n{arr}")
-
-		is_any_move_0 = any([0 in l_move for l_move in l_l_move])
-		if is_any_move_0:
-			is_any_any_move_0 = True
-		# print(f"is_any_move_0: {is_any_move_0}")
-		
-		# print()
-	
-	# print(f"is_any_any_move_0: {is_any_any_move_0}")
-
-	return l_l_move[0]
+	l_move = np.array([np.where(np.array(l_dir) > 0)[0] for l_dir in l_l_dir]).flatten().tolist()
+	return l_move
 
 
 if __name__ == "__main__":
@@ -278,6 +219,7 @@ if __name__ == "__main__":
 
 		round_i += 1
 		if round_i >= max_round:
+			print("-> Breaking, because of max_round!")
 			break
 
 	print(f"optimal max min amount_turns: {amount_turns}")
