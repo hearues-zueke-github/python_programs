@@ -11,7 +11,6 @@
 #include "fmt/ranges.h"
 
 namespace OwnPRNG {
-
 	using std::fill;
 	using std::iota;
 	using std::vector;
@@ -80,8 +79,8 @@ namespace OwnPRNG {
 			ptr_state_[i % amount_] ^= vec_seed[i];
 		}
 
-	  idx_mult_ = 0;
-	  idx_xor_ = 0;
+		idx_mult_ = 0;
+		idx_xor_ = 0;
 
 		vec_mult_x_.resize(amount_vals_);
 		vec_mult_a_.resize(amount_vals_);
