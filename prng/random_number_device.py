@@ -1,5 +1,7 @@
 #! /usr/bin/python3.10
 
+import sys
+
 import numpy as np
 
 from hashlib import sha256
@@ -130,8 +132,26 @@ class RandomNumberDevice():
 			s = ''.join(map(lambda x: f'{x:02X}', self.arr_state_uint8[self.block_size*(j + 0):self.block_size*(j + 1)]))
 			print(f"- j: {j:2}, s: {s}")
 
+	def print_current_vals(self):
+		l_state_uint8 = ', '.join(['{:02X}'.format(v) for v in self.arr_state_uint8])
+		print(f"l_state_uint8: {l_state_uint8}")
+		l_sm_curr_arr_mult_x = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_mult_x])
+		print(f"arr_mult_x: {l_sm_curr_arr_mult_x}")
+		l_sm_curr_arr_mult_a = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_mult_a])
+		print(f"arr_mult_a: {l_sm_curr_arr_mult_a}")
+		l_sm_curr_arr_mult_b = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_mult_b])
+		print(f"arr_mult_b: {l_sm_curr_arr_mult_b}")
+		l_sm_curr_arr_xor_x = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_xor_x])
+		print(f"arr_xor_x: {l_sm_curr_arr_xor_x}")
+		l_sm_curr_arr_xor_a = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_xor_a])
+		print(f"arr_xor_a: {l_sm_curr_arr_xor_a}")
+		l_sm_curr_arr_xor_b = ', '.join(['{:08X}'.format(v) for v in self.sm_curr.arr_xor_b])
+		print(f"arr_xor_b: {l_sm_curr_arr_xor_b}")
+
 
 	def next_hashing_state(self):
+		# l_state_uint8_hex = ['{:02X}'.format(v) for v in self.arr_state_uint8]
+		# print(f"next_hashing_state begin: l_state_uint8_hex: {l_state_uint8_hex}")
 		for i in range(0, self.amount_block):
 			idx_blk_0 = (i + 0) % self.amount_block
 			idx_blk_1 = (i + 1) % self.amount_block
@@ -149,6 +169,9 @@ class RandomNumberDevice():
 			arr_hash_0 = np.array(list(sha256(arr_part_0.data).digest()), dtype=np.uint8)
 			arr_hash_1 = np.array(list(sha256(arr_part_1.data).digest()), dtype=np.uint8)
 			self.arr_state_uint8[idx_1_0:idx_1_1] ^= arr_hash_0 ^ arr_hash_1 ^ arr_part_0
+			
+			# print(f"next_hashing_state i: {i}, l_state_uint8_hex: {l_state_uint8_hex}")
+		# print("")
 
 
 	def calc_next_uint64(self, amount):
@@ -269,22 +292,48 @@ class RandomNumberDevice():
 
 if __name__ == '__main__':
 	length_uint8 = 128
-	rnd = RandomNumberDevice(arr_seed_uint8=np.array([0x01], dtype=np.uint8), length_uint8=length_uint8)
+	rnd = RandomNumberDevice(arr_seed_uint8=np.array([0x00, 0x01, 0x02, 0x03, 0x04], dtype=np.uint8), length_uint8=length_uint8)
 
-	print(f"arr_1_before before calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
-	arr_1_before = rnd.calc_next_uint64(amount=1000)
-	print(f"arr_1_before after calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
-	arr_2_before = rnd.calc_next_uint64(amount=1000)
-	arr_3_before = rnd.calc_next_uint64(amount=3000)
+	rnd.print_current_vals()
 
-	rnd.restore_previous_state_machine_to_current_state_machine()
+	arr_1 = rnd.calc_next_uint64(amount=1024*1024*4)
+	# l_arr_1 = ', '.join(['{:08X}'.format(v) for v in arr_1])
+	# print(f"l_arr_1: {l_arr_1}")
+	print(f"len(arr_1): {len(arr_1)}")
 
-	print(f"arr_1_after before calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
-	arr_1_after = rnd.calc_next_uint64(amount=1000)
-	print(f"arr_1_after after calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
-	arr_2_after = rnd.calc_next_uint64(amount=1000)
-	arr_3_after = rnd.calc_next_uint64(amount=3000)
+	arr_2 = rnd.calc_next_uint64(amount=1024*1024*4)
+	# l_arr_2 = ', '.join(['{:08X}'.format(v) for v in arr_2])
+	# print(f"l_arr_2: {l_arr_2}")
+	print(f"len(arr_2): {len(arr_2)}")
 
-	assert np.all(arr_1_before==arr_1_after)
-	assert np.all(arr_2_before==arr_2_after)
-	assert np.all(arr_3_before==arr_3_after)
+	arr_3 = rnd.calc_next_uint64(amount=1024*1024*4)
+	# l_arr_3 = ', '.join(['{:08X}'.format(v) for v in arr_3])
+	# print(f"l_arr_3: {l_arr_3}")
+	print(f"len(arr_3): {len(arr_3)}")
+
+	arr_4 = rnd.calc_next_float64(amount=1024*1024*4)
+	# l_arr_4 = ', '.join(['{}'.format(v) for v in arr_4])
+	# print(f"l_arr_4: {l_arr_4}")
+	print(f"len(arr_4): {len(arr_4)}")
+
+	rnd.print_current_vals()
+
+	# sys.exit()
+
+	# print(f"arr_1_before before calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
+	# arr_1_before = rnd.calc_next_uint64(amount=1000)
+	# print(f"arr_1_before after calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
+	# arr_2_before = rnd.calc_next_uint64(amount=1000)
+	# arr_3_before = rnd.calc_next_uint64(amount=3000)
+
+	# rnd.restore_previous_state_machine_to_current_state_machine()
+
+	# print(f"arr_1_after before calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
+	# arr_1_after = rnd.calc_next_uint64(amount=1000)
+	# print(f"arr_1_after after calling calc_next_uint64, rnd.sm_curr.arr_mult_x: {rnd.sm_curr.arr_mult_x}")
+	# arr_2_after = rnd.calc_next_uint64(amount=1000)
+	# arr_3_after = rnd.calc_next_uint64(amount=3000)
+
+	# assert np.all(arr_1_before==arr_1_after)
+	# assert np.all(arr_2_before==arr_2_after)
+	# assert np.all(arr_3_before==arr_3_after)
