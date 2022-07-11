@@ -27,6 +27,7 @@ from copy import deepcopy
 from io import StringIO
 from memory_tempfile import MemoryTempfile
 from multiprocessing import Pool
+from pprint import pprint
 from PIL import Image
 from typing import Dict
 
@@ -67,9 +68,7 @@ TETRIS_TEMP_DIR = os.path.join(TEMP_DIR, "tetris_temp")
 mkdirs(TETRIS_TEMP_DIR)
 
 if __name__ == '__main__':
-	print("Hello World!")
-
-	field_w = 6
+	field_w = 5
 	field_h = 20
 
 	d_pieces = utils_tetris.prepare_pieces(field_w=field_w)
@@ -106,3 +105,8 @@ if __name__ == '__main__':
 		l_seed_main=l_seed_main + [0, game_nr],
 		l_seed=l_seed_prefix + [0, game_nr],
 	)
+
+	tetris_game.init_starting_values()
+	tetris_game.place_next_many_pieces(amount=4)
+	print("tetris_game.arr_field:")
+	pprint(tetris_game.arr_field.tolist())

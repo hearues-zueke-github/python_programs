@@ -126,14 +126,14 @@ void SHA256Final(SHA256_CTX *ctx, uint8_t hash[])
 	}
 
 	DBL_INT_ADD(ctx->bitlen[0], ctx->bitlen[1], ctx->datalen * 8);
-	ctx->data[63] = ctx->bitlen[0];
-	ctx->data[62] = ctx->bitlen[0] >> 8;
-	ctx->data[61] = ctx->bitlen[0] >> 16;
-	ctx->data[60] = ctx->bitlen[0] >> 24;
-	ctx->data[59] = ctx->bitlen[1];
-	ctx->data[58] = ctx->bitlen[1] >> 8;
-	ctx->data[57] = ctx->bitlen[1] >> 16;
-	ctx->data[56] = ctx->bitlen[1] >> 24;
+	ctx->data[63] = (uint8_t)(ctx->bitlen[0]);
+	ctx->data[62] = (uint8_t)(ctx->bitlen[0] >> 8);
+	ctx->data[61] = (uint8_t)(ctx->bitlen[0] >> 16);
+	ctx->data[60] = (uint8_t)(ctx->bitlen[0] >> 24);
+	ctx->data[59] = (uint8_t)(ctx->bitlen[1]);
+	ctx->data[58] = (uint8_t)(ctx->bitlen[1] >> 8);
+	ctx->data[57] = (uint8_t)(ctx->bitlen[1] >> 16);
+	ctx->data[56] = (uint8_t)(ctx->bitlen[1] >> 24);
 	SHA256Transform(ctx, ctx->data);
 
 	for (i = 0; i < 4; ++i) {
