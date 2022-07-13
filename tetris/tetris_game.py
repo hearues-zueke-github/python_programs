@@ -1,5 +1,6 @@
 import glob
 import os
+import sh
 import sys
 
 import numpy as np
@@ -74,7 +75,8 @@ class TetrisGame():
 
 		self.nn = NeuralNetwork(l_seed=self.seed_main)
 		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+9*(self.field_w-1)] + l_hidden_neurons + [self.field_w+4])
-		self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+h*w] + l_hidden_neurons + [w+4])
+		self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+self.field_h*self.field_w] + l_hidden_neurons + [w+4])
+		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces*(1+self.amount_next_piece)+(self.field_w-1)*9+4*w] + l_hidden_neurons + [w+4])
 
 		# self.nn.init_arr_bw(l_node_amount=[self.n_pieces+self.n_pieces+h*w, 100, 100, w+4])
 
@@ -104,8 +106,8 @@ class TetrisGame():
 		
 		self.img_nr = 0
 		self.amount_next_piece = 2
+		self.current_piece_nr_idx = self.get_next_tetris_piece()
 		self.arr_piece_nr_idx_next = np.array([self.get_next_tetris_piece() for _ in range(0, self.amount_next_piece)])
-		# self.arr_piece_nr_idx_next = self.rnd.integers(0, self.n_pieces, (self.amount_next_piece, ))
 		self.lines_removed_points = 0
 		self.points = 0
 		self.pieces_placed = 0
@@ -128,9 +130,12 @@ class TetrisGame():
 		self.arr_pix[self.y_next_piece:self.y_next_piece+5, self.field_w+2+5] = 9
 
 	def draw_next_piece(self):
-		arr_yx = self.arr_tetris_pieces_rotate[self.arr_piece_nr_idx_next[0]][0]
+		arr_yx = self.arr_tetris_pieces_rotate[self.current_piece_nr_idx][0]
 		self.arr_pix[self.y_next_piece+1:self.y_next_piece+1+4, self.field_w+2+1:self.field_w+2+1+4] = 0
-		self.arr_pix[self.y_next_piece+4-arr_yx[0], arr_yx[1]+self.field_w+2+1] = self.arr_piece_nr_idx_next[0] + 1
+		self.arr_pix[self.y_next_piece+4-arr_yx[0], arr_yx[1]+self.field_w+2+1] = self.current_piece_nr_idx + 1
+		# arr_yx = self.arr_tetris_pieces_rotate[self.arr_piece_nr_idx_next[0]][0]
+		# self.arr_pix[self.y_next_piece+1:self.y_next_piece+1+4, self.field_w+2+1:self.field_w+2+1+4] = 0
+		# self.arr_pix[self.y_next_piece+4-arr_yx[0], arr_yx[1]+self.field_w+2+1] = self.arr_piece_nr_idx_next[0] + 1
 
 	def save_image(self):
 		self.arr_pix[1:1+self.field_h, 1:1+self.field_w] = np.flip(self.arr_field, axis=0)
@@ -173,47 +178,101 @@ class TetrisGame():
 
 		self.piece_cell_rest_points = -np.sum(self.arr_field_cell_multiply[self.arr_field != 0])
 
+	def get_arr_x(self):
+		arr_x = np.zeros((self.nn.l_node_amount[0], ), dtype=np.float64)
+		arr_x[:] = -1
+		arr_x[7*0+self.current_piece_nr_idx] = 1
+		for i, v_p in enumerate(self.arr_piece_nr_idx_next, 1):
+			arr_x[self.n_pieces*i+v_p] = 1
+
+		next_idx = self.n_pieces * (self.amount_next_piece + 1)
+
+		arr_x[next_idx:next_idx+self.field_h*self.field_w] = (self.arr_field.flatten() != 0) + 0
+		next_idx += self.field_h * self.field_w
+
+		# arr_height = self.arr_field.shape[0] - np.argmin((np.flip(np.vstack(((1, )*self.arr_field.shape[1], self.arr_field)).T, 1) == 0) - 1, 1)
+		# arr_height_diff = np.diff(arr_height)
+		# arr_height_diff_sign = np.sign(arr_height_diff)
+		# arr_height_diff_abs = np.abs(arr_height_diff)
+
+		# arr_height_diff_abs[arr_height_diff_abs > 4] = 4 # set the max value to 4
+
+		# arr_x[next_idx + np.arange(0, self.field_w-1)*9 + (arr_height_diff_sign * arr_height_diff_abs) + 4] = 1
+
+		# next_idx += 9 * (self.field_w-1)
+
+		# max_height = np.max(arr_height)
+
+		# if max_height > 4:
+		# 	from_row = max_height - 4
+		# 	to_row = max_height
+		# else:
+		# 	from_row = 0
+		# 	to_row = 4
+
+		# arr_field_part = self.arr_field[from_row:to_row]
+		# arr_field_flat = arr_field_part.reshape((-1, )).copy().astype(np.float64)
+		# arr_idx_piece = (arr_field_flat > 0)
+		# arr_field_flat[arr_idx_piece] = 1
+		# arr_field_flat[~arr_idx_piece] = -1
+		# arr_x[next_idx:next_idx+self.field_w*4] = arr_field_flat
+
+		# next_idx += self.field_w*4
+
+		return arr_x
+
+	def place_next_many_pieces(self, amount):
+		assert amount >= 1
+
+		count_moves = 0
+		for _ in range(0, amount):
+			count_moves += 1
+			is_success_move = self.place_next_piece()
+			if is_success_move == False:
+				break
+
+		print(f"amount: {amount}, count_moves: {count_moves}")
+
 	def place_next_piece(self, orientation=0, x=0):
-		piece_nr_idx = self.arr_piece_nr_idx_next[0]
-		self.arr_piece_nr_idx_next[:-1] = self.arr_piece_nr_idx_next[1:]
-		# self.arr_piece_nr_idx_next[0] = self.arr_piece_nr_idx_next[1]
-		self.arr_piece_nr_idx_next[-1] = self.get_next_tetris_piece() # TODO: make a function for getting the next piece from the bag!
 		# self.arr_piece_nr_idx_next[-1] = self.rnd.integers(0, 7, (1, ))[0] # TODO: make a function for getting the next piece from the bag!
 
 		# orientation = self.rnd.integers(0, 4, (1, ))[0]
 
-		arr_x = np.zeros((self.nn.l_node_amount[0], ), dtype=np.float64)
-		arr_x[:] = -1
-		arr_x[7*0+piece_nr_idx] = 1
-		for i, v_p in enumerate(self.arr_piece_nr_idx_next, 1):
-			arr_x[self.n_pieces*i+v_p] = 1
+		# arr_x = np.zeros((self.nn.l_node_amount[0], ), dtype=np.float64)
+		# arr_x[:] = -1
+		# arr_x[7*0+self.current_piece_nr_idx] = 1
+		# for i, v_p in enumerate(self.arr_piece_nr_idx_next, 1):
+		# 	arr_x[self.n_pieces*i+v_p] = 1
 
-		arr_height = np.argmin((np.flip(np.vstack(((1, )*self.arr_field.shape[1], self.arr_field)).T, 1) == 0) - 1, 1)
-		arr_height_diff = np.diff(arr_height)
-		arr_height_diff_sign = np.sign(arr_height_diff)
-		arr_height_diff_abs = np.abs(arr_height_diff)
+		# arr_height = np.argmin((np.flip(np.vstack(((1, )*self.arr_field.shape[1], self.arr_field)).T, 1) == 0) - 1, 1)
+		# arr_height_diff = np.diff(arr_height)
+		# arr_height_diff_sign = np.sign(arr_height_diff)
+		# arr_height_diff_abs = np.abs(arr_height_diff)
 
-		arr_field_flat = self.arr_field.reshape((-1, )).copy()
-		arr_idx_piece = (arr_field_flat > 0)
-		arr_field_flat[arr_idx_piece] = 1
-		arr_field_flat[~arr_idx_piece] = -1
-		arr_x[self.n_pieces*(1+self.amount_next_piece):] = arr_field_flat
+		# arr_field_flat = self.arr_field.reshape((-1, )).copy()
+		# arr_idx_piece = (arr_field_flat > 0)
+		# arr_field_flat[arr_idx_piece] = 1
+		# arr_field_flat[~arr_idx_piece] = -1
+		# arr_x[self.n_pieces*(1+self.amount_next_piece):] = arr_field_flat
 
-		# max_val_diff = 4
-		# arr_idx = arr_height_diff_abs > max_val_diff
-		# arr_height_diff_prep = arr_height_diff.copy()
-		# if np.any(arr_idx):
-		# 	arr_height_diff_prep[arr_idx] = arr_height_diff_sign[arr_idx] * max_val_diff
+		# # max_val_diff = 4
+		# # arr_idx = arr_height_diff_abs > max_val_diff
+		# # arr_height_diff_prep = arr_height_diff.copy()
+		# # if np.any(arr_idx):
+		# # 	arr_height_diff_prep[arr_idx] = arr_height_diff_sign[arr_idx] * max_val_diff
 
-		# arr_x[self.n_pieces*(1+self.amount_next_piece) + (arr_height_diff_prep+max_val_diff)+np.arange(0, arr_height_diff.shape[0])*9] = 1
-		
+		# # arr_x[self.n_pieces*(1+self.amount_next_piece) + (arr_height_diff_prep+max_val_diff)+np.arange(0, arr_height_diff.shape[0])*9] = 1
+
+		arr_x = self.get_arr_x()
 		arr_y = self.nn.calc_feed_forward(X=arr_x.reshape((1, -1)))[0]
+
+		# arr_y = self.rnd.random((self.field_w + 4, ))
 
 		orientation = np.argmax(arr_y[self.field_w:])
 
-		self.arr_used_piece_idx[piece_nr_idx] += 1
+		self.arr_used_piece_idx[self.current_piece_nr_idx] += 1
 
-		arr_yx = self.arr_tetris_pieces_rotate[piece_nr_idx][orientation]
+		arr_yx = self.arr_tetris_pieces_rotate[self.current_piece_nr_idx][orientation]
 
 		max_pos_x = self.field_w - np.max(arr_yx[1])
 		max_y = np.max(arr_yx[0])
@@ -238,7 +297,7 @@ class TetrisGame():
 			is_piece_placeable = True
 
 		# self.arr_field[arr_yx[0]+y_prev, arr_yx[1]+x] = 255
-		self.arr_field[arr_yx[0]+y_prev, arr_yx[1]+x] = piece_nr_idx + 1
+		self.arr_field[arr_yx[0]+y_prev, arr_yx[1]+x] = self.current_piece_nr_idx + 1
 
 		self.points += (y_start - y)
 
@@ -255,7 +314,7 @@ class TetrisGame():
 
 			# self.arr_removing_lines[arr_idx_full] += np.sum(self.arr_field[arr_idx_full] == 255, axis=0)
 			self.arr_removing_lines[arr_idx_full] += 1
-			# self.arr_field[arr_yx[0]+y_prev, arr_yx[1]+x] = piece_nr_idx + 1
+			# self.arr_field[arr_yx[0]+y_prev, arr_yx[1]+x] = self.current_piece_nr_idx + 1
 
 			self.arr_field[:self.field_h-add_lines_removed] = self.arr_field[~arr_idx_full]
 			self.arr_field[self.field_h-add_lines_removed:] = 0
@@ -264,5 +323,10 @@ class TetrisGame():
 
 
 		self.pieces_placed += 1
+
+		# move the next piece!
+		self.current_piece_nr_idx = self.arr_piece_nr_idx_next[0]
+		self.arr_piece_nr_idx_next[:-1] = self.arr_piece_nr_idx_next[1:]
+		self.arr_piece_nr_idx_next[-1] = self.get_next_tetris_piece()
 
 		return is_piece_placeable

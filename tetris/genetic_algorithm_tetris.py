@@ -932,8 +932,32 @@ if __name__ == '__main__':
 
 	# mean_from_n_games = 7 # TODO: maybe not needed?!?!
 
+	d_args = {}
+
+	for v in sys.argv[1:]:
+		l_split = v.split("=")
+		assert len(l_split) == 2
+
+		key, val = l_split
+		assert key not in d_args
+
+		d_args[key] = val
+
+	l_needed_key = [
+		"cpu_amount",
+		"max_round",
+		"l_hidden_neurons",
+		"max_many_tetris_games_iter"	,
+	]
+	for key in l_needed_key:
+		try:
+			assert key in d_args
+		except:
+			print(f"Needed key '{key}' not found in the args!")
+			assert False
+
 	field_w = 6
-	field_h = 10
+	field_h = 20
 
 	d_pieces = utils_tetris.prepare_pieces(field_w=field_w)
 
@@ -949,7 +973,7 @@ if __name__ == '__main__':
 
 	# sys.exit()
 
-	cpu_amount = int(sys.argv[1])
+	cpu_amount = int(d_args["cpu_amount"])
 
 	elite_games = 3
 	take_best_games = 5
@@ -960,8 +984,8 @@ if __name__ == '__main__':
 	random_rate = 0.25
 
 	loop_kth_same_seed = 1
-	max_round = int(sys.argv[2])
-	max_pieces = 35
+	max_round = int(d_args["max_round"])
+	max_pieces = 65
 
 	d_params = dict(
 		elite_games=elite_games,
@@ -978,11 +1002,11 @@ if __name__ == '__main__':
 	# stretch_factor = 0.002
 	# random_rate_max = 0.01
 
-	l_hidden_neurons = list(map(int, sys.argv[3].split(',')))
+	l_hidden_neurons = list(map(int, d_args["l_hidden_neurons"].split(',')))
 	l_hidden_neurons_str = '_'.join(map(str, l_hidden_neurons))
 	# l_seed_main = [0, 0, 1]
 
-	max_many_tetris_games_iter = int(sys.argv[4])
+	max_many_tetris_games_iter = int(d_args["max_many_tetris_games_iter"])
 
 	# l_seed_main = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
 	# l_seed_prefix = np.frombuffer(time.time_ns().to_bytes(8, 'little'), dtype=np.uint32).tolist()
@@ -1038,8 +1062,12 @@ if __name__ == '__main__':
 		'l_seed': [0, 1],
 		'amount_best_arr_bw': take_best_games*2,
 	}
-	# kwargs_accumulate = {'min_amount': 2, 'max_amount': worker_amount, 'l_seed': [0, 1], 'amount_best_arr_bw': 7}
-	mult_proc_parallel_manager.init(iter_class=ManyTetrisGame, l_kwargs=l_kwargs, accumulate_class=AccumulateManyTetrisGame, kwargs_accumulate=kwargs_accumulate)
+	mult_proc_parallel_manager.init(
+		iter_class=ManyTetrisGame,
+		l_kwargs=l_kwargs,
+		accumulate_class=AccumulateManyTetrisGame,
+		kwargs_accumulate=kwargs_accumulate,
+	)
 
 	l_args_next = [(max_round, ) for _ in range(0, (max_many_tetris_games_iter//worker_amount)*worker_amount)]
 	df_games = mult_proc_parallel_manager.next(l_args_next=l_args_next, args_acc_next=())
