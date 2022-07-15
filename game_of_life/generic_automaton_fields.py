@@ -47,6 +47,7 @@ var_glob = globals()
 load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PATH_ROOT_DIR, "../utils.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_function', path=os.path.join(PATH_ROOT_DIR, "../utils_function.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_cluster', path=os.path.join(PATH_ROOT_DIR, "../clustering/utils_cluster.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_range', path=os.path.join(PATH_ROOT_DIR, "../clustering/utils_range.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PATH_ROOT_DIR, "../utils_multiprocessing_manager.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='cell_matrix_unique', path=os.path.join(PATH_ROOT_DIR, "../cell_math/cell_matrix_unique.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_serialization', path=os.path.join(PATH_ROOT_DIR, "../utils_serialization.py")))
@@ -67,53 +68,6 @@ load_pkl_gz_obj = utils_serialization.load_pkl_gz_obj
 BitAutomaton = bit_automaton.BitAutomaton
 
 DIR_PATH_SAVE_IMAGES = os.path.join(TEMP_DIR, 'save_images/')
-
-def range_gen_old(g, n):
-    try:
-        i = 0
-        if i >= n:
-            return
-        v = next(g)
-        while v != None:
-            yield v
-            v = next(g)
-            i += 1
-            if i >= n:
-                break
-    except StopIteration:
-        return
-
-def range_gen(g, n):
-    try:
-        i = 0
-        while ((i := i + 1) <= n) and ((v := next(g)) != None):
-            yield v
-    except StopIteration:
-        return
-
-    # return
-
-def gen_new_gen_nr1():
-    return iter(range(0, 100))
-
-l1 = list(range_gen_old(gen_new_gen_nr1(), 0))
-l2 = list(range_gen(gen_new_gen_nr1(), 0))
-assert l1 == l2
-
-l1 = list(range_gen_old(gen_new_gen_nr1(), 1))
-l2 = list(range_gen(gen_new_gen_nr1(), 1))
-assert l1 == l2
-
-l1 = list(range_gen_old(gen_new_gen_nr1(), 40))
-l2 = list(range_gen(gen_new_gen_nr1(), 40))
-assert l1 == l2
-
-l1 = list(range_gen_old(gen_new_gen_nr1(), 200))
-l2 = list(range_gen(gen_new_gen_nr1(), 200))
-assert l1 == l2
-
-# sys.exit()
-
 
 def prepare_functions(funcs_str: str, frame: int) -> Tuple[List[Any], Any, Any, int]:
     bit_automaton = BitAutomaton().init_vals(h=10, w=8, frame=frame, frame_wrap=True, l_func=[], func_inv=None, func_rng=None)
