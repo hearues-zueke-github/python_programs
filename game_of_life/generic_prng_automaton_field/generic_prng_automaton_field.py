@@ -8,6 +8,7 @@ import cv2
 import datetime
 import dill
 import gzip
+import imageio
 import os
 import pdb
 import re
@@ -17,6 +18,8 @@ import traceback
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+
+import matplotlib.pyplot as plt
 
 from collections import defaultdict
 from copy import deepcopy, copy
@@ -29,6 +32,8 @@ from shutil import copyfile
 from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
 from PIL import Image
+
+from numpy.random import Generator, PCG64
 
 CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,9 +48,19 @@ from utils_load_module import load_module_dynamically
 var_glob = globals()
 load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_cluster', path=os.path.join(PYTHON_PROGRAMS_DIR, "clustering/utils_cluster.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_random', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils/utils_random.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_array', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils/utils_array.py")))
 
 mkdirs = utils.mkdirs
+
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+
+find_best_fitting_cluster_amount = utils_cluster.find_best_fitting_cluster_amount
+
+get_random_seed_256_bits = utils_random.get_random_seed_256_bits
+
+increment_arr_uint8 = utils_array.increment_arr_uint8
 
 OBJS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
 mkdirs(OBJS_DIR_PATH)
@@ -56,7 +71,7 @@ mkdirs(PLOTS_DIR_PATH)
 class Field2d:
 	__slot__ = ["frame", "height", "width", "d_var_arr"]
 
-	def __init__(self, frame, height, width):
+	def __init__(self, frame, height, width, l_seed=[0x00]):
 		self.frame = frame
 		self.height = height
 		self.width = width
@@ -65,6 +80,26 @@ class Field2d:
 
 		self.init_d_var_arr()
 
+		self.arr_seed_base_orig = np.array(l_seed, dtype=np.uint8)
+
+		self.arr_seed_func_orig = np.hstack((self.arr_seed_base_orig, np.array([0x01], dtype=np.uint8)))
+		self.arr_seed_pix_orig = np.hstack((self.arr_seed_base_orig, np.array([0x02], dtype=np.uint8)))
+		
+		self.arr_seed_func = self.arr_seed_func_orig.copy()
+		self.arr_seed_pix = self.arr_seed_pix_orig.copy()
+		
+		self.reset_rnds()
+
+
+	def increment_arr_seeds(self):
+		increment_arr_uint8(arr=self.arr_seed_func)
+		increment_arr_uint8(arr=self.arr_seed_pix)
+
+
+	def reset_rnds(self):
+		self.rnd_func = Generator(bit_generator=PCG64(seed=self.arr_seed_func))
+		self.rnd_pix = Generator(bit_generator=PCG64(seed=self.arr_seed_pix))
+
 
 	def init_d_var_arr(self):
 		l_up = [('u', i, -i, 0) for i in range(frame, 0, -1)]
@@ -72,23 +107,39 @@ class Field2d:
 		l_left = [('l', i, 0, -i) for i in range(frame, 0, -1)]
 		l_right = [('r', i, 0, i) for i in range(1, frame+1)]
 
-		d_var_dir = {"n": (0, 0)}
+		self.d_var_dir_many_ltrs = {"n": (0, 0)} # many letters as a variable name
+		self.d_var_dir_mult_nmbr = {"n": (0, 0)} # the number multiplies the variable name
 
 		for var, amount, dir_y, dir_x in l_up+l_down+l_left+l_right:
-			d_var_dir[var*amount] = (dir_y, dir_x)
-			d_var_dir[var+str(amount)] = (dir_y, dir_x)
+			self.d_var_dir_many_ltrs[var*amount] = (dir_y, dir_x)
+			self.d_var_dir_mult_nmbr[var+str(amount)] = (dir_y, dir_x)
 
 		for var_1, amount_1, dir_y_1, dir_x_1 in l_up+l_down:
 			for var_2, amount_2, dir_y_2, dir_x_2 in l_left+l_right:
-				d_var_dir[var_1*amount_1+var_2*amount_2] = (dir_y_1+dir_y_2, dir_x_1+dir_x_2)
-				d_var_dir[var_1+str(amount_1)+var_2+str(amount_2)] = (dir_y_1+dir_y_2, dir_x_1+dir_x_2)
+				self.d_var_dir_many_ltrs[var_1*amount_1+var_2*amount_2] = (dir_y_1+dir_y_2, dir_x_1+dir_x_2)
+				self.d_var_dir_mult_nmbr[var_1+str(amount_1)+var_2+str(amount_2)] = (dir_y_1+dir_y_2, dir_x_1+dir_x_2)
+
+		self.d_var_dir_all = self.d_var_dir_many_ltrs | self.d_var_dir_mult_nmbr
 
 		self.d_var_arr = {}
-		for var, (dir_y, dir_x) in d_var_dir.items():
+		for var, (dir_y, dir_x) in self.d_var_dir_all.items():
 			self.d_var_arr[var] = self.arr_with_frame[frame+dir_y:frame+dir_y+height, frame+dir_x:frame+dir_x+width]
 
 
+	def set_points_random(self, density: float):
+		assert (density >= 0.) and (density <= 1.)
+
+		amount_all_points = self.height*self.width
+		amount_points = int(amount_all_points*density)
+		arr_num = self.rnd_pix.choice(np.arange(0, amount_all_points), size=amount_points, replace=False)
+		arr_y = arr_num // self.width
+		arr_x = arr_num % self.width
+
+		self.set_points(arr_y=arr_y, arr_x=arr_x)
+
+
 	def set_points(self, arr_y: np.ndarray, arr_x: np.ndarray):
+		self.arr_with_frame[:] = 0 # reset every value to 0 first
 		self.arr_with_frame[arr_y+self.frame, arr_x+self.frame] = 1
 		self.redefine_frame()
 
@@ -112,30 +163,56 @@ class Field2d:
 
 
 	def define_functions(self, func_str: str):
+		self.func_str = func_str
 		self.d_func_other = {}
-		func_str_other = """
-def inv(a): return (~(a.astype(np.bool)))+np.uint8(0)
-"""
+		func_str_other = "def inv(a): return a ^ 0x01"
 		# numpy as np is needed for the global dict
 		exec(func_str_other, {'np': np}, self.d_func_other)
 		self.d_func = {}
 
-		exec(func_str, {key: val for key, val in field_2d.d_var_arr.items()} | self.d_func_other, self.d_func)
+		exec(func_str, {key: val for key, val in field_2d.d_var_arr.items()} | self.d_func_other | {'np': np}, self.d_func)
 		assert 'l_func' in self.d_func
 		try:
 			for d in self.d_func['l_func']:
 				assert isinstance(d, dict)
-				func_name = d['func_name']
+				function_name = d['function_name']
 				func = d['func']
 				arr = func()
 				assert arr.shape == (self.height, self.width)
 				assert arr.dtype == self.arr_with_frame.dtype
 		except:
-			print(f"Problem with the function with the name '{func_name}'")
-			traceback.print_exc()
+			print(f"Problem in the function with the name '{function_name}'")
 			assert False
 
 		self.l_func = self.d_func['l_func']
+
+	# only when one function is used, finding duplicates would make sense
+	def play_the_field(self, iter_round_max=300):
+		l_arr_no_frame = [self.get_arr_no_frame()]
+
+		l_func = self.l_func
+		arr_func_nr = self.rnd_func.integers(0, len(l_func), (iter_round_max, ))
+		for iter_round, function_nr in enumerate(arr_func_nr, 0):
+			func = l_func[function_nr]['func']
+
+			arr_no_frame = func().copy()
+			self.set_arr_no_frame(arr_no_frame=arr_no_frame)
+			
+			arr_no_frame_2 = self.get_arr_no_frame()
+			assert np.all(arr_no_frame == arr_no_frame_2)
+
+			# is_dup_found = False
+			# for i, arr in enumerate(l_arr_no_frame):
+			# 	if np.all(arr == arr_no_frame):
+			# 		is_dup_found = True
+			# 		break
+
+			l_arr_no_frame.append(arr_no_frame)
+			# if is_dup_found:
+			# 	print(f"i_dup: {i}, len(l_arr_no_frame): {len(l_arr_no_frame)}")
+			# 	break
+
+		return l_arr_no_frame
 
 
 def plot_all_field_in_one_picture(l_arr: List[np.ndarray], rows: int, columns: int, border_width: int) -> np.ndarray:
@@ -159,97 +236,381 @@ def plot_all_field_in_one_picture(l_arr: List[np.ndarray], rows: int, columns: i
 		pix_comb[y_off:y_off+height, x_off:x_off+width] = arr*255
 
 	return pix_comb
-	# img = Image.fromarray(pix_comb)
-	# img.show()
-	# img.save("/tmp/example_pic.png")
+
+
+class Function():
+	def __init__(self):
+		self.function_nr = None
+		self.function_name = None
+		self.tpl_equation = None
+
+
+	def __repr__(self):
+		return self.__str__()
+	
+
+	def __str__(self):
+		return (
+			"Function(" +
+			f"function_nr={self.function_nr}, " +
+			f"function_name='{self.function_name}', " +
+			f"tpl_equation={tuple(str(equation) for equation in self.tpl_equation)}" +
+			")"
+		)
+
+
+	def __lt__(self, other):
+		assert isinstance(other, Function)
+
+		return self.tpl_equation < other.tpl_equation
+
+
+class Equation():
+	def __init__(self):
+		self.equation_nr = None
+		self.tpl_var = None
+		self.tpl_range = None
+		# TODO: add the sign of each variable too!
+
+
+	def __repr__(self):
+		return self.__str__()
+	
+
+	def __str__(self):
+		return (
+			"Equation(" +
+			f"equation_nr={self.equation_nr}, " +
+			f"tpl_var={self.tpl_var}, " +
+			f"tpl_range={self.tpl_range}" +
+			")"
+		)
+
+
+	def __lt__(self, other):
+		assert isinstance(other, Equation)
+
+		return self.tpl_var < other.tpl_var
+
+
+def generate_tpl_function_func_str(
+	l_seed_body: Union[List[int], np.ndarray],
+	l_seed_range: Union[List[int], np.ndarray],
+) -> Tuple[Tuple[Function], str]:
+	arr_seed_body = np.array(l_seed_body, dtype=np.uint8)
+	rnd_body = Generator(bit_generator=PCG64(seed=arr_seed_body))
+	arr_seed_range = np.array(l_seed_range, dtype=np.uint8)
+	rnd_range = Generator(bit_generator=PCG64(seed=arr_seed_range))
+
+	min_amount_func = 1
+	max_amount_func = 2
+
+	d_var_dir_mult_nmbr = field_2d.d_var_dir_mult_nmbr
+	l_var = sorted(d_var_dir_mult_nmbr.keys())
+
+	min_amount_equation = 1
+	max_amount_equation = 2
+
+	min_amount_var = 1
+	max_amount_var = 4
+	assert max_amount_var <= len(l_var)
+
+	s_function = set()
+	amount_function_should = rnd_body.integers(min_amount_func, max_amount_func)
+	for _ in range(0, amount_function_should):
+		# first gather all equations with the variables
+		s_equation = set()
+		amount_equation_should = rnd_body.integers(min_amount_equation, max_amount_equation)
+		for _ in range(0, amount_equation_should):
+			amount_var = rnd_body.integers(min_amount_var, max_amount_var)
+			arr_var = rnd_body.choice(l_var, size=amount_var, replace=False)
+			tpl_var = tuple(sorted(arr_var.tolist()))
+
+			len_tpl_var = len(tpl_var)
+
+			# TODO: add the negative numbers too! not only plus is possible, but also minus!
+			arr_idx_range = rnd_range.integers(0, 2, (len_tpl_var+1, ))
+			arr_idx_range[:rnd_range.integers(1, len_tpl_var+1)] = 1 # set 1 to all values to 1, at least one must be always 1!
+			rnd_range.shuffle(arr_idx_range)
+
+			arr_idx_range_pad = np.pad(arr_idx_range, (1, 1), mode="constant", constant_values=0)
+			
+			arr_idx_1 = np.where((arr_idx_range_pad[1:-1] != arr_idx_range_pad[:-2]) & ((arr_idx_range_pad[:-2] == 0)))[0]
+			arr_idx_2 = np.where((arr_idx_range_pad[1:-1] != arr_idx_range_pad[2:]) & ((arr_idx_range_pad[2:] == 0)))[0]
+		
+			l_range = [(idx_1, idx_2+1) for idx_1, idx_2 in zip(arr_idx_1, arr_idx_2)]
+			tpl_range = tuple(l_range)
+
+			equation = Equation()
+			equation.tpl_var = tpl_var
+			equation.tpl_range = tpl_range
+
+			if equation not in s_equation:
+				s_equation.add(equation)
+
+		tpl_equation = tuple(sorted(s_equation))
+		amount_equation = len(tpl_equation)
+		assert amount_equation >= 1
+
+		for equation_nr, equation in enumerate(tpl_equation, 0):
+			equation.equation_nr = equation_nr
+		
+		function = Function()
+		function.tpl_equation = tpl_equation
+
+		if function not in s_function:
+			s_function.add(function)
+
+	tpl_function = tuple(sorted(s_function))
+	amount_function = len(tpl_function)
+	assert amount_function >= 1
+
+	for function_nr, function in enumerate(tpl_function, 0):
+		function.function_nr = function_nr
+		function.function_name = f"func_{function_nr}"
+
+
+	# now parse the tpl_function part into a function string
+	func_str = ""
+
+	for function in tpl_function:
+		func_part_str = ""
+		func_part_str += f"def {function.function_name}():\n"
+		tpl_equation = function.tpl_equation
+
+		l_var_b = []
+		for equation in tpl_equation:
+			equation_nr = equation.equation_nr
+			
+			var_a = f"a_{equation_nr}"
+			var_sum = " + ".join(equation.tpl_var)
+			func_part_str += f"\t{var_a} = {var_sum}\n"
+			
+			var_b = f"b_{equation_nr}"
+			l_var_b.append(var_b)
+			l_var_logic_and_var_range = [f"(({var_a} >= {i1}) & ({var_a} < {i2}))" for i1, i2 in  equation.tpl_range]
+			var_logic_or_var_range = " | ".join(l_var_logic_and_var_range)
+			func_part_str += f"\t{var_b} = ({var_logic_or_var_range}).astype(np.uint8)\n\n"
+
+		var_logic_or_var_b = ' | '.join(l_var_b)
+		func_part_str += f"\treturn {var_logic_or_var_b}\n\n"
+
+		func_str += func_part_str
+
+	func_str += (
+		"l_func = [\n" +
+		"".join(f"\t{{'function_name': '{function.function_name}', 'func': {function.function_name}}},\n" for function in tpl_function) +
+		"]"
+	)
+
+	return tpl_function, func_str
 
 
 if __name__ == '__main__':
+	path_dir_game_of_life = os.path.join(TEMP_DIR, "game_of_life")
+	if not os.path.exists(path_dir_game_of_life):
+		mkdirs(path=path_dir_game_of_life)
+
 	frame = 4
-	
-	height = 90
-	width = 120
+	# height = 250
+	# width = 320
+	height = 64
+	width = 64
+	# l_seed_field = [0x04, 0x20]
+	l_seed_field = get_random_seed_256_bits()
 
-	field_2d = Field2d(frame=frame, height=height, width=width)
+	field_2d = Field2d(frame=frame, height=height, width=width, l_seed=l_seed_field)
 
-	n = int(height*width*0.56)
-	arr_y = np.random.randint(0, height, (n, ))
-	arr_x = np.random.randint(0, width, (n, ))
-	
-	field_2d.set_points(arr_y=arr_y, arr_x=arr_x)
+	pix_plain = np.zeros((height, width), dtype=np.uint8)
+	pix_plain[:] = 128
 
-	# arr_no_frame_1 = field_2d.get_arr_no_frame()
-	# field_2d.set_arr_no_frame(arr_no_frame=arr_no_frame_1)
-	# arr_no_frame_2 = field_2d.get_arr_no_frame()
-	# assert np.all(arr_no_frame_1 == arr_no_frame_2)
-	# sys.exit()
+	density = 0.56
+	iter_round_max = 300
 
-	# example, how to define a function for the next field
-	func_str = """
-def func_0(): return inv(l1) # move to the right the whole field
-# def func_0(): return r4 | r2 & inv(l1) # move to the right the whole field
-def func_1(): return u1 & n | d1 & r1 | n & l1 & r1
-l_func=[
-	{'func_name': 'func_0', 'func': func_0},
-	# {'func_name': 'func_1', 'func': func_1},
-]
-"""
+	l_d_data_raw = []
+	l_seed_func_str_body = get_random_seed_256_bits()
+	l_seed_func_str_range = get_random_seed_256_bits()
+	# l_seed_func_str_range_orig = get_random_seed_256_bits()
+	# l_seed_func_str_body = np.array([0x01, 0x06, 0x00], dtype=np.uint8)
+	# l_seed_func_str_range_orig = np.array([0x01, 0x05, 0x00], dtype=np.uint8)
 
-	field_2d.define_functions(func_str=func_str)
+	# TODO: make a function for random evaluating a new gol field/game/params
+	# TODO: make a batch of aggregations, where the same output are safed for the different params of the seed's 
 
-	l_arr_no_frame = [field_2d.get_arr_no_frame()]
+	amount_gol_game = 1000
+	for gol_game_nr in range(0, amount_gol_game):
+	# for j in range(0, 5):
+	# 	l_seed_func_str_body[-1] += j
+	# 	l_seed_func_str_range = l_seed_func_str_range_orig.copy()
 
-	# func = field_2d.l_func[0]['func']
+	# 	for i in range(0, 20):
+	# 		l_seed_func_str_range[-1] = i
 
-	l_func = field_2d.l_func
-	for iter_round in range(0, 300):
-		func = l_func[iter_round % len(l_func)]['func']
-
-		arr_no_frame = func().copy()
-		field_2d.set_arr_no_frame(arr_no_frame=arr_no_frame)
+	# 		for run_nr in range(0, 3):
 		
-		arr_no_frame_2 = field_2d.get_arr_no_frame()
-		assert np.all(arr_no_frame == arr_no_frame_2)
+		increment_arr_uint8(arr=l_seed_field)
+		increment_arr_uint8(arr=l_seed_func_str_body)
+		increment_arr_uint8(arr=l_seed_func_str_range)
 
-		is_dup_found = False
-		for i, arr in enumerate(l_arr_no_frame):
-			if np.all(arr == arr_no_frame):
-				is_dup_found = True
-				break
+		path_dir_gol_board = os.path.join(path_dir_game_of_life, f"gol_board_gol_game_nr_{gol_game_nr:03}")
+		# path_dir_gol_board = os.path.join(path_dir_game_of_life, f"gol_board_j_{j:02}_i_{i:02}_run_nr_{run_nr:02}")
+		mkdirs(path=path_dir_gol_board)
+		
+		print(f"gol_game_nr: {gol_game_nr:3}")
+		# print(f"j: {j:3}, i: {i:3}, run_nr: {run_nr:3}")
 
-		l_arr_no_frame.append(arr_no_frame)
-		if is_dup_found:
-			print(f"i_dup: {i}, len(l_arr_no_frame): {len(l_arr_no_frame)}")
-			break
+		d_data_raw = {}
+		d_data_raw["frame"] = frame
+		d_data_raw["height"] = height
+		d_data_raw["width"] = width
 
-	# # this can be used for animating the images
-	# while True:
-	# 	for arr in l_arr_no_frame:
-	# 		cv2.imshow('image', arr*255); cv2.waitKey(200)
+		l_d_data_raw.append(d_data_raw)
 
-	pix_comb = plot_all_field_in_one_picture(l_arr=l_arr_no_frame, rows=5, columns=4, border_width=2)
-	Image.fromarray(pix_comb).save("/tmp/example_pic.png")
+		# d_data_raw["j"] = j
+		# d_data_raw["i"] = i
+		# d_data_raw["run_nr"] = run_nr
 
-	# pix_height = len(l_arr_no_frame)*height + (len(l_arr_no_frame)+1)
-	# pix_width = width + 1+1
-	# pix_comb_y = np.zeros((pix_height, pix_width), dtype=np.uint8)
-	# pix_comb_y[:] = 128
-	# for i, arr in enumerate(l_arr_no_frame, 0):
-	# 	y_off = 1+(height+1)*i
-	# 	x_off = 1+(width+1)*0
-	# 	pix_comb_y[y_off:y_off+height, x_off:x_off+width] = arr*255
+		field_2d.increment_arr_seeds()
+		d_data_raw["arr_seed_func"] = field_2d.arr_seed_func.copy()
+		d_data_raw["arr_seed_pix"] = field_2d.arr_seed_pix.copy()
+		
+		field_2d.reset_rnds()
+		
+		d_data_raw["l_seed_func_str_body"] = l_seed_func_str_body.copy()
+		d_data_raw["l_seed_func_str_range"] = l_seed_func_str_range.copy()
 
-	# img = Image.fromarray(pix_comb_y)
-	# # img.show()
-	# img.save("/tmp/example_pic.png")
+		tpl_function, func_str = generate_tpl_function_func_str(l_seed_body=l_seed_func_str_body, l_seed_range=l_seed_func_str_range)
+		d_data_raw["tpl_function"] = tpl_function
+		d_data_raw["func_str"] = func_str
+		# pprint(tpl_function)
+		# print()
+		
+		field_2d.define_functions(func_str=func_str)
 
-	# pix_comb_y_diff = np.zeros((pix_height, pix_width), dtype=np.uint8)
-	# pix_comb_y_diff[:] = 128
-	# for i, (arr1, arr2) in enumerate(zip(l_arr_no_frame, l_arr_no_frame[1:]+l_arr_no_frame[:1]), 0):
-	# 	y_off = 1+(height+1)*i
-	# 	x_off = 1+(width+1)*0
-	# 	pix_comb_y_diff[y_off:y_off+height, x_off:x_off+width] = (arr1^arr2)*255
+		field_2d.set_points_random(density=density)
+		l_arr_no_frame = field_2d.play_the_field(iter_round_max=iter_round_max)
 
-	# img_diff = Image.fromarray(pix_comb_y_diff)
-	# # img_diff.show()
-	# img_diff.save("/tmp/example_pic_diff.png")
+		d_data_raw["l_arr_no_frame"] = l_arr_no_frame
+
+		pix_comb = plot_all_field_in_one_picture(l_arr=l_arr_no_frame, rows=8, columns=6, border_width=2)
+		Image.fromarray(pix_comb).save(os.path.join(path_dir_gol_board, f"example_gol_board.png"))
+
+		with open(os.path.join(path_dir_gol_board, "func_str.py"), "w") as f:
+			f.write(func_str)
+
+		with imageio.get_writer(os.path.join(path_dir_game_of_life, f'example_gif_gol_game_nr_{gol_game_nr:03}.gif'), mode='I', fps=20) as writer:
+		# with imageio.get_writer(os.path.join(path_dir_game_of_life, f'example_gif_j_{j:02}_i_{i:02}_run_nr_{run_nr:02}.gif'), mode='I', fps=20) as writer:
+			for _ in range(0, 5):
+				writer.append_data(l_arr_no_frame[0] * 255)
+			for arr_no_frame in l_arr_no_frame[1:80]:
+				writer.append_data(arr_no_frame * 255)
+			for _ in range(0, 5):
+				writer.append_data(pix_plain)
+
+	AMOUNT_PARTS_USING = 5
+	l_column = [
+		# 'j',
+		# 'i',
+		# 'run_nr',
+		'frame',
+		'height',
+		'width',
+		'arr_seed_func',
+		'arr_seed_pix',
+		'l_seed_func_str_body',
+		'l_seed_func_str_range',
+		'tpl_var',
+		'tpl_range',
+		'amount_points_total',
+		'arr_amount_1_dot',
+		'arr_amount_2_dot',
+		'arr_amount_norm',
+		'arr_amount_norm_diff_part',
+	]
+	d_data_stats = {column: [] for column in l_column}
+	for d_data_raw in l_d_data_raw:
+		# d_data_stats['j'].append(d_data_raw['j'])
+		# d_data_stats['i'].append(d_data_raw['i'])
+		# d_data_stats['run_nr'].append(d_data_raw['run_nr'])
+		d_data_stats['frame'].append(d_data_raw['frame'])
+		d_data_stats['height'].append(d_data_raw['height'])
+		d_data_stats['width'].append(d_data_raw['width'])
+
+		d_data_stats['arr_seed_func'].append(d_data_raw['arr_seed_func'])
+		d_data_stats['arr_seed_pix'].append(d_data_raw['arr_seed_pix'])
+		d_data_stats['l_seed_func_str_body'].append(d_data_raw['l_seed_func_str_body'])
+		d_data_stats['l_seed_func_str_range'].append(d_data_raw['l_seed_func_str_range'])
+		
+		tpl_function = d_data_raw['tpl_function']
+		assert len(tpl_function) == 1
+		tpl_equation = tpl_function[0].tpl_equation
+		assert len(tpl_equation) == 1
+
+		equation = tpl_equation[0]
+		d_data_stats['tpl_var'].append(equation.tpl_var)
+		d_data_stats['tpl_range'].append(equation.tpl_range)
+
+		arr_arr_no_frame = np.array(d_data_raw['l_arr_no_frame'])
+
+		amount_points_total = np.multiply.reduce(arr_arr_no_frame.shape[1:])
+		d_data_stats['amount_points_total'].append(amount_points_total)
+		
+		arr_amount_1_dot = np.vstack((
+			np.sum(np.sum(arr_arr_no_frame == 0, axis=2), axis=1),
+			np.sum(np.sum(arr_arr_no_frame == 1, axis=2), axis=1),
+		)).T
+
+		arr_2x2_arr_arr_no_frame = np.empty((2, 2) + arr_arr_no_frame.shape, dtype=np.uint8)
+		arr_2x2_arr_arr_no_frame[0, 0] = arr_arr_no_frame
+		arr_2x2_arr_arr_no_frame[0, 1] = np.roll(arr_arr_no_frame, shift=-1, axis=2)
+		arr_2x2_arr_arr_no_frame[1, 0] = np.roll(arr_arr_no_frame, shift=-1, axis=1)
+		arr_2x2_arr_arr_no_frame[1, 1] = np.roll(arr_2x2_arr_arr_no_frame[0, 1], shift=-1, axis=1)
+
+		# all possible 2 cell combinations
+		l_cell_pos = [
+			((0, 0), (0, 1)),
+			((0, 0), (1, 0)),
+			# ((0, 0), (1, 1)),
+			# ((1, 0), (0, 1)),
+		]
+
+		# all possible 2 cell activation
+		l_cell_activation = [(0, 0), (0, 1), (1, 0), (1, 1)]
+
+		arr_amount_2_dot = np.vstack(tuple(
+			np.sum(np.sum((arr_2x2_arr_arr_no_frame[c_y_1, c_x_1] == a_1) & (arr_2x2_arr_arr_no_frame[c_y_2, c_x_2] == a_2), axis=2), axis=1)
+			for (c_y_1, c_x_1), (c_y_2, c_x_2) in l_cell_pos
+			for a_1, a_2 in l_cell_activation
+		)).T
+
+		d_data_stats['arr_amount_1_dot'].append(arr_amount_1_dot)
+		d_data_stats['arr_amount_2_dot'].append(arr_amount_2_dot)
+
+		# arr_amount_all = np.hstack((arr_amount_1_dot, ))
+		arr_amount_all = np.hstack((arr_amount_1_dot, arr_amount_2_dot))
+		arr_amount_norm = np.flip(arr_amount_all / amount_points_total, axis=0)
+		arr_amount_norm_diff_part = np.abs(arr_amount_norm[0:AMOUNT_PARTS_USING] - arr_amount_norm[1:AMOUNT_PARTS_USING+1])
+
+		d_data_stats['arr_amount_norm'].append(arr_amount_norm)
+		d_data_stats['arr_amount_norm_diff_part'].append(arr_amount_norm_diff_part)
+
+	df_stats = pd.DataFrame(data=d_data_stats, columns=l_column, dtype=object)
+
+	arr_point_mat = np.array(df_stats['arr_amount_norm_diff_part'].values.tolist())
+	arr_point = arr_point_mat.reshape((-1, arr_point_mat.shape[1]*arr_point_mat.shape[2]))
+
+	arr_point_tpl = arr_point.astype([(f'c{i}', 'float64') for i in range(0, arr_point.shape[1])])
+	u_arr_point_tpl = np.unique(arr_point_tpl)
+	arr_point_unique = u_arr_point_tpl.view((np.float64, len(u_arr_point_tpl.dtype.names)))
+
+	print(f"arr_point_unique.shape: {arr_point_unique.shape}")
+
+	iterations = 100
+
+	arr_best_cluster_amount = find_best_fitting_cluster_amount(
+		max_try_nr=20,
+		arr_point=arr_point_unique,
+		min_amount_cluster=2,
+		max_amount_cluster=15,
+		iterations=iterations,
+	)
