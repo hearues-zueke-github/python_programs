@@ -10,7 +10,7 @@ from multiprocessing import Process, Pipe
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if PATH_ROOT_DIR not in sys.path:
-    sys.path.append(PATH_ROOT_DIR)
+	sys.path.append(PATH_ROOT_DIR)
 
 '''
 Example of usage:
