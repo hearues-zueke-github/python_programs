@@ -1,83 +1,52 @@
-from typing import List, Dict, Set, Mapping, Any, Tuple
+import os
+import sys
 
 import matplotlib.pyplot as plt
-
-from dotmap import DotMap
 import numpy as np
 
-__version__ = '0.1.0'
-dm_obj_file_name = 'dm_obj.pkl.gz'
+from dataclasses import dataclass
+from dotmap import DotMap
+from typing import List, Dict, Set, Mapping, Any, Tuple
 
-# l_color = [
-#	 '#00F020',
-#	 '#008000',
-#	 '#FF0000',
-#	 '#0000FF',
-# ]
+# PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+HOME_DIR = os.path.expanduser("~")
+PYTHON_PROGRAMS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
+
+if PYTHON_PROGRAMS_DIR not in sys.path:
+	sys.path.append(PYTHON_PROGRAMS_DIR)
+from utils_load_module import load_module_dynamically
+
+var_glob = globals()
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils_multiprocessing_manager.py")))
+
+MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+
+__version__ = '0.1.0'
 
 l_hex_str = ['00', '40', '80', 'C0', 'FF']
 l_color = ['#{}{}{}'.format(col_r, col_g, col_b) for col_r in l_hex_str for col_g in l_hex_str for col_b in l_hex_str]
 
-class CalcClusterData(Exception):
-
-	__slot__ = [
-		'cluster_amount',
-		'arr_cluster_mean_vec',
-		'l_cluster_points_correspond',
-		'arr_error',
-		'l_error_cluster',
-		'arr_cluster_nr',
-	]
-
-	def __init__(
-		self,
-		cluster_amount: int,
-		arr_cluster_mean_vec: np.ndarray,
-		l_cluster_points_correspond: List[np.ndarray],
-		arr_error: np.ndarray,
-		l_error_cluster: List[List[np.float64]],
-		arr_cluster_nr: np.ndarray,
-	):
-		self.cluster_amount = cluster_amount
-		self.arr_cluster_mean_vec = arr_cluster_mean_vec
-		self.l_cluster_points_correspond = l_cluster_points_correspond
-		self.arr_error = arr_error
-		self.l_error_cluster = l_error_cluster
-		self.arr_cluster_nr = arr_cluster_nr
+# TODO: maybe use a namedtuple or a record class?!
+@dataclass(frozen=True)
+class CalcClusterData:
+	cluster_amount: int
+	arr_cluster_mean_vec: np.ndarray
+	l_cluster_points_correspond: List[np.ndarray]
+	arr_error: np.ndarray
+	l_error_cluster: List[List[np.float64]]
+	arr_cluster_nr: np.ndarray
 
 
-class CalcSilhouetteData(Exception):
-
-	__slot__ = [
-		'cluster_amount',
-		'arr_point',
-		'arr_cluster_nr',
-		'l_arr_points_in_cluster',
-		'l_cluster_val_a',
-		'l_cluster_val_b',
-		'l_cluster_val_s',
-		'val_s_mean',
-	]
-
-	def __init__(
-		self,
-		cluster_amount: int,
-		arr_point: np.ndarray,
-		arr_cluster_nr: np.ndarray,
-		l_arr_points_in_cluster: List[np.ndarray],
-		l_cluster_val_a: List[np.ndarray],
-		l_cluster_val_b: List[np.ndarray],
-		l_cluster_val_s: List[np.ndarray],
-		val_s_mean: np.float64,
-	):
-		self.cluster_amount = cluster_amount
-		self.arr_point = arr_point
-		self.arr_cluster_nr = arr_cluster_nr
-		self.l_arr_points_in_cluster = l_arr_points_in_cluster
-		self.l_cluster_val_a = l_cluster_val_a
-		self.l_cluster_val_b = l_cluster_val_b
-		self.l_cluster_val_s = l_cluster_val_s
-		self.val_s_mean = val_s_mean
+@dataclass(frozen=True)
+class CalcSilhouetteData(tuple):
+	cluster_amount: int
+	arr_point: np.ndarray
+	arr_cluster_nr: np.ndarray
+	l_arr_points_in_cluster: List[np.ndarray]
+	l_cluster_val_a: List[np.ndarray]
+	l_cluster_val_b: List[np.ndarray]
+	l_cluster_val_s: List[np.ndarray]
+	val_s_mean: np.float64
 
 
 def calculate_clusters(
@@ -90,52 +59,59 @@ def calculate_clusters(
 	point_dim = arr_point.shape[1]
 	# cluster_amount <= arr_point.shape[0] !!!
 
-	arr_cluster_mean_vec = arr_point[np.random.permutation(np.arange(0, len(arr_point)))[:cluster_amount]].copy()
-	# print("before arr_cluster_mean_vec:\n{}".format(arr_cluster_mean_vec))
+	is_finished = False
+	while not is_finished:
+		try:
+			arr_cluster_mean_vec = arr_point[np.random.permutation(np.arange(0, len(arr_point)))[:cluster_amount]].copy()
+			# print("before arr_cluster_mean_vec:\n{}".format(arr_cluster_mean_vec))
 
-	# calc new clusters!
-	l_error: List[np.float64] = []
-	l_error_cluster: List[List[np.float64]] = [[] for _ in range(0, cluster_amount)]
+			# calc new clusters!
+			l_error: List[np.float64] = []
+			l_error_cluster: List[List[np.float64]] = [[] for _ in range(0, cluster_amount)]
 
-	cluster_points_prev: np.ndarray = arr_cluster_mean_vec.copy()
-	i_nr: int
-	for i_nr in range(0, iterations + 1):
-		arr_sums_diff = np.sqrt(np.sum((arr_point.reshape((-1, 1, point_dim)) - arr_cluster_mean_vec.reshape((1, -1, point_dim)))**2, axis=2))
+			cluster_points_prev: np.ndarray = arr_cluster_mean_vec.copy()
+			i_nr: int
+			for i_nr in range(0, iterations + 1):
+				arr_sums_diff = np.sqrt(np.sum((arr_point.reshape((-1, 1, point_dim)) - arr_cluster_mean_vec.reshape((1, -1, point_dim)))**2, axis=2))
 
-		arr_cluster_nr = np.argmin(arr_sums_diff, axis=1)
+				arr_cluster_nr = np.argmin(arr_sums_diff, axis=1)
 
-		u, c = np.unique(arr_cluster_nr, return_counts=True)
-		# print(f"i_nr: {i_nr}")
-		# print(f"- u.shape: {u.shape}")
-		# print(f"- c.shape: {c.shape}")
-		assert c.shape[0] == cluster_amount
+				u, c = np.unique(arr_cluster_nr, return_counts=True)
+				# print(f"i_nr: {i_nr}")
+				# print(f"- u.shape: {u.shape}")
+				# print(f"- c.shape: {c.shape}")
+				assert c.shape[0] == cluster_amount
 
-		# error = np.sum(arr_sums_diff)
+				# error = np.sum(arr_sums_diff)
 
-		cluster_points_prev[:] = arr_cluster_mean_vec
+				cluster_points_prev[:] = arr_cluster_mean_vec
 
-		l_error_cluster_one = []
+				l_error_cluster_one = []
 
-		i: int
-		for i in range(0, cluster_amount):
-			arr_idxs: np.ndarray = arr_cluster_nr==i
-			if arr_idxs.shape[0] == 0:
-				continue
-			arr = arr_point[arr_idxs]
-			error_cluster = np.mean(arr_sums_diff[arr_idxs, i])
-			l_error_cluster_one.append(error_cluster)
-			l_error_cluster[i].append(error_cluster)
-			arr_cluster_mean_vec[i] = np.mean(arr, axis=0)
+				i: int
+				for i in range(0, cluster_amount):
+					arr_idxs: np.ndarray = arr_cluster_nr==i
+					if arr_idxs.shape[0] == 0:
+						continue
+					arr = arr_point[arr_idxs]
+					error_cluster = np.mean(arr_sums_diff[arr_idxs, i])
+					l_error_cluster_one.append(error_cluster)
+					l_error_cluster[i].append(error_cluster)
+					arr_cluster_mean_vec[i] = np.mean(arr, axis=0)
 
-		error = np.sum(l_error_cluster_one)
-		if should_print_values:
-			print("i_nr: {}, error: {}".format(i_nr, error))
-		l_error.append(error)
+				error = np.sum(l_error_cluster_one)
+				if should_print_values:
+					print("i_nr: {}, error: {}".format(i_nr, error))
+				l_error.append(error)
 
-		if np.all(np.equal(arr_cluster_mean_vec, cluster_points_prev)):
-			break
+				if np.all(np.equal(arr_cluster_mean_vec, cluster_points_prev)):
+					break
 
-		# print("- after arr_cluster_mean_vec:\n{}".format(arr_cluster_mean_vec))
+				# print("- after arr_cluster_mean_vec:\n{}".format(arr_cluster_mean_vec))
+			is_finished = True
+		except:
+			print(f"Do again 'calculate_clusters' for cluster_amount: {cluster_amount}")
+			pass
 
 	arr_error = np.array(l_error)
 
@@ -222,6 +198,9 @@ def calculate_cluster_points_and_silouhette(
 	max_amount_cluster: int,
 	iterations: int,
 ) -> List[Dict[str, object]]:
+	assert min_amount_cluster >= 2
+	assert min_amount_cluster <= max_amount_cluster
+
 	l_d_data = []
 	for cluster_amount in range(min_amount_cluster, max_amount_cluster+1):
 		print(f"cluster_amount: {cluster_amount}")
@@ -258,14 +237,14 @@ def find_best_fitting_cluster_amount(
 	min_amount_cluster: int,
 	max_amount_cluster: int,
 	iterations: int,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray]:
 	l_try_nr_arr_x_cluster_amount_arr_y_s_mean = []
 		
 	for try_nr in range(1, max_try_nr+1):
 		l_d_data = calculate_cluster_points_and_silouhette(
 			arr_point=arr_point,
-			min_amount_cluster=2,
-			max_amount_cluster=15,
+			min_amount_cluster=min_amount_cluster,
+			max_amount_cluster=max_amount_cluster,
 			iterations=iterations,
 		)
 
@@ -276,14 +255,15 @@ def find_best_fitting_cluster_amount(
 
 	arr_arr_y_s_mean = np.vstack([arr_y_s_mean for _, _, arr_y_s_mean in l_try_nr_arr_x_cluster_amount_arr_y_s_mean])
 
-	arr_arr_y_s_mean_argsort_inv = np.argsort(arr_arr_y_s_mean, axis=1)
-	arr_arr_y_s_mean_argsort = arr_arr_y_s_mean_argsort_inv.copy()
-	arr_arange = np.arange(0, arr_arr_y_s_mean.shape[1])
-	for i in range(0, arr_arr_y_s_mean.shape[0]):
-		arr_arr_y_s_mean_argsort[i, arr_arr_y_s_mean_argsort_inv[i]] = arr_arange
+	# arr_arr_y_s_mean_argsort_inv = np.argsort(arr_arr_y_s_mean, axis=1)
+	# arr_arr_y_s_mean_argsort = arr_arr_y_s_mean_argsort_inv.copy()
+	# arr_arange = np.arange(0, arr_arr_y_s_mean.shape[1])
+	# for i in range(0, arr_arr_y_s_mean.shape[0]):
+	# 	arr_arr_y_s_mean_argsort[i, arr_arr_y_s_mean_argsort_inv[i]] = arr_arange
 
 	arr_x_cluster_amount = l_try_nr_arr_x_cluster_amount_arr_y_s_mean[0][1]
-	arr_best_cluster_amount = arr_x_cluster_amount[np.argsort(np.sum(arr_arr_y_s_mean_argsort, axis=0))[::-1]]
+	# arr_best_cluster_amount = arr_x_cluster_amount[np.argsort(np.sum(arr_arr_y_s_mean_argsort, axis=0))[::-1]]
+	arr_best_cluster_amount = arr_x_cluster_amount[np.argsort(np.median(arr_arr_y_s_mean, axis=0))[::-1]]
 
 	print(f"arr_best_cluster_amount: {arr_best_cluster_amount}")
 
@@ -300,7 +280,65 @@ def find_best_fitting_cluster_amount(
 
 	plt.show(block=True)
 
-	return arr_best_cluster_amount
+	return arr_arr_y_s_mean, arr_arr_y_s_mean_argsort, arr_best_cluster_amount
+
+
+def find_best_fitting_cluster_amount_multiprocessing(
+	max_try_nr: int,
+	arr_point: np.ndarray,
+	min_amount_cluster: int,
+	max_amount_cluster: int,
+	iterations: int,
+	amount_proc: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+	assert min_amount_cluster >= 2
+	assert min_amount_cluster <= max_amount_cluster
+
+	mult_proc_mng = MultiprocessingManager(cpu_count=amount_proc)
+
+	def wrapper_func(d_params):
+		return calculate_cluster_points_and_silouhette(
+			arr_point=d_params['arr_point'],
+			min_amount_cluster=d_params['min_amount_cluster'],
+			max_amount_cluster=d_params['max_amount_cluster'],
+			iterations=d_params['iterations'],
+		)
+
+	d_params_base = dict(
+		arr_point=arr_point,
+		iterations=iterations,
+	)
+	mult_proc_mng.define_new_func('func_wrapper_func', wrapper_func)
+	l_arguments = [(d_params_base | dict(min_amount_cluster=amount_cluster, max_amount_cluster=amount_cluster), ) for _ in range(0, max_try_nr) for amount_cluster in range(min_amount_cluster, max_amount_cluster+1)]
+	l_ret = mult_proc_mng.do_new_jobs(
+		['func_wrapper_func']*len(l_arguments),
+		l_arguments,
+	)
+	print("len(l_ret): {}".format(len(l_ret)))
+
+	del mult_proc_mng
+
+	arr_count_cluster_amount = np.zeros((max_amount_cluster - min_amount_cluster + 1, ), dtype=np.int64)
+	arr_arr_y_s_mean = np.zeros((max_try_nr, max_amount_cluster-min_amount_cluster+1), dtype=np.float64)
+
+	for ret in l_ret:
+		# because ret must have the length of one!
+		assert len(ret) == 1
+		d_data = ret[0]
+
+		cluster_amount = d_data['cluster_amount']
+		val_s_mean = ret[0]['calc_silouhette_data'].val_s_mean
+		cluster_amount_idx = cluster_amount - 2
+		y_row = arr_count_cluster_amount[cluster_amount_idx]
+		arr_count_cluster_amount[cluster_amount_idx] += 1
+		arr_arr_y_s_mean[y_row, cluster_amount_idx] = val_s_mean
+
+		print(f"cluster_amount: {cluster_amount}, val_s_mean: {val_s_mean}, y_row: {y_row}")
+
+	arr_x_cluster_amount = np.arange(min_amount_cluster, max_amount_cluster+1)
+	arr_best_cluster_amount = arr_x_cluster_amount[np.argsort(np.median(arr_arr_y_s_mean, axis=0))[::-1]]
+
+	return arr_arr_y_s_mean, arr_best_cluster_amount
 
 
 def get_plots(arr_cluster_mean_vec, l_cluster_points_correspond, arr_error, l_error_cluster):
