@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.9.5 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.10 -i
 
 # -*- coding: utf-8 -*-
 
@@ -31,9 +31,9 @@ from PIL import Image
 from recordclass import RecordClass, asdict
 
 class RootDirsFiles(RecordClass):
-    root: str
-    l_dir_name: List[str]
-    l_file_name: List[str]
+	root: str
+	l_dir_name: List[str]
+	l_file_name: List[str]
 
 CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -60,152 +60,152 @@ PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'plots')
 mkdirs(PLOTS_DIR_PATH)
 
 if __name__ == '__main__':
-    argv = sys.argv
-    src_folder_path = argv[1]
-    dst_file_path = argv[2]
+	argv = sys.argv
+	src_folder_path = argv[1]
+	dst_file_path = argv[2]
 
-    assert os.path.exists(src_folder_path)
-    assert os.path.isdir(src_folder_path)
-    assert not os.path.islink(src_folder_path)
+	assert os.path.exists(src_folder_path)
+	assert os.path.isdir(src_folder_path)
+	assert not os.path.islink(src_folder_path)
 
-    assert '.'.join(dst_file_path.split('.')[-2:]) == 'tar.gz'
+	assert '.'.join(dst_file_path.split('.')[-2:]) == 'tar.gz'
 
-    if not os.path.exists(dst_file_path):
-        with tarfile.open(name=dst_file_path, mode='w:gz') as tar:
-            pass
+	if not os.path.exists(dst_file_path):
+		with tarfile.open(name=dst_file_path, mode='w:gz') as tar:
+			pass
 
-    dst_obj_file_path = dst_file_path[:-6] + 'objs.tar.gz'
+	dst_obj_file_path = dst_file_path[:-6] + 'objs.tar.gz'
 
-    tar = tarfile.open(name=dst_file_path, mode='w:gz')
+	tar = tarfile.open(name=dst_file_path, mode='w:gz')
 
-    l_dir_path_link = []
-    l_file_path_link = []
-    l_file_path_failed = []
+	l_dir_path_link = []
+	l_file_path_link = []
+	l_file_path_failed = []
 
-    # tar = tarfile.open(name=dst_file_path, mode='r:gz')
-    # members = tar.getmembers()
+	# tar = tarfile.open(name=dst_file_path, mode='r:gz')
+	# members = tar.getmembers()
 
-    # first walk through all the dirs and files
-    l_rootdirfile = [RootDirsFiles(*next(os.walk(src_folder_path)))]
-    l_rootdirfile_temp = [rootdirfile for rootdirfile in l_rootdirfile]
+	# first walk through all the dirs and files
+	l_rootdirfile = [RootDirsFiles(*next(os.walk(src_folder_path)))]
+	l_rootdirfile_temp = [rootdirfile for rootdirfile in l_rootdirfile]
 
-    iter_nr = 0
-    while len(l_rootdirfile_temp) > 0:
-        iter_nr += 1
-        print("iter_nr: {}".format(iter_nr))
+	iter_nr = 0
+	while len(l_rootdirfile_temp) > 0:
+		iter_nr += 1
+		print("iter_nr: {}".format(iter_nr))
 
-        len_l_rootdirfile_temp = len(l_rootdirfile_temp)
-        l_rootdirfile_temp_2 = []
-        for i_rootdirfile, rootdirfile in enumerate(l_rootdirfile_temp, 1):
-            print("- rootdirfile {:5}/{:5}".format(i_rootdirfile, len_l_rootdirfile_temp))
-            root = rootdirfile.root
-            for dir_name in rootdirfile.l_dir_name:
-                dir_path = os.path.join(root, dir_name)
-                if os.path.islink(dir_path):
-                    l_dir_path_link.append(dir_path)
-                    print('-- path is link! "{}"'.format(dir_path))
-                    continue
-                l_rootdirfile_temp_2.append(RootDirsFiles(*next(os.walk(dir_path))))
+		len_l_rootdirfile_temp = len(l_rootdirfile_temp)
+		l_rootdirfile_temp_2 = []
+		for i_rootdirfile, rootdirfile in enumerate(l_rootdirfile_temp, 1):
+			print("- rootdirfile {:5}/{:5}".format(i_rootdirfile, len_l_rootdirfile_temp))
+			root = rootdirfile.root
+			for dir_name in rootdirfile.l_dir_name:
+				dir_path = os.path.join(root, dir_name)
+				if os.path.islink(dir_path):
+					l_dir_path_link.append(dir_path)
+					print('-- path is link! "{}"'.format(dir_path))
+					continue
+				l_rootdirfile_temp_2.append(RootDirsFiles(*next(os.walk(dir_path))))
 
-        l_rootdirfile_temp = l_rootdirfile_temp_2
-        l_rootdirfile.extend(l_rootdirfile_temp)
+		l_rootdirfile_temp = l_rootdirfile_temp_2
+		l_rootdirfile.extend(l_rootdirfile_temp)
 
-        # if iter_nr >= 2:
-        #     break
-
-
-    # then obtain all stats of each dirs and files
-    root_first = l_rootdirfile[0].root
-    len_root_first = len(root_first) + 1
-    df = pd.DataFrame(data=[], columns=['rel_root', 'name', 'type', ' os.stat', 'sha256sum'], dtype=object)
-    row_nr = 0
-
-    len_l_rootdirfile = len(l_rootdirfile)
-    for i_rootdirfile, rootdirfile in enumerate(l_rootdirfile, 1):
-        print("rootdirfile nr. {:5}/{:5}".format(i_rootdirfile, len_l_rootdirfile))
-        root = rootdirfile.root
-        rel_root = root[len_root_first:]
-
-        for dir_name in rootdirfile.l_dir_name:
-            dir_path = os.path.join(root, dir_name)
-            stat = os.stat(dir_path)
-            df.loc[row_nr] = [rel_root, dir_name, 'd', stat, '']
-            row_nr += 1
-
-        for file_name in rootdirfile.l_file_name:
-            file_path = os.path.join(root, file_name)
-
-            if os.path.islink(file_path):
-                l_file_path_link.append(file_path)
-                continue
-
-            stat = os.stat(file_path)
-
-            df.loc[row_nr] = [rel_root, file_name, 'f', stat, '']
-            row_nr += 1
+		# if iter_nr >= 2:
+		#	 break
 
 
-    # and last step save files in dirs in the tar.gz, with the stats seperated + update the sha256sum
-    df_file = df.loc[df['type'].values == 'f']
-    len_df_file = len(df_file)
-    for i, (row_nr, row) in enumerate(df_file.iterrows(), 1):
-        rel_root = row['rel_root']
-        name = row['name']
-        rel_file_path = os.path.join(rel_root, name)
-        file_path = os.path.join(root_first, rel_file_path)
+	# then obtain all stats of each dirs and files
+	root_first = l_rootdirfile[0].root
+	len_root_first = len(root_first) + 1
+	df = pd.DataFrame(data=[], columns=['rel_root', 'name', 'type', ' os.stat', 'sha256sum'], dtype=object)
+	row_nr = 0
 
-        print("{:6}/{:6} copy {}".format(i, len_df_file, file_path))
+	len_l_rootdirfile = len(l_rootdirfile)
+	for i_rootdirfile, rootdirfile in enumerate(l_rootdirfile, 1):
+		print("rootdirfile nr. {:5}/{:5}".format(i_rootdirfile, len_l_rootdirfile))
+		root = rootdirfile.root
+		rel_root = root[len_root_first:]
 
-        bytes_file = BytesIO()
-        try:
-            with open(file_path, 'rb') as f:
-                bytes_file.write(f.read())
-            bytes_file.seek(0)
-        except:
-            print('- Could not open the file!')
-            df.loc[row_nr].sha256sum =  ''
-            l_file_path_failed.append(file_path)
-            continue
+		for dir_name in rootdirfile.l_dir_name:
+			dir_path = os.path.join(root, dir_name)
+			stat = os.stat(dir_path)
+			df.loc[row_nr] = [rel_root, dir_name, 'd', stat, '']
+			row_nr += 1
 
-        h = sha256()
-        h.update(bytes_file.read())
-        df.loc[row_nr]['sha256sum'] =  h.hexdigest()
+		for file_name in rootdirfile.l_file_name:
+			file_path = os.path.join(root, file_name)
 
-        try:
-            tarinfo = tarfile.TarInfo(name=rel_file_path)
-            tarinfo.size = bytes_file.tell()
-            bytes_file.seek(0)
-            tar.addfile(tarinfo=tarinfo, fileobj=bytes_file)
-        except:
-            print('- Could not copy the file!')
-            l_file_path_failed.append(file_path)
-            continue
+			if os.path.islink(file_path):
+				l_file_path_link.append(file_path)
+				continue
 
-    tar.close()
+			stat = os.stat(file_path)
 
-    tar = tarfile.open(name=dst_file_path, mode='r:gz')
-    members = tar.getmembers()
-    
-    d_ignores = {
-        'l_dir_path_link': l_dir_path_link,
-        'l_file_path_link': l_file_path_link,
-        'l_file_path_failed': l_file_path_failed,
-    }
+			df.loc[row_nr] = [rel_root, file_name, 'f', stat, '']
+			row_nr += 1
 
-    l_obj_obj_name = [
-        (d_ignores, 'd_ignores.pkl'),
-        ([asdict(v) for v in l_rootdirfile], 'l_rootdirfile.pkl'),
-        (df, 'df.pkl'),
-    ]
-    
-    tar_obj = tarfile.open(name=dst_obj_file_path, mode='w:gz')
-    for obj, obj_name in l_obj_obj_name:
-        bytes_file = BytesIO()
-        dill.dump(obj, bytes_file)
 
-        tarinfo = tarfile.TarInfo(name=obj_name)
-        tarinfo.size = bytes_file.tell()
-        bytes_file.seek(0)
-        tar_obj.addfile(tarinfo=tarinfo, fileobj=bytes_file)
+	# and last step save files in dirs in the tar.gz, with the stats seperated + update the sha256sum
+	df_file = df.loc[df['type'].values == 'f']
+	len_df_file = len(df_file)
+	for i, (row_nr, row) in enumerate(df_file.iterrows(), 1):
+		rel_root = row['rel_root']
+		name = row['name']
+		rel_file_path = os.path.join(rel_root, name)
+		file_path = os.path.join(root_first, rel_file_path)
 
-    tar_obj.close()
+		print("{:6}/{:6} copy {}".format(i, len_df_file, file_path))
+
+		bytes_file = BytesIO()
+		try:
+			with open(file_path, 'rb') as f:
+				bytes_file.write(f.read())
+			bytes_file.seek(0)
+		except:
+			print('- Could not open the file!')
+			df.loc[row_nr].sha256sum =  ''
+			l_file_path_failed.append(file_path)
+			continue
+
+		h = sha256()
+		h.update(bytes_file.read())
+		df.loc[row_nr]['sha256sum'] =  h.hexdigest()
+
+		try:
+			tarinfo = tarfile.TarInfo(name=rel_file_path)
+			tarinfo.size = bytes_file.tell()
+			bytes_file.seek(0)
+			tar.addfile(tarinfo=tarinfo, fileobj=bytes_file)
+		except:
+			print('- Could not copy the file!')
+			l_file_path_failed.append(file_path)
+			continue
+
+	tar.close()
+
+	tar = tarfile.open(name=dst_file_path, mode='r:gz')
+	members = tar.getmembers()
+	
+	d_ignores = {
+		'l_dir_path_link': l_dir_path_link,
+		'l_file_path_link': l_file_path_link,
+		'l_file_path_failed': l_file_path_failed,
+	}
+
+	l_obj_obj_name = [
+		(d_ignores, 'd_ignores.pkl'),
+		([asdict(v) for v in l_rootdirfile], 'l_rootdirfile.pkl'),
+		(df, 'df.pkl'),
+	]
+	
+	tar_obj = tarfile.open(name=dst_obj_file_path, mode='w:gz')
+	for obj, obj_name in l_obj_obj_name:
+		bytes_file = BytesIO()
+		dill.dump(obj, bytes_file)
+
+		tarinfo = tarfile.TarInfo(name=obj_name)
+		tarinfo.size = bytes_file.tell()
+		bytes_file.seek(0)
+		tar_obj.addfile(tarinfo=tarinfo, fileobj=bytes_file)
+
+	tar_obj.close()
