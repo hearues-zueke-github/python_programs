@@ -22,7 +22,7 @@ class SimpleNeuralNetwork(Exception):
 
 
     def get_random_bws(self):
-        return np.array([np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])])
+        return np.array([np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])], dtype=object)
     
 
     def __repr__(self):
@@ -106,7 +106,7 @@ class SimpleNeuralNetwork(Exception):
         Ys.append(Y)
 
         d = (Y-T)
-        bwds = np.array([np.zeros(bwsdi.shape) for bwsdi in bws])
+        bwds = np.array([np.zeros(bwsdi.shape) for bwsdi in bws], dtype=object)
         if softmax:
             bwds[-1] = np.hstack((ones, Ys[-2])).T.dot(d)
         else:

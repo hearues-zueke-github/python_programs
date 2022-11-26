@@ -1,4 +1,4 @@
-#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.10 -i
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.11 -i
 
 # -*- coding: utf-8 -*-
 
