@@ -15,3 +15,7 @@ def func2(a, b):
 
 if __name__ == "__main__":
 	print('Hello World!')
+elif False:
+	pass
+else:
+	print("test123")

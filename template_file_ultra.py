@@ -6,6 +6,7 @@
 import datetime
 import dill
 import gzip
+import itertools
 import os
 import pdb
 import re
