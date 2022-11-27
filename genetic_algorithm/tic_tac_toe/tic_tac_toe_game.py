@@ -14,19 +14,19 @@ import sys
 import time
 import traceback
 
-import numpy as np
-import pandas as pd
+import numpy as np # need installation from pip
+import pandas as pd # need installation from pip
 import multiprocessing as mp
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # need installation from pip
 
 from collections import defaultdict
 from copy import deepcopy, copy
-from dotmap import DotMap
+from dotmap import DotMap # need installation from pip
 from functools import reduce
 from hashlib import sha256
 from io import BytesIO
-from memory_tempfile import MemoryTempfile
+from memory_tempfile import MemoryTempfile # need installation from pip
 from shutil import copyfile
 from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
@@ -130,13 +130,14 @@ if __name__ == '__main__':
 
 	# take one random empty cell and place the players symbol in the cell
 
-	n_field = 5
+	n_field = 3
 	dim = 2
-	n_player = 3
+	n_player = 2
 	
 	arr_player_won = np.zeros((n_player+1, ), dtype=np.int64)
 
-	dt_str = get_current_datetime_str()
+	dt_str = "2022-11-27 06:00:45.797843"
+	# dt_str = get_current_datetime_str()
 	l_seed = list(dt_str.encode("utf-8"))
 	rnd = Generator(bit_generator=PCG64(seed=l_seed))
 	
@@ -144,35 +145,60 @@ if __name__ == '__main__':
 	
 	input_nodes = n_field**dim*n_player
 
-	l_column = [
-		"nr",
-		"nn",
-		"won", "loose",
-		"won_against", "loose_against",
-		"won_moves", "loose_moves",
-		"won_pos_nr", "loose_pos_nr",
-	]
-	d_data = {column: [] for column in l_column}
+	elite_games = 3
+	take_best_player = 5
+	amount_player = 20
 
-	amount_nr = 10
-	for nr in range(0, amount_nr):
-		d_data["nr"].append(nr)
-		nn = SimpleNeuralNetwork.SimpleNeuralNetwork(
-			input_nodes=input_nodes,
-			hidden_nodes=[input_nodes*2, input_nodes*2],
-			output_nodes=n_field**dim
-		)
-		d_data["nn"].append(nn)
-		d_data["won"].append(0)
-		d_data["loose"].append(0)
-		d_data["won_against"].append([])
-		d_data["loose_against"].append([])
-		d_data["won_moves"].append([])
-		d_data["loose_moves"].append([])
-		d_data["won_pos_nr"].append([])
-		d_data["loose_pos_nr"].append([])
-	
-	df_nn = pd.DataFrame(data=d_data, columns=l_column, dtype=object)
+	mix_rate = 0.60
+	change_factor = 0.2725
+	random_rate = 0.25
+
+	def create_df_nn(amount_player):
+		l_column = [
+			"nr",
+			"nn",
+			"won", "loose",
+			"won_against", "loose_against",
+			"won_moves", "loose_moves",
+			"won_pos_nr", "loose_pos_nr",
+		]
+		d_data = {column: [] for column in l_column}
+
+		for nr in range(0, amount_player):
+			d_data["nr"].append(nr)
+			nn = SimpleNeuralNetwork.SimpleNeuralNetwork(
+				input_nodes=input_nodes,
+				hidden_nodes=[input_nodes*2, input_nodes*2],
+				output_nodes=n_field**dim,
+				rnd=rnd,
+			)
+			d_data["nn"].append(nn)
+			d_data["won"].append(0)
+			d_data["loose"].append(0)
+			d_data["won_against"].append([])
+			d_data["loose_against"].append([])
+			d_data["won_moves"].append([])
+			d_data["loose_moves"].append([])
+			d_data["won_pos_nr"].append([])
+			d_data["loose_pos_nr"].append([])
+		
+		df_nn = pd.DataFrame(data=d_data, columns=l_column, dtype=object)
+
+		return df_nn
+
+
+	def reset_df_nn_stats(df_nn):
+		df_nn["won"] = pd.Series(data=[0 for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["loose"] = pd.Series(data=[0 for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["won_against"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["loose_against"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["won_moves"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["loose_moves"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["won_pos_nr"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+		df_nn["loose_pos_nr"] = pd.Series(data=[[] for _ in range(0, df_nn.shape[0])], dtype=object, index=df_nn.index)
+
+	df_nn = create_df_nn(amount_player=amount_player)
+	reset_df_nn_stats(df_nn=df_nn)
 
 	tictactoe_board = TicTacToeBoard(n_field=n_field, dim=dim, n_player=n_player)
 	
@@ -184,7 +210,7 @@ if __name__ == '__main__':
 
 	l_player_player_won = []
 
-	for round_i, t_idx in enumerate(itertools.permutations(range(0, amount_nr), n_player), 1):
+	for round_i, t_idx in enumerate(itertools.permutations(range(0, amount_player), n_player), 1):
 		assert len(t_idx) == n_player
 
 		d_row_nn = {
@@ -198,7 +224,6 @@ if __name__ == '__main__':
 		is_player_winning = False
 		player_nr_won = 0
 
-		# idx_player = 0
 		move_nr = 0
 		while tictactoe_board.s_empty_cell:
 			move_nr += 1
@@ -210,7 +235,9 @@ if __name__ == '__main__':
 			# TODO: make this more efficient
 			arr_mult = n_field**np.flip(np.arange(0, dim))
 			for cell in tictactoe_board.l_cell:
+				# player_nr = arr_field[cell] # for <=python3.10
 				player_nr = arr_field[*cell]
+
 				if player_nr == 0:
 					continue
 
@@ -233,9 +260,15 @@ if __name__ == '__main__':
 			s_empty_cell.remove(cell_coord)
 			s_used_cell.add(cell_coord)
 			d_player_nr_to_l_used_cell[curr_player_nr].append(cell_coord)
+
+			# arr_field[cell_coord] = curr_player_nr # for <=python3.10
 			arr_field[*cell_coord] = curr_player_nr
 
-			arr_clusters = arr_field[*np.array(tictactoe_board.d_cell_to_t_cluster[cell_coord]).reshape((-1, dim)).transpose()].reshape((-1, tictactoe_board.n_field))
+			arr_pos = np.array(tictactoe_board.d_cell_to_t_cluster[cell_coord]).reshape((-1, dim)).transpose()
+
+			# arr_clusters = arr_field[tuple(arr_pos.tolist())].reshape((-1, tictactoe_board.n_field)) # for <=python3.10
+			arr_clusters = arr_field[*arr_pos].reshape((-1, tictactoe_board.n_field))
+
 			if np.any(np.all(arr_clusters == curr_player_nr, axis=1)):
 				is_player_winning = True
 				player_nr_won = curr_player_nr
@@ -261,19 +294,22 @@ if __name__ == '__main__':
 		arr_player_won[player_nr_won] += 1
 		l_player_player_won.append((t_idx, player_nr_won))
 
-		# print(f"arr_field:\n{arr_field}")
-
-	# print(f"arr_player_won: {arr_player_won}")
-
 	df_nn.sort_values(by=['won', 'loose'], ascending=[False, True], inplace=True)
 	df_nn.reset_index(drop=True, inplace=True)
 
-	print(f"df_nn:\n{df_nn}")
+	print(f"df_nn[df_nn.columns[:4].values]:\n{df_nn[df_nn.columns[:4].values]}")
+	# print(f"df_nn:\n{df_nn}")
+
+	# pd.concat((
+	# 	df_nn,
+	# 	df_nn['won_moves'].apply(lambda x: np.mean(x)).rename('won_moves_mean'),
+	# 	df_nn['loose_moves'].apply(lambda x: np.mean(x)).rename('loose_moves_mean'),
+	# ), axis=1)
 
 	func_vec_list = np.vectorize(lambda x: list(), otypes=[list])
-	arr_win_table = func_vec_list(np.zeros((amount_nr, amount_nr)))
-	arr_loose_table = func_vec_list(np.zeros((amount_nr, amount_nr)))
-	for row_idx in range(0, amount_nr):
+	arr_win_table = func_vec_list(np.zeros((amount_player, amount_player)))
+	arr_loose_table = func_vec_list(np.zeros((amount_player, amount_player)))
+	for row_idx in range(0, amount_player):
 		row = df_nn.loc[row_idx]
 		nr = row['nr']
 
@@ -282,22 +318,10 @@ if __name__ == '__main__':
 		l_won_moves = row['won_moves']
 		for s_won_against, won_pos_nr, won_moves in zip(l_s_won_against, l_won_pos_nr, l_won_moves):
 			for nr_loose in s_won_against:
-				# arr_win_table[nr, nr_loose] = won_moves
-				# arr_win_table[nr, nr_loose].append(won_moves)
 				arr_win_table[nr, nr_loose].append((won_pos_nr, won_moves))
 
 		l_loose_against = row['loose_against']
 		l_loose_pos_nr = row['loose_pos_nr']
 		l_loose_moves = row['loose_moves']
 		for nr_won, loose_pos_nr, loose_moves in zip(l_loose_against, l_loose_pos_nr, l_loose_moves):
-			# arr_loose_table[nr, nr_won] = loose_moves
-			# arr_loose_table[nr, nr_won].append(loose_moves)
 			arr_loose_table[nr, nr_won].append((loose_pos_nr, loose_moves))
-
-	# print(f"arr_win_table:\n{arr_win_table}")
-	# print(f"arr_loose_table:\n{arr_loose_table}")
-
-	# assert np.all(arr_win_table == arr_loose_table.T)
-
-# arr_player_won: [1275 6856 1869]
-# arr_player_won: [1308 6784 1908]

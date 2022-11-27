@@ -3,7 +3,7 @@ import numpy as np
 from copy import deepcopy
 
 class SimpleNeuralNetwork(Exception):
-    def __init__(self, input_nodes=None, hidden_nodes=None, output_nodes=None, bws=None):
+    def __init__(self, input_nodes=None, hidden_nodes=None, output_nodes=None, bws=None, rnd=None):
         if bws is not None:
             self.bws = deepcopy(bws)
             return
@@ -18,11 +18,14 @@ class SimpleNeuralNetwork(Exception):
         self.layers = [input_nodes]+hidden_nodes+[output_nodes]
         self.nl = self.layers
 
-        self.bws = self.get_random_bws()
+        self.bws = self.get_random_bws(rnd=rnd)
 
 
-    def get_random_bws(self):
-        return np.array([np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])], dtype=object)
+    def get_random_bws(self, rnd=None):
+        if rnd is None:
+            return np.array([np.random.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])], dtype=object)
+
+        return np.array([rnd.uniform(-1./np.sqrt(n), 1./np.sqrt(n), (m+1, n)) for m, n in zip(self.nl[:-1], self.nl[1:])], dtype=object)
     
 
     def __repr__(self):
