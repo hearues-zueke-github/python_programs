@@ -14,19 +14,19 @@ import sys
 import time
 import traceback
 
-import numpy as np
-import pandas as pd
+import numpy as np # need installation from pip
+import pandas as pd # need installation from pip
 import multiprocessing as mp
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # need installation from pip
 
 from collections import defaultdict
 from copy import deepcopy, copy
-from dotmap import DotMap
+from dotmap import DotMap # need installation from pip
 from functools import reduce
 from hashlib import sha256
 from io import BytesIO
-from memory_tempfile import MemoryTempfile
+from memory_tempfile import MemoryTempfile # need installation from pip
 from shutil import copyfile
 from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
