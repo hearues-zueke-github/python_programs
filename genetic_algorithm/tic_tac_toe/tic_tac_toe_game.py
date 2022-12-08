@@ -206,7 +206,11 @@ def play_the_games(
 		# 	player_nr: df_nn.loc[idx] for player_nr, idx in enumerate(t_idx, 1)
 		# }
 
-		d_row_nn = {pos_nr: d_player_nr_to_df_nn[player_nr].loc[row_idx] for player_nr, (pos_nr, row_idx) in enumerate(zip(t_pos, t_row_idx), 1)}
+		d_row_nn = {
+			pos_nr: d_player_nr_to_df_nn[player_nr].loc[row_idx]
+			for player_nr, (pos_nr, row_idx)
+			in enumerate(zip(t_pos, t_row_idx), 1)
+		}
 
 		# l_moves, move_nr, player_nr_won = play_one_game(
 		# 	tictactoe_board=tictactoe_board,
@@ -214,7 +218,7 @@ def play_the_games(
 		# 	save_moves=False,
 		# )
 
-		l_moves, move_nr, player_nr_won = play_one_game(tictactoe_board=tictactoe_board,d_row_nn=d_row_nn,save_moves=False)
+		l_moves, move_nr, player_nr_won = play_one_game(tictactoe_board=tictactoe_board, d_row_nn=d_row_nn, save_moves=False)
 
 		if player_nr_won != 0:
 			nr_won = d_row_nn[player_nr_won]['nr']
@@ -251,12 +255,6 @@ def play_the_games(
 	for df_nn in d_player_nr_to_df_nn.values():
 		df_nn.sort_values(by=['won', 'draw', 'loose'], ascending=[False, False, True], inplace=True)
 		df_nn.reset_index(drop=True, inplace=True)
-
-	for player_nr in sorted(d_player_nr_to_df_nn):
-		df_nn = d_player_nr_to_df_nn[player_nr]
-		print(f"player_nr: {player_nr}")
-		print(f"df_nn:\n{df_nn.iloc[:20, :5]}")
-		# print(f"df_nn:\n{df_nn}")
 
 	return l_player_player_won
 
@@ -360,29 +358,19 @@ if __name__ == '__main__':
 
 	l_player_nr_t_pos_t_row_idx = [(t_pos, t_row_idx) for t_pos in l_player_nr_t_pos for t_row_idx in l_player_nr_t_row_idx]
 
-	for round_main in range(0, 100):
-		print(f"round_main: {round_main}")
+	print(f"round_main: {0}")
+	l_player_player_won = play_the_games(
+		tictactoe_board=tictactoe_board,
+		d_player_nr_to_df_nn=d_player_nr_to_df_nn,
+		l_player_nr_t_pos_t_row_idx=l_player_nr_t_pos_t_row_idx,
+	)
 
-		for df_nn in d_player_nr_to_df_nn.values():
-			for column in [
-				"won", "draw", "loose",
-			]:
-				df_nn[column] = pd.Series(data=[0 for _ in df_nn.index], dtype=object, index=df_nn.index)
+	for player_nr in sorted(d_player_nr_to_df_nn):
+		df_nn = d_player_nr_to_df_nn[player_nr]
+		print(f"player_nr: {player_nr}")
+		print(f"df_nn:\n{df_nn.iloc[:20, :5]}")
 
-			for column in [
-				"won_against", "draw_against", "loose_against",
-				"won_moves", "draw_moves", "loose_moves",
-				"won_pos_nr", "draw_pos_nr", "loose_pos_nr",
-			]:
-				df_nn[column] = pd.Series(data=[[] for _ in df_nn.index], dtype=object, index=df_nn.index)
-
-		# reset the df_nn values!
-		l_player_player_won = play_the_games(
-			tictactoe_board=tictactoe_board,
-			d_player_nr_to_df_nn=d_player_nr_to_df_nn,
-			l_player_nr_t_pos_t_row_idx=l_player_nr_t_pos_t_row_idx,
-		)
-
+	for round_main in range(1, 100+1):
 		for player_nr, df_nn in d_player_nr_to_df_nn.items():
 			arr_idx_1 = rnd.integers(0, take_best_games, (amount_nr-take_best_games, ))
 			arr_idx_2 = (arr_idx_1 + rnd.integers(1, take_best_games, (amount_nr-take_best_games, ))) % take_best_games
@@ -401,6 +389,32 @@ if __name__ == '__main__':
 					change_factor=change_factor,
 					rnd=rnd,
 				)
+
+		for df_nn in d_player_nr_to_df_nn.values():
+			for column in [
+				"won", "draw", "loose",
+			]:
+				df_nn[column] = pd.Series(data=[0 for _ in df_nn.index], dtype=object, index=df_nn.index)
+
+			for column in [
+				"won_against", "draw_against", "loose_against",
+				"won_moves", "draw_moves", "loose_moves",
+				"won_pos_nr", "draw_pos_nr", "loose_pos_nr",
+			]:
+				df_nn[column] = pd.Series(data=[[] for _ in df_nn.index], dtype=object, index=df_nn.index)
+
+		l_player_player_won = play_the_games(
+			tictactoe_board=tictactoe_board,
+			d_player_nr_to_df_nn=d_player_nr_to_df_nn,
+			l_player_nr_t_pos_t_row_idx=l_player_nr_t_pos_t_row_idx,
+		)
+
+		print(f"round_main: {round_main}")
+
+		for player_nr in sorted(d_player_nr_to_df_nn):
+			df_nn = d_player_nr_to_df_nn[player_nr]
+			print(f"player_nr: {player_nr}")
+			print(f"df_nn:\n{df_nn.iloc[:20, :5]}")
 
 		l_df_stats.append(df_nn[l_column_stats].copy())
 
