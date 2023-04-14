@@ -218,7 +218,11 @@ def play_the_games(
 		# 	save_moves=False,
 		# )
 
-		l_moves, move_nr, player_nr_won = play_one_game(tictactoe_board=tictactoe_board, d_row_nn=d_row_nn, save_moves=False)
+		l_moves, move_nr, player_nr_won = play_one_game(
+			tictactoe_board=tictactoe_board,
+			d_row_nn=d_row_nn,
+			save_moves=False,
+		)
 
 		if player_nr_won != 0:
 			nr_won = d_row_nn[player_nr_won]['nr']
@@ -289,7 +293,8 @@ if __name__ == '__main__':
 	n_player = 2
 	
 	elite_games = 3
-	take_best_games = 10
+	take_best_games = 5
+	amount_nr = 40
 	max_game_nr = 60
 
 	mix_rate = 0.65
@@ -323,7 +328,6 @@ if __name__ == '__main__':
 
 	l_df_stats = []
 
-	amount_nr = 30
 	for player_nr, d_data in d_player_nr_to_d_data.items():
 		for nr in range(0, amount_nr):
 			d_data["nr"].append(nr)

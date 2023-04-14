@@ -1,4 +1,4 @@
-// import yaml
+import yaml
 import os
 
 fn main() {
@@ -8,5 +8,5 @@ fn main() {
         panic('error reading file $filename')
         return
     }
-    println("data:\n${data}")
+    print("data:\n${data}")
 }
