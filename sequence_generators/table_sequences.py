@@ -22,19 +22,22 @@ from PIL import Image, ImageDraw, ImageFont
 
 import matplotlib.pyplot as plt
 
-from memory_tempfile import MemoryTempfile
-tempfile = MemoryTempfile()
+# from memory_tempfile import MemoryTempfile
+# tempfile = MemoryTempfile()
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
 HOME_DIR = os.path.expanduser("~")
-TEMP_DIR = tempfile.gettempdir()+"/"
+# TEMP_DIR = tempfile.gettempdir()+"/"
 
 sys.path.append('../combinatorics')
 from different_combinations import get_all_combinations_repeat
 
 if __name__ == '__main__':
     n = int(sys.argv[1])
-    base = 3
+    base = 4
+
+    # n = 3
+    # base = int(sys.argv[1])
 
     print("n: {}, base: {}".format(n, base))
 
@@ -65,7 +68,7 @@ if __name__ == '__main__':
             # print("k: {}".format(0))
             # print("- arr:\n{}".format(arr))
 
-            for k in range(1, 1000):
+            for k in range(1, 200):
                 arr_l = np.roll(arr, 1, axis=1)
                 arr_r = np.roll(arr, -1, axis=1)
                 arr_u = np.roll(arr, 1, axis=0)
@@ -103,13 +106,21 @@ if __name__ == '__main__':
                 l_missing_factors.append(factors)
             # print("max_cycle_len: {}".format(max_cycle_len))
 
-            # amount += 1
-            # if amount % 100 == 0:
-            #     print("amount: {}, max_cycle_len: {}".format(amount, max_cycle_len))
+            amount += 1
+            if amount % 10 == 0:
+                print("amount: {}, max_cycle_len: {}, len(l_missing_factors): {}".format(
+                    amount, max_cycle_len, len(l_missing_factors)
+                ))
 
+    print()
+    print("l_missing_factors: {}".format(l_missing_factors))
+    print("len(l_missing_factors): {}".format(len(l_missing_factors)))
+    print("best_factors: {}".format(best_factors))
+    print()
+    print("n: {}, base: {}".format(n, base))
     print("    max_cycle_len: {}".format(max_cycle_len))
     print("    len(best_factors): {}".format(len(best_factors)))
-    print("    l_missing_factors: {}".format(l_missing_factors))
+    assert len(l_missing_factors)==0 # this must be fulfilled!
 
 """
 some values:

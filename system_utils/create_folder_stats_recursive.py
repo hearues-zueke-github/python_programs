@@ -40,8 +40,7 @@ class RootDirsFiles(RecordClass):
 
 CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-HOME_DIR = '/home/dpmcltrmj'
-# HOME_DIR = os.path.expanduser("~")
+HOME_DIR = os.path.expanduser("~")
 TEMP_DIR = MemoryTempfile().gettempdir()
 PYTHON_PROGRAMS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
 
@@ -245,10 +244,14 @@ def calculate_hash_sums_if_diff_only(df_dir_file_now, df_dir_file_prev):
 if __name__ == '__main__':
 	argv = sys.argv
 	src_folder_path = argv[1]
-	file_path_folder_name_df_stats = argv[2]
+	# file_path_folder_name_df_stats = argv[2]
+
+	src_folder_path = src_folder_path.rstrip('/')
 
 	# TODO: add possibility for checking in advance, if the file can be created (if the file is not already created)
-	file_path_df_dir_file = os.path.join(TEMP_DIR, file_path_folder_name_df_stats+'.df_dir_file_stats.pkl.gz')
+	file_path_df_dir_file = src_folder_path+'.df_dir_file_stats.pkl.gz'
+	# file_path_df_dir_file = file_path_folder_name_df_stats+'.df_dir_file_stats.pkl.gz'
+	# file_path_df_dir_file = os.path.join(TEMP_DIR, file_path_folder_name_df_stats+'.df_dir_file_stats.pkl.gz')
 
 	assert os.path.exists(src_folder_path)
 	assert os.path.isdir(src_folder_path)
