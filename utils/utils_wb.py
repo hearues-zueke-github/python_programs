@@ -69,11 +69,12 @@ def my_ceil(arr, prec: int=0) -> Union[np.ndarray, Any]:
 def get_all_column_widths_file(file_path):
     d_width = {}
     d_column_width = {}
+    d_column_name_width = {}
     wb = openpyxl.load_workbook(file_path)
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
-        widths = []
-        column_widths = []
+        l_width = []
+        l_column_width = []
         width_prev = 13.0
         for i in range(1, ws.max_column + 1):
             width = ws.column_dimensions[get_column_letter(i)].width
@@ -83,34 +84,61 @@ def get_all_column_widths_file(file_path):
             else:
                 width_prev = my_ceil(width, prec=2)
 
-            widths.append(width)
+            l_width.append(width)
             column = ws.cell(row=1, column=i).value
-            column_widths.append((column, width))
-        d_width[sheet_name] = widths
-        d_column_width[sheet_name] = column_widths
-        print("sheet_name: {}, widths: {}, column_widths: {}".format(sheet_name, widths, column_widths))
+            l_column_width.append((column, width))
+        d_width[sheet_name] = l_width
+        d_column_width[sheet_name] = l_column_width
+        print("sheet_name: {}, l_width: {}, l_column_width: {}".format(sheet_name, l_width, l_column_width))
     return d_width, d_column_width
 
 
 def create_new_sheet(wb, sheet_name, list_build, column_widths, wrap_first_row=False, first_row_height=15, freeze_row=1,
-                     freeze_column=1, columns_idx_float: Set = set(), columns_idx_percent: Set = set()):
+                     freeze_column=1, columns_idx_float: Set = set(), columns_idx_percent: Set = set(),
+                     columns_idx_datetime: Set=set(), colums_idx_custom_format: Dict[int, str]={},
+                     is_auto_number=True, is_auto_percent=True, is_auto_second=True):
     print(f"Creating a new sheet with the name '{sheet_name}'")
     
     ws = wb.create_sheet(sheet_name)
     cl = ws.cell
 
-    for i, col_name in enumerate(list_build[0], 1):
+    l_column = list_build[0]
+
+    s_index_is_number = set()
+    s_index_is_percent = set()
+    s_index_is_second = set()
+    for i, column in enumerate(l_column, 1):
+        if '[n]' in column:
+            s_index_is_number.add(i)
+        elif '[%]' in column:
+            s_index_is_percent.add(i)
+        elif '[s]' in column:
+            s_index_is_second.add(i)
+
+    for i, col_name in enumerate(l_column, 1):
         c = cl(row=1, column=i)
         c.value = col_name
     for j, row_vals in enumerate(list_build[1:], 2):
         for i, val in enumerate(row_vals, 1):
             c = cl(row=j, column=i)
-            if isinstance(val, str) and '%' in val and '.' in val:
+            if is_auto_number and i in s_index_is_number:
+                c.value = val
+                c.number_format = '#'
+            elif (isinstance(val, str) and '%' in val and '.' in val):
                 c.value = float(val.strip('%')) / 100
                 c.number_format = '0.0000%'
-            elif i in columns_idx_percent:
+            elif (i in columns_idx_percent) or (is_auto_percent and i in s_index_is_percent):
                 c.value = val
                 c.number_format = '0.0000%'
+            elif is_auto_second and i in s_index_is_second:
+                c.value = val
+                c.number_format = '# "s"'
+            elif i in columns_idx_datetime:
+                c.value = val
+                c.number_format = 'yyyy-mm-ddThh:MM:ss'
+            elif i in colums_idx_custom_format:
+                c.value = val
+                c.number_format = colums_idx_custom_format[i]
             elif isinstance(val, float) or i in columns_idx_float:
                 c.value = val
                 c.number_format = '0.00'

@@ -1,7 +1,4 @@
-import numpy as np
 import pandas as pd
-
-from typing import Tuple, List, Any
 
 def get_csv_lines_as_df(file_path: str) -> pd.DataFrame:
     with open(file_path, 'r') as f:

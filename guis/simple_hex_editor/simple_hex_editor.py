@@ -1,37 +1,63 @@
-#! /usr/bin/python2.7
-# -*- coding: utf-8 -*-
+# h_layout.py
 
-import os
+"""Horizontal layout example."""
+
 import sys
 
-import numpy as np
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QPushButton,
+    QWidget,
+)
 
-from datetime import datetime
+app = QApplication([])
+window = QWidget()
+window.setWindowTitle("QHBoxLayout")
 
-from PIL import Image
-from PyQt4 import Qt, QtCore, QtGui, QtTest, uic
+layout = QHBoxLayout()
+layout.addWidget(QPushButton("Left"))
+layout.addWidget(QPushButton("Center"))
+layout.addWidget(QPushButton("Right"))
+window.setLayout(layout)
 
-# form_class_dialog = uic.loadUiType("info_dialog.ui")[0]
-form_class = uic.loadUiType("main.ui")[0]
+window.show()
+sys.exit(app.exec())
 
-class MyWindowClass(QtGui.QMainWindow, form_class):
+# #! /usr/bin/python2.7
+# # -*- coding: utf-8 -*-
 
-    def __init__(self, parent=None):
-        QtGui.QMainWindow.__init__(self, parent)
-        self.setupUi(self)
+# import os
+# import sys
 
-        self.actionExit.triggered.connect(self.actionExit_triggered)
-        # self.actionInfo.triggered.connect(self.action_Info_triggered)
+# import numpy as np
 
-    def get_datetime_str(self):
-        return datetime.now().strftime("%Y%m%d%H%M%S")
+# from datetime import datetime
 
-    def actionExit_triggered(self):
-        QtCore.QCoreApplication.instance().quit()
+# from PIL import Image
+# from PyQt6 import Qt, QtCore, QtGui, QtTest, uic
+
+# # form_class_dialog = uic.loadUiType("info_dialog.ui")[0]
+# form_class = uic.loadUiType("main.ui")[0]
+
+# class MyWindowClass(QtGui.QMainWindow, form_class):
+
+#     def __init__(self, parent=None):
+#         QtGui.QMainWindow.__init__(self, parent)
+#         self.setupUi(self)
+
+#         self.actionExit.triggered.connect(self.actionExit_triggered)
+#         # self.actionInfo.triggered.connect(self.action_Info_triggered)
+
+#     def get_datetime_str(self):
+#         return datetime.now().strftime("%Y%m%d%H%M%S")
+
+#     def actionExit_triggered(self):
+#         QtCore.QCoreApplication.instance().quit()
 
 
-if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
-    myWindow = MyWindowClass(None)
-    myWindow.show()
-    app.exec_()
+# if __name__ == "__main__":
+#     app = QtGui.QApplication(sys.argv)
+#     myWindow = MyWindowClass(None)
+#     myWindow.show()
+#     app.exec_()

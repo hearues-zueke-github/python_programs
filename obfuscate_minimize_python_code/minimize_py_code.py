@@ -57,9 +57,10 @@ if __name__ == '__main__':
 		content = f.read()
 
 	ast_tree_hello_world = ast.parse(content, mode='exec')
-
+	compile_hello_world = compile(ast_tree_hello_world, filename="<ast>", mode="exec")
+	
 	d_hello_world = {'__name__': '__main__'}
-	exec(compile(ast_tree_hello_world, filename="<ast>", mode="exec"), {}, d_hello_world)
+	exec(compile_hello_world, {}, d_hello_world)
 
 	
 

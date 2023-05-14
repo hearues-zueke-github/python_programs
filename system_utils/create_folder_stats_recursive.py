@@ -72,12 +72,12 @@ def get_df_dir_file_stats(src_folder_path):
 	iter_nr = 0
 	while len(l_rootdirfile_temp) > 0:
 		iter_nr += 1
-		print("iter_nr: {}".format(iter_nr))
+		# print("iter_nr: {}".format(iter_nr))
 
 		len_l_rootdirfile_temp = len(l_rootdirfile_temp)
 		l_rootdirfile_temp_2 = []
 		for i_rootdirfile, rootdirfile in enumerate(l_rootdirfile_temp, 1):
-			print("- rootdirfile {:5}/{:5}".format(i_rootdirfile, len_l_rootdirfile_temp))
+			print(f"iter_nr: {iter_nr}, rootdirfile {i_rootdirfile:5}/{len_l_rootdirfile_temp:5}")
 			root = rootdirfile.root
 			for dir_name in rootdirfile.l_dir_name:
 				dir_path = os.path.join(root, dir_name)
@@ -136,6 +136,7 @@ def get_df_dir_file_stats(src_folder_path):
 
 def calculate_hash_sums(df_dir_file):
 	amount_files_total = np.sum(df_dir_file['amount_files'].values)
+	amount_dir_file_total = df_dir_file.shape[0]
 	acc_file_nr = 0
 	for dir_file_nr, (row_nr_dir, row_dir) in enumerate(df_dir_file.iterrows(), 1):
 		root_first = row_dir['root_first']
@@ -149,7 +150,11 @@ def calculate_hash_sums(df_dir_file):
 			file_path = os.path.join(root_first, rel_file_path)
 
 			acc_file_nr += 1
-			print("file_nr: {:5}/{:5}, total: {:6}/{:6} copy from {}".format(file_nr, amount_files_part, acc_file_nr, amount_files_total, file_path))
+			print("dir_file_nr: {:5}/{:5}, file_nr: {:5}/{:5}, total: {:6}/{:6} copy from {}".format(
+				dir_file_nr, amount_dir_file_total,
+				file_nr, amount_files_part,
+				acc_file_nr, amount_files_total,
+				file_path))
 
 			try:
 				h_sha256 = hashlib.sha256()

@@ -29,6 +29,13 @@ from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
 from PIL import Image
 
+# Needed for excel tables
+import openpyxl
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import column_index_from_string
+from openpyxl.styles.borders import Border, Side, BORDER_THIN, BORDER_MEDIUM
+from openpyxl.styles import Alignment, borders, Font
+
 CURRENT_WORKING_DIR = os.getcwd()
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
@@ -42,10 +49,12 @@ from utils_load_module import load_module_dynamically
 var_glob = globals()
 load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_wb', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils/utils_wb.py")))
 load_module_dynamically(**dict(var_glob=var_glob, name='different_combinations', path=os.path.join(PYTHON_PROGRAMS_DIR, "combinatorics/different_combinations.py")))
 
 mkdirs = utils.mkdirs
 MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+create_new_sheet = utils_wb.create_new_sheet
 get_all_combinations_repeat = different_combinations.get_all_combinations_repeat
 
 OBJS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
@@ -59,9 +68,13 @@ def calculate_cycles_power_2(m, n_0, n_1, arr_comb_part, only_full_cycles=True, 
 	# d_cyclic_pow_2_unique_better = {}
 	d_cyclic_pow_2_all = {}
 	arr_factors = np.zeros((n_0, n_1), dtype=np.int64)
-	arr_const_n_0 = np.arange(0, n_0).reshape((n_0, 1))
-	arr_const_n_1 = np.arange(0, n_1).reshape((1, n_1))
-	# TODO: create a dict for each value with the power modulo values
+	arr_const_n_0 = np.arange(0, n_0, dtype=np.int64).reshape((n_0, 1))
+	arr_const_n_1 = np.arange(0, n_1, dtype=np.int64).reshape((1, n_1))
+
+	d_0 = {i: (i**arr_const_n_0) % m for i in range(0, m)}
+	d_1 = {i: (i**arr_const_n_1) % m for i in range(0, m)}
+	d_0_1 = {(k_0, k_1): v_0.dot(v_1) % m for k_0, v_0 in d_0.items() for k_1, v_1 in d_1.items()}
+
 	for row in arr_comb_part:
 		# print(f"row: {row}")
 		arr_factors[:] = row.reshape((n_0, n_1))
@@ -72,7 +85,7 @@ def calculate_cycles_power_2(m, n_0, n_1, arr_comb_part, only_full_cycles=True, 
 		x_i1 = 0
 
 		for _ in range(0, m**2):
-			x_i2 = np.sum((arr_factors * (x_i0**arr_const_n_0)) * (x_i1**arr_const_n_1)) % m
+			x_i2 = np.sum(arr_factors * d_0_1[(x_i0, x_i1)]) % m
 			
 			t = (x_i1, x_i2)
 			if t in s_x:
@@ -83,7 +96,7 @@ def calculate_cycles_power_2(m, n_0, n_1, arr_comb_part, only_full_cycles=True, 
 			l_x.append(x_i1)
 			s_x.add((x_i0, x_i1))
 
-		x_i2 = np.sum((arr_factors * (x_i0**arr_const_n_0)) * (x_i1**arr_const_n_1)) % m
+		x_i2 = np.sum(arr_factors * d_0_1[(x_i0, x_i1)]) % m
 		x_i0 = x_i1
 		x_i1 = x_i2
 
@@ -109,19 +122,26 @@ def calculate_cycles_power_2(m, n_0, n_1, arr_comb_part, only_full_cycles=True, 
 
 if __name__ == '__main__':
 	# TODO: add either reading params from file/s or from program arguments
-	m = 6
+	m = 8
 
-	n_0 = 2
-	n_1 = 3
+	n_0 = 6
+	n_1 = 6
 	n_mult = n_0 * n_1
 
 	# find the max upperbound for the exponent, which can be split up in 
-	max_n = 10**7
+	# max_n = 10**8
+	# max_exponent = 0
+	# while m**(max_exponent + 1) < max_n:
+	# 	max_exponent += 1
+	
+	max_m = 2
+
+	max_size = 10**9
 	max_exponent = 0
-	while m**(max_exponent + 1) < max_n:
+	while max_m**(max_exponent + 1)*n_mult < max_size:
 		max_exponent += 1
 
-	amount_cpu = mp.cpu_count() # use this, if you want to fully load your cpu
+	amount_cpu = mp.cpu_count() - 1 # use this, if you want to fully load your cpu
 	# amount_cpu = int(mp.cpu_count() *0.75) + 1
 	amount_worker_proc = amount_cpu - 1
 
@@ -174,15 +194,35 @@ if __name__ == '__main__':
 	
 	d_cyclic_pow_2_all = {}
 	if n_mult > max_exponent: # split the parts in mini batch works
-		arr_comb_orig = get_all_combinations_repeat(m=m, n=max_exponent)
-		arr_comb_prefix = get_all_combinations_repeat(m=m, n=n_mult-max_exponent)
+		arr_comb_orig = get_all_combinations_repeat(m=max_m, n=max_exponent)
+		
+		arr_comb_orig
 
-		# remove the first prefix value 0, because all of the sequences needs at least one constant value!
-		arr_comb_prefix = arr_comb_prefix[arr_comb_prefix[:, 0] != 0]
+		# if False:
+		if True:
+			arr_comb_prefix = get_all_combinations_repeat(m=max_m, n=n_mult-max_exponent)
+			# arr_comb_prefix = arr_comb_prefix[arr_comb_prefix[:, 0] != 0]
+			arr_comb_prefix = arr_comb_prefix[np.all(arr_comb_prefix[:, 0:n_1] == ((1, ) + (0, )*(n_1 - 1)), 1)]
+			
+			# arr_comb_prefix = arr_comb_prefix[arr_comb_prefix[:, 0] == 1]
+			# arr_comb_prefix = arr_comb_prefix[:1]
 
-		# mix the arr_comb_prefix a bit, if needed
-		arr_rnd_idx = np.random.permutation(np.arange(0, arr_comb_prefix.shape[0]))
-		arr_comb_prefix = arr_comb_prefix[arr_rnd_idx]
+			# arr_comb_prefix_suffix = get_all_combinations_repeat(m=2, n=8)
+			# amount_rows = arr_comb_prefix_suffix.shape[0]
+			# arr_comb_prefix = np.zeros((amount_rows, n_mult-max_exponent), dtype=np.int64)
+			# arr_comb_prefix[:, 0] = 1
+			# arr_comb_prefix[:, -8:] = arr_comb_prefix_suffix
+		else:
+			# arr_comb_prefix = get_all_combinations_repeat(m=2, n=n_mult-max_exponent)
+			arr_comb_prefix = get_all_combinations_repeat(m=m, n=n_mult-max_exponent)
+
+			# remove the first prefix value 0, because all of the sequences needs at least one constant value!
+			# arr_comb_prefix = arr_comb_prefix[arr_comb_prefix[:, 0] == 1]
+			arr_comb_prefix = arr_comb_prefix[arr_comb_prefix[:, 0] != 0]
+
+		# # mix the arr_comb_prefix a bit, if needed
+		# arr_rnd_idx = np.random.permutation(np.arange(0, arr_comb_prefix.shape[0]))
+		# arr_comb_prefix = arr_comb_prefix[arr_rnd_idx]
 
 		# arr_rnd_idx = np.random.permutation(np.arange(0, arr_comb.shape[0]))
 		# arr_comb = arr_comb[arr_rnd_idx]
@@ -212,7 +252,8 @@ if __name__ == '__main__':
 				print(f"At least one cycle was found with the length m**2 = {m**2}")
 				break
 	else:
-		arr_comb = get_all_combinations_repeat(m=m, n=n_mult)
+		arr_comb = get_all_combinations_repeat(m=max_m, n=n_mult)
+		# arr_comb = get_all_combinations_repeat(m=m, n=n_mult)
 		
 		time_1 = time.time()
 		execute_next_batch(
@@ -233,16 +274,63 @@ if __name__ == '__main__':
 
 	print(f"m: {m}")
 
-	df = pd.DataFrame(data=list(d_cyclic_pow_2_all[m**2].items()), columns=['tpl_factor', 'tpl_l_x'], dtype=object)
-	df.sort_values(by=['tpl_l_x', 'tpl_factor'], inplace=True)
-	u, c = np.unique(df['tpl_l_x'].values, return_counts=True)
+	df_orig = pd.DataFrame(data=list(d_cyclic_pow_2_all[m**2].items()), columns=['tpl_factor', 'tpl_l_x'], dtype=object)
+	df_orig.sort_values(by=['tpl_factor', 'tpl_l_x'], inplace=True)
+	# df_orig.sort_values(by=['tpl_l_x', 'tpl_factor'], inplace=True)
+	df_orig.reset_index(drop=True, inplace=True)
+	u_orig, c_orig = np.unique(df_orig['tpl_l_x'].values, return_counts=True)
 
-	df_unique = df.drop_duplicates(subset=['tpl_l_x'], keep='first').copy()
-	df_unique.reset_index(inplace=True, drop=True)
+	df_unique_sort = df_orig.drop_duplicates(subset=['tpl_l_x'], keep='first').copy()
+	df_unique_sort.reset_index(inplace=True, drop=True)
 
-	df_unique['df_stats_cluster'] = None
-	df_unique['t_best_cluster'] = None
-	for row_idx, row in df_unique.iterrows():
+	l_column_f_val = [f'f_{i}' for i in range(0, len(df_unique_sort['tpl_factor'].iloc[0]))]
+	l_column_v_val = [f'x_{i}' for i in range(0, len(df_unique_sort['tpl_l_x'].iloc[0]))]
+
+	df_unique_combined = pd.DataFrame(
+		data=np.hstack((
+			np.array([max(t) for t in df_unique_sort['tpl_factor'].values], dtype=np.int64).reshape((-1, 1)),
+			np.array(df_unique_sort['tpl_factor'].values.tolist(), dtype=np.int64),
+			np.array(df_unique_sort['tpl_l_x'].values.tolist(), dtype=np.int64),
+		)),
+		columns=(
+			['f_max']+
+			l_column_f_val+
+			l_column_v_val
+		),
+		dtype=np.int64,
+	)
+	df_unique_combined.sort_values(by=['f_max']+l_column_f_val, inplace=True)
+	df_unique_combined.reset_index(drop=True, inplace=True)
+
+	wb = openpyxl.Workbook()
+	del wb['Sheet']
+
+	df = df_unique_combined
+	lst_build = [df.columns.tolist()] + df.values.tolist()
+	column_widths = []
+	create_new_sheet(
+		wb=wb,
+		sheet_name=f'm,{m};n_0,{n_0};n_1,{n_1}',
+		list_build=lst_build,
+		column_widths=column_widths,
+		wrap_first_row=True,
+		first_row_height=30,
+		freeze_row=1,
+		freeze_column=1+n_mult,
+	)
+
+	file_path_tmp = os.path.join(
+		TEMP_DIR,
+		f"cycle_power_2_sequences_m_{m}_n0_{n_0}_n1_{n_1}_dt_{datetime.datetime.now().strftime('%Y_%m_%d')}.xlsx",
+	)
+	wb.save(file_path_tmp)
+
+	print(f"Saved file '{file_path_tmp}'")
+
+
+	df_unique_sort['df_stats_cluster'] = None
+	df_unique_sort['t_best_cluster'] = None
+	for row_idx, row in df_unique_sort.iterrows():
 		# print(f"row_idx: {row_idx}")
 
 		t = row['tpl_l_x']
@@ -277,7 +365,7 @@ if __name__ == '__main__':
 
 	# take from the best cluster the best of all, where the length is max and the v_diff the smallest.
 	df_t_best_cluster = pd.DataFrame(
-		data=df_unique['t_best_cluster'].values.tolist(),
+		data=df_unique_sort['t_best_cluster'].values.tolist(),
 		columns=['length', 'v_diff', 'amount'],
 		dtype=np.int64,
 	)

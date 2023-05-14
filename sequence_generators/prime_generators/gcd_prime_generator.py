@@ -26,6 +26,7 @@ from dotmap import DotMap # need installation from pip
 from functools import reduce
 from hashlib import sha256
 from io import BytesIO
+from math import gcd
 from memory_tempfile import MemoryTempfile # need installation from pip
 from shutil import copyfile
 from pprint import pprint
@@ -57,3 +58,35 @@ mkdirs(PLOTS_DIR_PATH)
 
 if __name__ == '__main__':
 	print("Hello World!")
+
+	for v_start in range(1, 100):
+		# v_start = 6
+		l_v = []
+		l_gcd = []
+		v = v_start
+		l_v.append(v)
+		for n in range(2, 1000000):
+			if n % 1000000 == 0:
+				print(f"n: {n}")
+			v_gcd = gcd(n, v)
+			v = v + v_gcd
+
+			l_gcd.append(v_gcd)
+			l_v.append(v)
+
+		arr_gcd = np.array(l_gcd)
+
+		arr_idx = np.where(arr_gcd > 1)[0]
+		arr_gcd_gt_1 = arr_gcd[arr_idx]
+
+		arr_idx_n = arr_idx + 2
+
+		arr_n_gcd = np.vstack((arr_idx_n, arr_gcd_gt_1)).T
+		# print(f"arr_n_gcd:\n{arr_n_gcd}")
+
+		print(f"v_start: {v_start}")
+		print(f"arr_n_gcd.shape[0]: {arr_n_gcd.shape[0]}")
+		if arr_n_gcd.shape[0] > 0:
+			max_v_gcd = np.max(arr_n_gcd[:, 1])
+			print(f"max_v_gcd: {max_v_gcd}")
+		print("")
