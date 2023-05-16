@@ -21,7 +21,7 @@ def get_all_combinations_repeat(m, n):
 
 	amount = m**n
 	arr = np.zeros((amount, n), dtype=np.uint8)
-	# arr = np.zeros((amount, n), dtype=np.int)
+	# arr = np.zeros((amount, n), dtype=np.int64)
 
 	arr[:m, n-1] = np.arange(0, m)
 
@@ -64,9 +64,9 @@ def get_all_combinations_increment(m, n):
 
 	sum_row = np.arange(1, m+1)
 	
-	sum_table = np.zeros((n, m), dtype=np.int)
+	sum_table = np.zeros((n, m), dtype=np.int64)
 	sum_table[0] = sum_row
-	idx_table = np.zeros((n, m), dtype=np.int)
+	idx_table = np.zeros((n, m), dtype=np.int64)
 	idx_table[0] = sum_row
 	for i in range(1, n):
 		idx_table[i] = np.cumsum(sum_row[::-1])
@@ -75,7 +75,7 @@ def get_all_combinations_increment(m, n):
 
 	globals()["sum_table"] = sum_table
 
-	arr = np.zeros((sum_row[-1], n), dtype=np.int)
+	arr = np.zeros((sum_row[-1], n), dtype=np.int64)
 
 	arr[:m, -1] = np.arange(0, m)
 	for col, (idx_row_prev, idx_row) in enumerate(zip(idx_table[:-1], idx_table[1:]), 1):
@@ -140,7 +140,7 @@ def get_all_permutations_parts(m, n):
 	arr = get_all_permutations_increment(m=m, n=n)
 	size = arr.shape[0]
 	perm_tbl = get_permutation_table(n)
-	big_arr = np.zeros((size*perm_tbl.shape[0], n), dtype=np.int)
+	big_arr = np.zeros((size*perm_tbl.shape[0], n), dtype=np.int64)
 	for i, row in enumerate(perm_tbl, 0):
 		big_arr[size*i:size*(i+1)] = arr[:, row]
 	return big_arr
@@ -151,7 +151,7 @@ def get_all_permutations_parts(m, n):
 def get_amount_of_increment_combinations(m, n):
 	arr = get_all_combinations_increment(m, n)
 
-	amount_arr = np.zeros((arr.shape[0], m), dtype=np.int)
+	amount_arr = np.zeros((arr.shape[0], m), dtype=np.int64)
 
 	for i in range(0, m):
 		amount_arr[:, i] = np.sum(arr==i, axis=1)
@@ -167,7 +167,7 @@ def move_all_values_to_left(arr):
 	# print("idx:\n{}".format(idx))
 
 	arr_cpy = np.zeros(arr.shape, dtype=arr.dtype)
-	idx_col = np.zeros((arr.shape[0], ), dtype=np.int)
+	idx_col = np.zeros((arr.shape[0], ), dtype=np.int64)
 
 	cols = arr.shape[1]
 	for i in range(0, cols):
