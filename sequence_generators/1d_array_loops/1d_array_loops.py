@@ -150,9 +150,20 @@ def calc_max_cycle(n, modulo):
 	return max(cycle.len_cycle for cycle in l_cycle), l_cycle
 
 
+# this is a program for finding the max length of cycles for
+# a 1d array with the length n in a modulo
+# e.g. the arr is [1, 2, 4, 0] for n=4 and modulo=5
+# the factors are f1=2 and f2=3
+# f1 is a right rotational shifting, f2 is multiplying the arr and add the vector to the original one
+# the next is: arr <- (arr + (arr >> shift) * mult) % modulo
+# in this case arr >> shift == [1, 2, 4, 0] >> 2 == [4, 0, 1, 2]
+# and mult is: (arr >> shift) * mult == [4, 0, 1, 2] * 3 == [12, 0, 3, 6]
+# adding together the two arr is giving [13, 2, 7, 6]
+# therefore the next arr would be [3, 2, 2, 1]
+
 if __name__ == '__main__':
-	n_max = 6
-	modulo_max = 6
+	n_max = 5
+	modulo_max = 5
 
 	arr_cycle = np.zeros((n_max, modulo_max), dtype=np.int64)
 

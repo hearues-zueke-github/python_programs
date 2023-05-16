@@ -159,6 +159,7 @@ mod my_sorting {
 
 		let mut vec_1: Vec<i64> = vec.clone();
 		let mut vec_2: Vec<i64> = vec![0; vec.len()];
+		let mut vec_range: Vec<Range> = vec![];
 		
 		return vec.clone();
 	}
