@@ -140,6 +140,30 @@ fn sort_merge(vec: &Vec<i64>) -> Vec<i64> {
 	}
 }
 
+mod my_sorting {
+	struct Range {
+		idx_1: usize,
+		idx_2: usize,
+	}
+
+	enum State {
+		IsLe,
+		IsGt,
+		SetNextVal,
+	}
+
+	pub fn sort_merge_own(vec: &Vec<i64>) -> Vec<i64> {
+		if vec.len() < 2 {
+			return vec.clone();
+		}
+
+		let mut vec_1: Vec<i64> = vec.clone();
+		let mut vec_2: Vec<i64> = vec![0; vec.len()];
+		
+		return vec.clone();
+	}
+}
+
 fn mean(v: &Vec<f64>) -> f64 {
 	let mut sum: f64 = 0.0;
 	for x in v {
@@ -169,6 +193,11 @@ fn sort_func_3(vec_src: &Vec<i64>, vec_dst: &mut Vec<i64>)	{
 #[inline(always)]
 fn sort_func_4(vec_src: &Vec<i64>, vec_dst: &mut Vec<i64>)	{
 	*vec_dst = sort_merge(&vec_src);
+}
+
+#[inline(always)]
+fn sort_func_5(vec_src: &Vec<i64>, vec_dst: &mut Vec<i64>)	{
+	*vec_dst = my_sorting::sort_merge_own(&vec_src);
 }
 
 struct SortingFunction {
@@ -208,6 +237,7 @@ fn main() {
 		SortingFunction{func: sort_func_2, name: String::from("Shell Sort 1")},
 		SortingFunction{func: sort_func_3, name: String::from("Rust Sort")},
 		SortingFunction{func: sort_func_4, name: String::from("Merge Sort")},
+		SortingFunction{func: sort_func_5, name: String::from("Merge Own Sort")},
 	];
 
 	let mut vec_vec_time: Vec<Vec<f64>> = vec![];
@@ -217,8 +247,8 @@ fn main() {
 	}
 
 	let amount_loops: i64 = 10;
-	let length: i64 = 5000000;
-	
+	let length: i64 = 500000;
+
 	let mut counter = my::Counter::<u128>::new();
 	for _ in 0..amount_loops {
 		counter.increment();
