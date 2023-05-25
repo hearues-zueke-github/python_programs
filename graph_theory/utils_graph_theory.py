@@ -1,13 +1,14 @@
 import numpy as np
 
-def get_cycles_of_1_directed_graph(edges_directed):
-    nodes_from, nodes_to = list(zip(*edges_directed))
+# hamilton cycles
+def get_cycles_of_1_directed_graph(l_edges_directed):
+    nodes_from, nodes_to = list(zip(*l_edges_directed))
     all_nodes = sorted(set(nodes_from+nodes_to))
 
     unique_nodes_from, counts = np.unique(nodes_from, return_counts=True)
     assert np.all(counts==1)
 
-    edges_directed_dict = {n1: n2 for n1, n2 in edges_directed}
+    edges_directed_dict = {n1: n2 for n1, n2 in l_edges_directed}
 
     all_available_nodes = set(all_nodes)
     list_of_cycles = []

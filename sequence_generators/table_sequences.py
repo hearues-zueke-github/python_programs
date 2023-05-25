@@ -1,43 +1,71 @@
-#! /usr/bin/python3
+#! /usr/bin/env -S /usr/bin/time /usr/bin/python3.11 -i
 
 # -*- coding: utf-8 -*-
 
-import dill
-import io
+# Some other needed imports
 import datetime
+import dill
+import gzip
+import itertools
 import os
-import pathlib
+import pdb
 import re
-import shutil
-import string
-import subprocess
 import sys
 import time
-import mmap
+import traceback
 
-import numpy as np
+import numpy as np # need installation from pip
+import pandas as pd # need installation from pip
 import multiprocessing as mp
 
-from PIL import Image, ImageDraw, ImageFont
+import matplotlib.pyplot as plt # need installation from pip
 
-import matplotlib.pyplot as plt
+from collections import defaultdict
+from copy import deepcopy, copy
+from dotmap import DotMap # need installation from pip
+from functools import reduce
+from hashlib import sha256
+from io import BytesIO
+from memory_tempfile import MemoryTempfile # need installation from pip
+from shutil import copyfile
+from pprint import pprint
+from typing import List, Set, Tuple, Dict, Union, Any
+from PIL import Image
 
-# from memory_tempfile import MemoryTempfile
-# tempfile = MemoryTempfile()
-
-PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")+"/"
+CURRENT_WORKING_DIR = os.getcwd()
+PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
-# TEMP_DIR = tempfile.gettempdir()+"/"
+TEMP_DIR = MemoryTempfile().gettempdir()
+PYTHON_PROGRAMS_DIR = os.path.join(HOME_DIR, 'git/python_programs')
 
-sys.path.append('../combinatorics')
-from different_combinations import get_all_combinations_repeat
+# set the relative/absolute path where the utils_load_module.py file is placed!
+sys.path.append(PYTHON_PROGRAMS_DIR)
+from utils_load_module import load_module_dynamically
+
+var_glob = globals()
+load_module_dynamically(**dict(var_glob=var_glob, name='utils', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='utils_multiprocessing_manager', path=os.path.join(PYTHON_PROGRAMS_DIR, "utils_multiprocessing_manager.py")))
+load_module_dynamically(**dict(var_glob=var_glob, name='different_combinations', path=os.path.join(PYTHON_PROGRAMS_DIR, "combinatorics/different_combinations.py")))
+
+mkdirs = utils.mkdirs
+MultiprocessingManager = utils_multiprocessing_manager.MultiprocessingManager
+get_all_combinations_repeat = different_combinations.get_all_combinations_repeat
+
+OBJS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'objs')
+mkdirs(OBJS_DIR_PATH)
+
+PLOTS_DIR_PATH = os.path.join(PATH_ROOT_DIR, 'plots')
+mkdirs(PLOTS_DIR_PATH)
 
 if __name__ == '__main__':
-    n = int(sys.argv[1])
-    base = 4
 
-    # n = 3
-    # base = int(sys.argv[1])
+    assert len(sys.argv) > 1
+    inp_str = sys.argv[1]
+    d_key_val =  dict(kv.split('=') for kv in inp_str.split(','))
+
+    n = int(d_key_val['n'])
+    base = int(d_key_val['base'])
+    max_iter = int(d_key_val['max_iter'])
 
     print("n: {}, base: {}".format(n, base))
 
@@ -45,11 +73,6 @@ if __name__ == '__main__':
     best_factors = []
     l_missing_factors = []
 
-    # a_c = 1
-    # a_l = 1
-    # a_r = 1
-    # a_u = 1
-    # a_d = 1
     amount = 0
 
     for a_c in range(0, base):
@@ -58,17 +81,13 @@ if __name__ == '__main__':
        for a_u in range(0, base):
         for a_d in range(0, base):
             factors = (a_c, a_l, a_r, a_u, a_d, )
-            # print("factors: {}".format(factors))
 
             arr = np.zeros((n, n), dtype=np.uint8)
             arr[0, 0] = 1
             
             l_arr = [arr]
 
-            # print("k: {}".format(0))
-            # print("- arr:\n{}".format(arr))
-
-            for k in range(1, 200):
+            for k in range(1, max_iter):
                 arr_l = np.roll(arr, 1, axis=1)
                 arr_r = np.roll(arr, -1, axis=1)
                 arr_u = np.roll(arr, 1, axis=0)
@@ -79,17 +98,11 @@ if __name__ == '__main__':
                 l_arr.append(arr_new)
                 arr = arr_new
 
-                # print("k: {}".format(k))
-                # print("- arr:\n{}".format(arr))
-
             k_last = len(l_arr)-1
             arr_last = l_arr[-1]
             is_found_same = False
             for k, arr_k in zip(range(k_last-1, -1, -1), reversed(l_arr[:-1])):
                 if np.all(arr_last==arr_k):
-                    # print('Found same arr_k at:')
-                    # print("k: {}".format(k))
-                    # print("arr_k:\n{}".format(arr_k))
                     is_found_same = True
                     break
 
@@ -104,12 +117,11 @@ if __name__ == '__main__':
                     best_factors.append(factors)
             else:
                 l_missing_factors.append(factors)
-            # print("max_cycle_len: {}".format(max_cycle_len))
 
             amount += 1
             if amount % 10 == 0:
-                print("amount: {}, max_cycle_len: {}, len(l_missing_factors): {}".format(
-                    amount, max_cycle_len, len(l_missing_factors)
+                print("amount: {}, max_cycle_len: {}, len(best_factors): {}, len(l_missing_factors): {}".format(
+                    amount, max_cycle_len, len(best_factors), len(l_missing_factors)
                 ))
 
     print()
@@ -127,6 +139,44 @@ some values:
 for the canonical array with the form:
    [[1,0,...,0], [0,0,...,0], ..., [0,0,...0]]
 
+const n = 1
+n: 1, base: 1
+    max_cycle_len: 1
+    len(best_factors): 1
+n: 1, base: 2
+    max_cycle_len: 1
+    len(best_factors): 32
+n: 1, base: 3
+    max_cycle_len: 2
+    len(best_factors): 81
+n: 1, base: 4
+    max_cycle_len: 2
+    len(best_factors): 256
+n: 1, base: 5
+    max_cycle_len: 4
+    len(best_factors): 1250
+
+
+const n = 2
+n: 2, base: 1
+    max_cycle_len: 1
+    len(best_factors): 1
+n: 2, base: 2
+    max_cycle_len: 2
+    len(best_factors): 12
+n: 2, base: 3
+    max_cycle_len: 2
+    len(best_factors): 189
+n: 2, base: 4
+    max_cycle_len: 4
+    len(best_factors): 128
+n: 2, base: 5
+    max_cycle_len: 4
+    len(best_factors): 2650
+n: 2, base: 6
+    max_cycle_len: 2
+    len(best_factors): 6696
+
 const n = 3
 n: 3, base: 2
     max_cycle_len: 3
@@ -140,6 +190,48 @@ n: 3, base: 4
 n: 3, base: 5
     max_cycle_len: 24
     len(best_factors): 2720
+
+const base = 2
+conjecture: sequence A204983
+n: 1, base: 2
+    max_cycle_len: 1
+    len(best_factors): 32
+n: 2, base: 2
+    max_cycle_len: 2
+    len(best_factors): 12
+n: 3, base: 2
+    max_cycle_len: 3
+    len(best_factors): 24
+n: 4, base: 2
+    max_cycle_len: 4
+    len(best_factors): 12
+n: 5, base: 2
+    max_cycle_len: 15
+    len(best_factors): 20
+n: 6, base: 2
+    max_cycle_len: 6
+    len(best_factors): 24
+n: 7, base: 2
+    max_cycle_len: 7
+    len(best_factors): 30
+n: 8, base: 2
+    max_cycle_len: 8
+    len(best_factors): 12
+n: 9, base: 2
+    max_cycle_len: 63
+    len(best_factors): 20
+n: 10, base: 2
+    max_cycle_len: 30
+    len(best_factors): 20
+n: 11, base: 2
+    max_cycle_len: 1023
+    len(best_factors): 12
+n: 12, base: 2
+    max_cycle_len: 12
+    len(best_factors): 24
+n: 13, base: 2
+    max_cycle_len: 4095
+    len(best_factors): 12
 
 const base = 3
 n: 2, base: 3
@@ -166,31 +258,40 @@ n: 8, base: 3
 n: 9, base: 3
     max_cycle_len: 18
     len(best_factors): 80
+n: 10, base: 3
+    max_cycle_len: 80
+    len(best_factors): 200
+n: 11, base: 3
+    max_cycle_len: 242
+    len(best_factors): 217
+n: 12, base: 3
+    max_cycle_len: 24
+    len(best_factors): 200
+n: 13, base: 3
+    max_cycle_len: 26
+    len(best_factors): 232
+n: 14, base: 3
+    max_cycle_len: 728
+    len(best_factors): 168
+n: 15, base: 3
+    max_cycle_len: 240
+    len(best_factors): 184
+
+const base = 4
+n: 1, base: 4
+    max_cycle_len: 2
+    len(best_factors): 256
+n: 2, base: 4
+    max_cycle_len: 4
+    len(best_factors): 128
+n: 3, base: 4
+    max_cycle_len: 6
+    len(best_factors): 752
+n: 4, base: 4
+    max_cycle_len: 8
+    len(best_factors): 128
+n: 5, base: 4
+    max_cycle_len: 30
+    len(best_factors): 640
+
 """
-
-    # base = 10
-    # d = {}
-    # n_max = 100
-    # for y in range(0, n_max):
-    #     for x in range(0, n_max):
-    #         if y == 0:
-    #             v_y = 0
-    #         else:
-    #             v_y = d[(y-1, x)]
-
-    #         if x == 0:
-    #             v_x = 0
-    #         else:
-    #             v_x = d[(y, x-1)]
-
-    #         # formula is: v = (vx + vy**2 + 1) % base
-    #         d[(y, x)] = (v_x + v_y**2 + 1) % base
-
-    # # print("d: {}".format(d))
-
-    # arr = np.zeros((n_max, n_max), dtype=np.int)
-    # for y in range(0, n_max):
-    #     for x in range(0, n_max):
-    #         arr[y, x] = d[(y, x)]
-
-    # print("arr:\n{}".format(arr))
