@@ -4,6 +4,8 @@ use std::time;
 // use num_traits;
 // use core::num::FpCategory::Zero;
 
+use prng;
+
 fn check_vec_sorted(v: &Vec<i64>) -> bool {
 	if v.len() < 2 {
 		return true;
@@ -141,15 +143,91 @@ fn sort_merge(vec: &Vec<i64>) -> Vec<i64> {
 }
 
 mod my_sorting {
+	#[derive(Debug)]
 	struct Range {
 		idx_1: usize,
 		idx_2: usize,
+		is_le: bool,
 	}
 
+	#[derive(PartialEq, Eq)]
 	enum State {
 		IsLe,
 		IsGt,
 		SetNextVal,
+	}
+
+	fn get_l_cluster(vec: &Vec<i64>) -> Vec<Range> {
+		match vec.len() {
+			0 => return vec![],
+			1 => return vec![Range{idx_1: 0, idx_2: 1, is_le: true}],
+			_ => (),
+		}
+
+		let mut vec_range = Vec::<Range>::new();
+
+		let mut idx_prev = 0;
+		let mut val_prev_1 = vec[0];
+		let mut val_prev_2 = vec[1];
+		
+		let mut state = State::IsLe;
+
+		if val_prev_1 > val_prev_2 {
+			state = State::IsGt;
+		}
+
+		let mut idx: usize = 2;
+		while idx < vec.len() {
+			let val = vec[idx];
+			if state == State::IsLe {
+				if val_prev_2 <= val {
+					val_prev_2 = val;
+					idx += 1;
+					continue;
+				}
+				vec_range.push(Range{idx_1: idx_prev, idx_2: idx, is_le: true});
+				idx_prev = idx;
+				val_prev_1 = val;
+				state = State::SetNextVal;
+			}
+			else if state == State::IsGt {
+				if val_prev_2 > val {
+					val_prev_2 = val;
+					idx += 1;
+					continue;
+				}
+				vec_range.push(Range{idx_1: idx_prev, idx_2: idx, is_le: false});
+				idx_prev = idx;
+				val_prev_1 = val;
+				state = State::SetNextVal;
+			}
+			else if state == State::SetNextVal {
+				val_prev_2 = vec[idx];
+				if val_prev_1 <= val_prev_2 {
+					state = State::IsLe;
+				}
+				else {
+					state = State::IsGt;
+				}
+			}
+
+			idx += 1;
+		}
+
+		if state == State::IsLe {
+			vec_range.push(Range{idx_1: idx_prev, idx_2: idx, is_le: true});
+		}
+		else if state == State::IsGt {
+			vec_range.push(Range{idx_1: idx_prev, idx_2: idx, is_le: false});
+		}
+		else if state == State::SetNextVal {
+			vec_range.push(Range{idx_1: idx_prev, idx_2: idx, is_le: true});
+		}
+		else {
+			assert!(false, "should never happen!");
+		}
+
+		return vec_range;
 	}
 
 	pub fn sort_merge_own(vec: &Vec<i64>) -> Vec<i64> {
@@ -159,8 +237,11 @@ mod my_sorting {
 
 		let mut vec_1: Vec<i64> = vec.clone();
 		let mut vec_2: Vec<i64> = vec![0; vec.len()];
-		let mut vec_range: Vec<Range> = vec![];
+		let mut vec_range: Vec<Range> = get_l_cluster(&vec_1);
 		
+		println!("vec_1: {:?}", vec_1);
+		println!("vec_range: {:?}", vec_range);
+
 		return vec.clone();
 	}
 }
@@ -248,16 +329,20 @@ fn main() {
 	}
 
 	let amount_loops: i64 = 10;
-	let length: i64 = 500000;
+	let length: i64 = 50;
 
 	let mut counter = my::Counter::<u128>::new();
 	for _ in 0..amount_loops {
 		counter.increment();
-		let mut rnd = oorandom::Rand64::new(0x51245 + counter.get_count());
+
+		let arr_seed_u8 = vec![0x00, 0x02];
+		let length_u8 = 128;
+
+		let mut rnd = prng::RandomNumberDevice(arr_seed_u8, length_u8);
 
 		let mut vec_base: Vec<i64> = Vec::new();
 		for _ in 0..length {
-			vec_base.push(rnd.rand_i64());
+			vec_base.push(rnd.generate_next_u64() as i64);
 		}
 
 		println!();
