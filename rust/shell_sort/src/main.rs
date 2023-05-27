@@ -1,10 +1,7 @@
-use oorandom;
 use std::time;
 
-// use num_traits;
-// use core::num::FpCategory::Zero;
-
-use prng;
+use prnglib::prng::prng;
+use crate::prng::vec_own::VecOwn;
 
 fn check_vec_sorted(v: &Vec<i64>) -> bool {
 	if v.len() < 2 {
@@ -335,10 +332,10 @@ fn main() {
 	for _ in 0..amount_loops {
 		counter.increment();
 
-		let arr_seed_u8 = vec![0x00, 0x02];
+		let arr_seed_u8: VecOwn<u8> = VecOwn::<u8>::new_from_arr(&[0x00, 0x02]);
 		let length_u8 = 128;
 
-		let mut rnd = prng::RandomNumberDevice(arr_seed_u8, length_u8);
+		let mut rnd = prng::RandomNumberDevice::new(arr_seed_u8, length_u8);
 
 		let mut vec_base: Vec<i64> = Vec::new();
 		for _ in 0..length {
