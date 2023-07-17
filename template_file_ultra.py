@@ -27,7 +27,7 @@ from functools import reduce
 from hashlib import sha256
 from io import BytesIO
 from memory_tempfile import MemoryTempfile # need installation from pip
-from recordclass import RecordClass
+from recordclass import RecordClass # need installation from pip
 from shutil import copyfile
 from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
