@@ -64,6 +64,7 @@ class MultiprocessingManager(Exception):
 
 	def _worker_thread(self, worker_nr, pipe_in, pipe_out):
 		d_func = {}
+		d_worker_local = {}
 		while True:
 			if pipe_in.poll():
 				(name, args) = pipe_in.recv()
@@ -73,6 +74,16 @@ class MultiprocessingManager(Exception):
 					func_name, func_bytes = args
 					d_func[func_name] = dill.loads(func_bytes)
 					pipe_out.send((worker_nr, "Finished 'func_def_new'"))
+				elif name == 'add_local_dict':
+					func_name, = args
+					d_worker_local[func_name] = {}
+					d_func[func_name].__globals__['d_local'] = d_worker_local[func_name]
+					pipe_out.send((worker_nr, "Finished 'add_local_dict'"))
+				elif name == 'add_value_to_local_dict':
+					func_name, obj_bytes = args
+					value_name, value = dill.loads(obj_bytes)
+					d_worker_local[func_name][value_name] = value
+					pipe_out.send((worker_nr, "Finished 'add_value_to_local_dict'"))
 				elif name == 'func_def_exec':
 					func_name, func_args = args
 					try:
@@ -80,8 +91,8 @@ class MultiprocessingManager(Exception):
 					except:
 						if self.is_print_on:
 							print('Fail for func_name: "{}", func_args: "{}", at worker_nr: {}'.format(func_name, [str(arg)[:50] for arg in func_args], worker_nr))
+							print("".join(traceback.format_exception(*sys.exc_info())))
 							traceback.print_stack()
-
 							_, _, tb = sys.exc_info()
 							print('worker_nr: {}, traceback.format_list:\n{}'.format(worker_nr, ''.join(traceback.format_list(traceback.extract_tb(tb)))))
 						ret_val = None
@@ -92,10 +103,33 @@ class MultiprocessingManager(Exception):
 			time.sleep(WORKER_SLEEP_TIME)
 
 
-	def define_new_func(self, name, func):
+	def define_new_func(self, func_name, func):
 		func_bytes = dill.dumps(func)
 		for pipe_send in self.pipes_send_main:
-			pipe_send.send(('func_def_new', (name, func_bytes)))
+			pipe_send.send(('func_def_new', (func_name, func_bytes)))
+
+		for pipe_recv in self.pipes_recv_main:
+			ret = pipe_recv.recv()
+			worker_nr, text = ret
+			if self.is_print_on:
+				print("worker_nr: {}, text: {}".format(worker_nr, text))
+
+
+	def add_local_worker_dict_to_func(self, func_name):
+		for pipe_send in self.pipes_send_main:
+			pipe_send.send(('add_local_dict', (func_name, )))
+
+		for pipe_recv in self.pipes_recv_main:
+			ret = pipe_recv.recv()
+			worker_nr, text = ret
+			if self.is_print_on:
+				print("worker_nr: {}, text: {}".format(worker_nr, text))
+
+
+	def add_value_to_local_worker_dict(self, func_name, value_name, value):
+		obj_bytes = dill.dumps((value_name, value))
+		for pipe_send in self.pipes_send_main:
+			pipe_send.send(('add_value_to_local_dict', (func_name, obj_bytes)))
 
 		for pipe_recv in self.pipes_recv_main:
 			ret = pipe_recv.recv()
