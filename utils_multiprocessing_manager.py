@@ -6,6 +6,7 @@ import traceback
 
 from collections import deque
 from multiprocessing import Process, Pipe
+from tqdm import tqdm
 
 PATH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -153,6 +154,8 @@ class MultiprocessingManager(Exception):
 	def do_new_jobs(self, l_func_name, l_func_args):
 		len_l_func_name = len(l_func_name)
 
+		pbar = tqdm(total=len(l_func_args))
+
 		l_ret = []
 		if len_l_func_name <= self.worker_amount:
 			for worker_nr, (pipe_send, func_name, func_args) in enumerate(zip(self.pipes_send_main, l_func_name, l_func_args), 0):
@@ -176,6 +179,7 @@ class MultiprocessingManager(Exception):
 				l_ret.append(ret_val)
 				
 				finished_works += 1
+				pbar.update(1)
 				if self.is_print_on:
 					print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 		else:
@@ -200,6 +204,7 @@ class MultiprocessingManager(Exception):
 				l_ret.append(ret_val)
 
 				finished_works += 1
+				pbar.update(1)
 				if self.is_print_on:
 					print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
 
@@ -226,8 +231,11 @@ class MultiprocessingManager(Exception):
 				l_ret.append(ret_val)
 				
 				finished_works += 1
+				pbar.update(1)
 				if self.is_print_on:
 					print("Finished: {:2}/{:2}, worker_nr: {}".format(finished_works, len_l_func_name, worker_nr))
+
+		pbar.close()
 
 		return l_ret
 
