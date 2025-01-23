@@ -1,7 +1,6 @@
 import arrays
 import os
 import time
-import math
 
 fn sqrt_int(v_ u64) u64 {
 	mut v1 := v_ / 2
@@ -27,26 +26,46 @@ fn main() {
 	
 	max_p := u64(os.args[1].int())
 	amount_tests := u64(os.args[2].int())
+	jump_mult_primes := u8(os.args[3].int())
 	
 	mut l_diff := []f64{}
 	for i_round := 0; i_round < amount_tests; i_round += 1 {
 		sw := time.new_stopwatch()
-		mut l := []u64{} l << 2 l << 3 l << 5
-		mut l_jump := []u64{} l_jump << 4 l_jump << 2
-		
-		mut i_jump := 0
-		mut p := u64(7)
+		mut l := []u64{}
+		mut p := u64(0)
+		mut l_jump := []u64{}
+		mut argmax_p_pow_2 := 0
+		mut i_start := 0
+		mut l_jump_length := 0
 
-		// mut max_i := 1
-		// mut p_pow_2 := math.powi(i64(l[max_i]), 2)
+		if jump_mult_primes == 2 {
+			// jump with primes 2, 3
+			l << 2 l << 3 l << 5
+			p = u64(7)
+			l_jump << 4 l_jump << 2
+			argmax_p_pow_2 = 1
+			i_start = 2
+			l_jump_length = 2
+		} else if jump_mult_primes == 3 {
+			// // jump with primes 2, 3, 5
+			l << 2 l << 3 l << 5 l << 7 l << 11 l << 13 l << 17 l << 19 l << 23 l << 29
+			p = u64(31)
+			l_jump << 6 l_jump << 4 l_jump << 2 l_jump << 4
+			l_jump << 2 l_jump << 4 l_jump << 6 l_jump << 2
+			argmax_p_pow_2 = 3
+			i_start = 3
+			l_jump_length = 8
+		} else {
+			assert false
+		}
+
+		mut i_jump := 0
+		mut p_pow_2 := l[argmax_p_pow_2] * l[argmax_p_pow_2]
 
 		for p < max_p {
-			max_sqrt_p := sqrt_int(p) + 1
-
 			// is p a prime number? let's test this
 			mut is_prime := true
-			// for i := 0; i <= max_i; i += 1 {
-			for i := 0; l[i] < max_sqrt_p; i += 1 {
+			for i := i_start; i <= argmax_p_pow_2; i += 1 {
 				if p % l[i] == 0 {
 					is_prime = false
 					break
@@ -58,19 +77,19 @@ fn main() {
 			}
 
 			p += l_jump[i_jump]
-			i_jump = (i_jump + 1) % 2
+			i_jump = (i_jump + 1) % l_jump_length
 
-			// if p > p_pow_2 {
-			// 	max_i += 1
-			// 	p_pow_2 = math.powi(i64(l[max_i]), 2)
-			// }
+			if p > p_pow_2 {
+				argmax_p_pow_2 += 1
+				p_pow_2 = l[argmax_p_pow_2] * l[argmax_p_pow_2]
+			}
 		}
 
 		elapsed_time := sw.elapsed().seconds()
 		l_diff << elapsed_time
 
 		if i_round == 0 {
-			mut f := os.create('/tmp/primes_n_${max_p}_vlang.txt') or { panic(err) }
+			mut f := os.create('/tmp/primes_n_${max_p}_jump_mult_primes_${jump_mult_primes}_vlang.txt') or { panic(err) }
 			defer {
 				f.close()
 			}
