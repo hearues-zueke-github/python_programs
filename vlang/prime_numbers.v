@@ -48,6 +48,7 @@ fn main() {
 			// is p a prime number? let's test this
 			mut is_prime := true
 			for i := 0; i <= max_i; i += 1 {
+
 				if p % l[i] == 0 {
 					is_prime = false
 					break
