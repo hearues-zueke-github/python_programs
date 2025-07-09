@@ -9,7 +9,7 @@ import rand.pcg32
 const win_width = 750
 const win_height = 500
 
-// fixed, maybe
+// fixed, maybe:
 // add types of different move sets for each player
 // add button for starting a new game
 // add promotion for the king piece
@@ -44,6 +44,7 @@ mut:
 	field Field
 	txtfld_player_turn TextField
 	txtfld_command TextField
+	txtfld_game_finished TextField
 	tb_command &ui.TextBox = unsafe { nil }
 	btn_do_action &ui.Button = unsafe { nil } // only a test button so far
 	
@@ -52,6 +53,9 @@ mut:
 	btn_random_move &ui.Button = unsafe { nil }
 	
 	mouse_action MouseAction
+
+	is_game_finished bool
+	player_nr_won int
 }
 
 @[heap]
@@ -100,6 +104,7 @@ struct Field {
 	piece_next_pos_color gx.Color
 mut:
 	map_player_nr_to_players map[int]Player
+	map_player_prev map[int]&Player
 	map_player_next map[int]&Player
 	
 	next_piece_id int
@@ -187,7 +192,7 @@ mut:
 struct MouseAction {
 mut:
 	is_piece_clicked bool
-	piece &Piece = unsafe { nil }
+	piece_id int
 	mouse_x int
 	mouse_y int
 }
@@ -203,8 +208,8 @@ fn main() {
 		field_frame_thickness: 7
 		field_frame_color: gx.rgb(80, 80, 80)
 
-		m_cols: 8,
-		n_rows: 8,
+		m_cols: 4,
+		n_rows: 4,
 
 		cell_w: 50,
 		cell_h: 50,
@@ -254,7 +259,8 @@ fn main() {
 			player_nr_before := keys_sorted[i]
 			player_nr_after := keys_sorted_shift[i]
 
-			field.map_player_next[player_nr_before] = &(field.map_player_nr_to_players[player_nr_after])
+			field.map_player_prev[player_nr_after] = unsafe { &(field.map_player_nr_to_players[player_nr_before]) }
+			field.map_player_next[player_nr_before] = unsafe { &(field.map_player_nr_to_players[player_nr_after]) }
 		}
 	}
 
@@ -320,6 +326,7 @@ fn main() {
 	}
 
 	field.show_field = false
+	field.parent_app.is_game_finished = false
 
 	app.txtfld_command = TextField{
 		x: 461
@@ -335,7 +342,17 @@ fn main() {
 		color: gx.rgb(0, 30, 0)
 		size: 40
 	}
-	// println('app.txtfld_command: ${app.txtfld_command}')
+
+	{
+		// field_center_x := app.field_abs_x + ()
+		app.txtfld_game_finished = TextField{
+			x: 150
+			y: 200
+			text: ''
+			color: gx.rgb(70, 130, 0)
+			size: 30
+		}
+	}
 
 	mut window := ui.window(
 		width:  win_width
@@ -369,20 +386,8 @@ fn main() {
 			ui.button(id: 'btn_start_game', radius: 5, z_index: 3, text: 'Start Game', on_click: app.btn_start_game_on_click),
 			ui.button(id: 'btn_end_game', radius: 5, z_index: 3, text: 'End Game', on_click: app.btn_end_game_on_click),
 			ui.button(id: 'btn_random_move', radius: 5, z_index: 3, text: 'Random Move', on_click: app.btn_random_move_on_click),
-			// ui.button(id: 'btn_reset_field', radius: 5, z_index: 3, text: 'Reset Field', on_click: app.btn_reset_field_on_click),
-			
-			// ui.button(id: 'btn_change_x_plus', radius: 5, z_index: 3, text: 'X +', on_click: app.btn_change_x_plus_on_click),
-			// ui.button(id: 'btn_change_x_minus', radius: 5, z_index: 3, text: 'X -', on_click: app.btn_change_x_minus_on_click),
-			// ui.button(id: 'btn_change_y_plus', radius: 5, z_index: 3, text: 'Y +', on_click: app.btn_change_y_plus_on_click),
-			// ui.button(id: 'btn_change_y_minus', radius: 5, z_index: 3, text: 'Y -', on_click: app.btn_change_y_minus_on_click),
-			// ui.button(id: 'btn_change_width_plus', radius: 5, z_index: 3, text: 'W +', on_click: app.btn_change_width_plus_on_click),
-			// ui.button(id: 'btn_change_width_minus', radius: 5, z_index: 3, text: 'W -', on_click: app.btn_change_width_minus_on_click),
-			// ui.button(id: 'btn_change_height_plus', radius: 5, z_index: 3, text: 'H +', on_click: app.btn_change_height_plus_on_click),
-			// ui.button(id: 'btn_change_height_minus', radius: 5, z_index: 3, text: 'H -', on_click: app.btn_change_height_minus_on_click),
 		]
 	)
-
-	// println('in main before ui.run app.txtfld_command: ${app.txtfld_command}')
 
 	ui.run(window)
 }
@@ -408,52 +413,6 @@ fn (mut app App) win_init(win &ui.Window) {
 	app.btn_random_move = win.get_or_panic[ui.Button]('btn_random_move')
 	app.btn_random_move.set_pos(460, 220)
 	app.btn_random_move.propose_size(180, 20)
-
-	// app.btn_reset_field = win.get_or_panic[ui.Button]('btn_reset_field')
-	// app.btn_reset_field.set_pos(460, 220)
-	// app.btn_reset_field.propose_size(180, 20)
-
-	// w := 30
-	// h := 30
-
-	// x1 := 500
-	// x2 := x1 + w + 5
-	// y1 := 30
-	// y2 := y1 + h + 5
-	// y3 := y2 + h + 5
-	// y4 := y3 + h + 5
-
-	// app.btn_change_x_plus = win.get_or_panic[ui.Button]('btn_change_x_plus')
-	// app.btn_change_x_plus.set_pos(x1, y1)
-	// app.btn_change_x_plus.propose_size(w, h)
-
-	// app.btn_change_x_minus = win.get_or_panic[ui.Button]('btn_change_x_minus')
-	// app.btn_change_x_minus.set_pos(x2, y1)
-	// app.btn_change_x_minus.propose_size(w, h)
-
-	// app.btn_change_y_plus = win.get_or_panic[ui.Button]('btn_change_y_plus')
-	// app.btn_change_y_plus.set_pos(x1, y2)
-	// app.btn_change_y_plus.propose_size(w, h)
-
-	// app.btn_change_y_minus = win.get_or_panic[ui.Button]('btn_change_y_minus')
-	// app.btn_change_y_minus.set_pos(x2, y2)
-	// app.btn_change_y_minus.propose_size(w, h)
-
-	// app.btn_change_width_plus = win.get_or_panic[ui.Button]('btn_change_width_plus')
-	// app.btn_change_width_plus.set_pos(x1, y3)
-	// app.btn_change_width_plus.propose_size(w, h)
-
-	// app.btn_change_width_minus = win.get_or_panic[ui.Button]('btn_change_width_minus')
-	// app.btn_change_width_minus.set_pos(x2, y3)
-	// app.btn_change_width_minus.propose_size(w, h)
-
-	// app.btn_change_height_plus = win.get_or_panic[ui.Button]('btn_change_height_plus')
-	// app.btn_change_height_plus.set_pos(x1, y4)
-	// app.btn_change_height_plus.propose_size(w, h)
-
-	// app.btn_change_height_minus = win.get_or_panic[ui.Button]('btn_change_height_minus')
-	// app.btn_change_height_minus.set_pos(x2, y4)
-	// app.btn_change_height_minus.propose_size(w, h)
 }
 
 fn (mut field Field) place_new_piece(player_nr u8, x int, y int, piece_type PieceType) {
@@ -468,7 +427,7 @@ fn (mut field Field) place_new_piece(player_nr u8, x int, y int, piece_type Piec
 		init_int_y: y
 		piece_type: piece_type
 	}
-	piece := &(field.map_piece_id_to_piece[piece_id])
+	piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 	field.map_player_nr_to_players[player_nr].arr_piece_id << piece.piece_id
 	field.field_array_player_nr[field.m_cols * y + x] = player_nr
 	field.field_array_piece_id[field.m_cols * y + x] = piece.piece_id
@@ -481,17 +440,17 @@ fn (mut field Field) define_diff_move_per_player_piece(
 	diag_backward_move_possible bool,
 ) {
 	// define the possible moves for player 1
-	mut player1 := &(field.map_player_nr_to_players[1])
+	mut player1 := unsafe { &(field.map_player_nr_to_players[1]) }
 	player1.map_piece_type_to_possible_diff_move[.normal] = []DiffMove{}
 	player1.map_piece_type_to_possible_diff_move[.king] = []DiffMove{}
 
-	mut player2 := &(field.map_player_nr_to_players[2])
+	mut player2 := unsafe { &(field.map_player_nr_to_players[2]) }
 	player2.map_piece_type_to_possible_diff_move[.normal] = []DiffMove{}
 	player2.map_piece_type_to_possible_diff_move[.king] = []DiffMove{}
 
 	mut y_dir_mult := 1
 	{
-		mut diff_move_arr := &(player1.map_piece_type_to_possible_diff_move[.normal])
+		mut diff_move_arr := unsafe { &(player1.map_piece_type_to_possible_diff_move[.normal]) }
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: -1 * y_dir_mult}
 		if side_move_possible {
 			diff_move_arr << DiffMove{diff_x: -1, diff_y: 0 * y_dir_mult}
@@ -511,7 +470,7 @@ fn (mut field Field) define_diff_move_per_player_piece(
 	}
 
 	{
-		mut diff_move_arr := &(player1.map_piece_type_to_possible_diff_move[.king])
+		mut diff_move_arr := unsafe { &(player1.map_piece_type_to_possible_diff_move[.king]) }
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: -1 * y_dir_mult}
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: 1 * y_dir_mult}
 		
@@ -527,7 +486,7 @@ fn (mut field Field) define_diff_move_per_player_piece(
 
 	y_dir_mult = -1
 	{
-		mut diff_move_arr := &(player2.map_piece_type_to_possible_diff_move[.normal])
+		mut diff_move_arr := unsafe { &(player2.map_piece_type_to_possible_diff_move[.normal]) }
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: -1 * y_dir_mult}
 		if side_move_possible {
 			diff_move_arr << DiffMove{diff_x: -1, diff_y: 0 * y_dir_mult}
@@ -547,7 +506,7 @@ fn (mut field Field) define_diff_move_per_player_piece(
 	}
 
 	{
-		mut diff_move_arr := &(player2.map_piece_type_to_possible_diff_move[.king])
+		mut diff_move_arr := unsafe { &(player2.map_piece_type_to_possible_diff_move[.king]) }
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: -1 * y_dir_mult}
 		diff_move_arr << DiffMove{diff_x: 0, diff_y: 1 * y_dir_mult}
 		
@@ -664,13 +623,13 @@ fn (field &Field) draw_field_pieces(mut d ui.DrawDevice, c &ui.CanvasLayout) {
 	shared mouse_action := &field.parent_app.mouse_action
 
 	for player_id in field.map_player_nr_to_players.keys() {
-		player := &(field.map_player_nr_to_players[player_id])
+		player := unsafe { &(field.map_player_nr_to_players[player_id]) }
 
 		for piece_id in player.arr_piece_id {
-			piece := &(field.map_piece_id_to_piece[piece_id])
+			piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 
 			rlock mouse_action {
-				if mouse_action.is_piece_clicked && mouse_action.piece == piece {
+				if mouse_action.is_piece_clicked && mouse_action.piece_id == piece_id {
 					continue
 				}
 			}
@@ -692,7 +651,7 @@ fn (field &Field) draw_field_pieces(mut d ui.DrawDevice, c &ui.CanvasLayout) {
 			piece_center_x := mouse_action.mouse_x
 			piece_center_y := mouse_action.mouse_y
 
-			field.draw_piece_on_canvas(mut d, c, mouse_action.piece, piece_center_x, piece_center_y)
+			field.draw_piece_on_canvas(mut d, c, unsafe { &(field.map_piece_id_to_piece[mouse_action.piece_id]) }, piece_center_x, piece_center_y)
 		}
 	}
 }
@@ -779,6 +738,13 @@ fn (app &App) draw_field(mut d ui.DrawDevice, c &ui.CanvasLayout) {
 		// println('before printing text app.txtfld_command: ${app.txtfld_command}')
 		c.draw_styled_text(txtfld.x, txtfld.y, txtfld.text, ui.TextStyleParams{color: txtfld.color, size: txtfld.size})
 	}
+	if app.field.show_field && app.is_game_finished {
+		{
+			txtfld := &app.txtfld_game_finished
+			// println('before printing text app.txtfld_command: ${app.txtfld_command}')
+			c.draw_styled_text(txtfld.x, txtfld.y, txtfld.text, ui.TextStyleParams{color: txtfld.color, size: txtfld.size})
+		}
+	}
 }
 
 fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent) {
@@ -790,7 +756,7 @@ fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent
 	println('- mouse_event.mods: ${mouse_event.mods}')
 
 	field := &app.field
-	if field.show_field == true {
+	if field.show_field && !app.is_game_finished {
 		field_w := field.cell_x_space * (field.m_cols + 1) + field.cell_w * field.m_cols
 		field_h := field.cell_y_space * (field.n_rows + 1) + field.cell_h * field.n_rows
 
@@ -813,7 +779,7 @@ fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent
 		// find piece with the position! TODO: implement a map of coordinates
 		shared mouse_action := &app.mouse_action
 		for piece_id in field.map_piece_id_to_piece.keys() {
-			mut piece := &(field.map_piece_id_to_piece[piece_id])
+			mut piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 			mut check_x_equal := false
 			mut check_y_equal := false
 
@@ -824,7 +790,7 @@ fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent
 			if check_x_equal && check_y_equal && piece.player_nr == field.current_player.player_nr {
 				lock mouse_action {
 					mouse_action.is_piece_clicked = true
-					mouse_action.piece = piece
+					mouse_action.piece_id = piece_id
 					mouse_action.mouse_x = mouse_event.x
 					mouse_action.mouse_y = mouse_event.y
 				}
@@ -834,7 +800,9 @@ fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent
 
 		rlock mouse_action {
 			if mouse_action.is_piece_clicked {
-				println('Piece was clicked! piece: ${mouse_action.piece}')
+				println('Piece was clicked!')
+				println('- piece_id: ${mouse_action.piece_id}')
+				println('- piece: ${field.map_piece_id_to_piece[mouse_action.piece_id]}')
 			} else {
 				println('A valid piece was not clicked!')
 			}
@@ -849,7 +817,7 @@ fn (mut app App) on_mouse_move_main(window &ui.Window, mouse_event ui.MouseMoveE
 	// println('- mouse_event.mouse_button: ${mouse_event.mouse_button}')
 	field := &app.field
 
-	if field.show_field == true {
+	if field.show_field && !app.is_game_finished {
 		shared mouse_action := &app.mouse_action
 		lock mouse_action {
 			if mouse_action.is_piece_clicked {
@@ -871,15 +839,15 @@ fn (mut app App) update_txtfld_player_turn() {
 	mut pieces_pos_field := map[string]bool
 
 	for piece_id in field.map_player_nr_to_players[1].arr_piece_id {
-		p := &(field.map_piece_id_to_piece[piece_id])
+		p := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 		pieces_pos_player_1['${p.int_x},${p.int_y}'] = true
 	}
 	for piece_id in field.map_player_nr_to_players[2].arr_piece_id {
-		p := &(field.map_piece_id_to_piece[piece_id])
+		p := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 		pieces_pos_player_2['${p.int_x},${p.int_y}'] = true
 	}
 	for piece_id in field.map_piece_id_to_piece.keys() {
-		p := &(field.map_piece_id_to_piece[piece_id])
+		p := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 		pieces_pos_field['${p.int_x},${p.int_y}'] = true
 	}
 
@@ -899,7 +867,7 @@ fn (mut app App) on_mouse_up_main(window &ui.Window, mouse_event ui.MouseEvent) 
 	println('- mouse_event.mods: ${mouse_event.mods}')
 
 	mut field := &app.field
-	if field.show_field == true{
+	if field.show_field && !app.is_game_finished {
 		field_w := field.cell_x_space * (field.m_cols + 1) + field.cell_w * field.m_cols
 		field_h := field.cell_y_space * (field.n_rows + 1) + field.cell_h * field.n_rows
 
@@ -924,7 +892,8 @@ fn (mut app App) on_mouse_up_main(window &ui.Window, mouse_event ui.MouseEvent) 
 
 			lock mouse_action {
 				if mouse_action.is_piece_clicked {
-					mut piece := shared mouse_action.piece
+					piece_id := mouse_action.piece_id
+					mut piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 					
 					// make a check, if piece was possible to move there
 					curr_x, curr_y := piece.get_pos()
@@ -934,60 +903,19 @@ fn (mut app App) on_mouse_up_main(window &ui.Window, mouse_event ui.MouseEvent) 
 
 					if field.field_array_player_nr[field.m_cols * new_y + new_x] == 0 && key in field.map_curr_pos_to_next_possible_moves {
 					// if field.field_array_player_nr[field.m_cols * new_y + new_x] == 0 && key in field.map_curr_pos_to_next_possible_moves {
-						next_possible_move := &(field.map_curr_pos_to_next_possible_moves[key])
-						arr_remove_piece_id := next_possible_move.arr_remove_piece_id
-
-						println('arr_remove_piece_id: ${arr_remove_piece_id}')
-
-						if arr_remove_piece_id.len > 0 {
-							for piece_id in arr_remove_piece_id {
-								println('piece_id to be removed: ${piece_id}')
-								println('piece_id in field.map_piece_id_to_piece ? ${piece_id in field.map_piece_id_to_piece}')
-								piece2 := &(field.map_piece_id_to_piece[piece_id])
-								mut player := &(field.map_player_nr_to_players[piece2.player_nr])
-
-								println('field.map_piece_id_to_piece: ${field.map_piece_id_to_piece}')
-								println('field.map_player_nr_to_players: ${field.map_player_nr_to_players}')
-								println('before:')
-								println('player.arr_piece_id: ${player.arr_piece_id}')
-								println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
-								
-								println('Remove piece from field: piece2: ${piece2}')
-								println('piece is from player_nr ${piece2.player_nr}')
-
-								// func := fn(idx int, x int) bool { return x == piece2.piece_id }
-								// idx_element := arrays.index_of_first(player.arr_piece_id, func)
-								idx_element := index_of_first(player.arr_piece_id, piece2.piece_id)
-								player.arr_piece_id.delete(idx_element)
-								player.arr_piece_id_removed << (piece_id)
-
-								println('after:')
-								println('player.arr_piece_id: ${player.arr_piece_id}')
-								println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
-							}
-						}
-
-						field.move_piece(mut piece, new_x, new_y)
-
-						app.update_txtfld_player_turn()
+						app.update_move(key, mut piece, new_x, new_y)
 					}
-				}
 
-				println('field.field_array_player_nr: [')
-				for j in 0..field.n_rows {
-					for i in 0..field.m_cols {
-						print('${field.field_array_player_nr[field.m_cols * j + i]}, ')
-					}
-					println('')
+					mouse_action.is_piece_clicked = false
+					mouse_action.piece_id = 0
 				}
-				println(']')
 			}
 		}
 
 		lock mouse_action {
 			if mouse_action.is_piece_clicked {
 				mouse_action.is_piece_clicked = false
-				mouse_action.piece = unsafe { nil }
+				mouse_action.piece_id = 0
 			}
 		}
 	}
@@ -1090,8 +1018,8 @@ fn (mut piece Piece) set_pos(int_x int, int_y int) {
 }
 
 fn (mut field Field) empty_and_fill_map_curr_pos_to_next_possible_moves() {
-	mut map_curr_pos_to_next_possible_moves := &(field.map_curr_pos_to_next_possible_moves)
-	mut arr_curr_pos_to_next_possible_moves := &(field.arr_curr_pos_to_next_possible_moves)
+	mut map_curr_pos_to_next_possible_moves := unsafe { &(field.map_curr_pos_to_next_possible_moves) }
+	mut arr_curr_pos_to_next_possible_moves := unsafe { &(field.arr_curr_pos_to_next_possible_moves) }
 
 	for key in map_curr_pos_to_next_possible_moves.keys() {
 		map_curr_pos_to_next_possible_moves.delete(key)
@@ -1101,7 +1029,7 @@ fn (mut field Field) empty_and_fill_map_curr_pos_to_next_possible_moves() {
 		arr_curr_pos_to_next_possible_moves.delete_last()
 	}
 
-	map_piece_type_to_possible_diff_move := &(field.current_player.map_piece_type_to_possible_diff_move)
+	map_piece_type_to_possible_diff_move := unsafe { &(field.current_player.map_piece_type_to_possible_diff_move) }
 
 	print('all pieces: ')
 	for piece_id, mut piece in field.map_piece_id_to_piece {
@@ -1110,13 +1038,13 @@ fn (mut field Field) empty_and_fill_map_curr_pos_to_next_possible_moves() {
 	println('')
 	print('pieces of player_nr ${field.current_player.player_nr}: ')
 	for piece_id in field.current_player.arr_piece_id {
-		piece := &(field.map_piece_id_to_piece[piece_id])
+		piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 		print('(${piece.int_x}, ${piece.int_y}), ')
 	}
 	println('')
 
 	for piece_id in field.current_player.arr_piece_id {
-		piece := &(field.map_piece_id_to_piece[piece_id])
+		piece := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
 
 		curr_x := unsafe { piece.int_x }
 		curr_y := unsafe { piece.int_y }
@@ -1154,7 +1082,7 @@ fn (mut field Field) empty_and_fill_map_curr_pos_to_next_possible_moves() {
 
 			// get the piece, which is jumped over
 			piece_id_jumped_over := field.field_array_piece_id[field.m_cols * new_y + new_x]
-			piece_jumped_over := &(field.map_piece_id_to_piece[piece_id_jumped_over])
+			piece_jumped_over := unsafe { &(field.map_piece_id_to_piece[piece_id_jumped_over]) }
 
 			mut arr_remove_piece_id := []int{}
 			if piece_jumped_over.player_nr != field.current_player.player_nr {
@@ -1191,11 +1119,20 @@ fn (mut field Field) empty_and_fill_map_curr_pos_to_next_possible_moves() {
 		}
 	}
 
+	if arr_curr_pos_to_next_possible_moves.len == 0 {
+		field.parent_app.is_game_finished = true
+		field.parent_app.player_nr_won = field.map_player_prev[field.current_player.player_nr].player_nr
+		field.parent_app.txtfld_game_finished.text = 'Player Nr. ${field.parent_app.player_nr_won} Won!'
+	}
+	println('field.parent_app.is_game_finished ? ${field.parent_app.is_game_finished}')
+
 	println('map_curr_pos_to_next_possible_moves.keys(): ${map_curr_pos_to_next_possible_moves.keys()}')
 }
 
 fn (mut field Field) start_new_game() {
+	field.parent_app.is_game_finished = false
 	field.show_field = true
+
 	for i in 0..field.field_array_player_nr.len {
 			field.field_array_player_nr[i] = 0
 	}
@@ -1211,13 +1148,13 @@ fn (mut field Field) start_new_game() {
 		}
 	}
 	for player_nr in field.map_player_nr_to_players.keys() {
-		mut player := &(field.map_player_nr_to_players[player_nr])
+		mut player := unsafe { &(field.map_player_nr_to_players[player_nr]) }
 
 		for player.arr_piece_id_removed.len > 0 {
 			player.arr_piece_id << player.arr_piece_id_removed.pop()
 		}
 	}
-	field.current_player = &(field.map_player_nr_to_players[1])
+	field.current_player = unsafe { &(field.map_player_nr_to_players[1]) }
 	field.parent_app.txtfld_player_turn.text = 'Turn Player Nr. ${field.current_player.player_nr}'
 
 	// fill all possible next moves
@@ -1236,76 +1173,83 @@ fn (mut app App) btn_start_game_on_click(button &ui.Button) {
 }
 
 fn (mut app App) btn_end_game_on_click(button &ui.Button) {
+	app.is_game_finished = false
 	app.field.show_field = false
 	app.txtfld_player_turn.text = ''
 	println('fn btn_end_game_on_click() called!!!!!!!!!!!!!!!!')
 }
 
+fn (mut app App) update_move(key string, mut piece Piece, next_x int, next_y int) {
+	mut field := &app.field
+
+	next_possible_move := unsafe { &(field.map_curr_pos_to_next_possible_moves[key]) }
+	arr_remove_piece_id := next_possible_move.arr_remove_piece_id
+
+	println('arr_remove_piece_id: ${arr_remove_piece_id}')
+
+	if arr_remove_piece_id.len > 0 {
+		for piece_id in arr_remove_piece_id {
+			println('piece_id to be removed: ${piece_id}')
+			println('piece_id in field.map_piece_id_to_piece ? ${piece_id in field.map_piece_id_to_piece}')
+			piece2 := unsafe { &(field.map_piece_id_to_piece[piece_id]) }
+			mut player := unsafe { &(field.map_player_nr_to_players[piece2.player_nr]) }
+
+			println('before:')
+			println('player.arr_piece_id: ${player.arr_piece_id}')
+			println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
+			
+			println('Remove piece from field: piece2: ${piece2}')
+			println('piece is from player_nr ${piece2.player_nr}')
+
+			idx_element := index_of_first(player.arr_piece_id, piece2.piece_id)
+			player.arr_piece_id.delete(idx_element)
+			player.arr_piece_id_removed << (piece_id)
+
+			field.field_array_player_nr[field.m_cols * piece2.int_y + piece2.int_x] = 0
+			field.field_array_piece_id[field.m_cols * piece2.int_y + piece2.int_x] = 0
+
+			println('after:')
+			println('player.arr_piece_id: ${player.arr_piece_id}')
+			println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
+		}
+	}
+
+	app.field.move_piece(mut piece, next_x, next_y)
+	app.update_txtfld_player_turn()
+
+	println('field.field_array_player_nr: [')
+	for j in 0..field.n_rows {
+		for i in 0..field.m_cols {
+			print('${field.field_array_player_nr[field.m_cols * j + i]}, ')
+		}
+		println('')
+	}
+	println(']')
+
+	println('field.field_array_piece_id: [')
+	for j in 0..field.n_rows {
+		for i in 0..field.m_cols {
+			print('${field.field_array_piece_id[field.m_cols * j + i]:2}, ')
+		}
+		println('')
+	}
+	println(']')
+}
+
 fn (mut app App) btn_random_move_on_click(button &ui.Button) {
-	if app.field.show_field {
+	println('fn btn_random_move_on_click() called!!!!!!!!!!!!!!!!')
+	println('-- app.is_game_finished ? ${app.is_game_finished}')
+	if app.field.show_field && !app.is_game_finished {
 		mut random_prev_next_pos := app.field.rng.element(app.field.arr_curr_pos_to_next_possible_moves) or {PrevNextPos{0, 0, 0, 0, unsafe { nil }}}
+		println('choosen element is: ${random_prev_next_pos}')
 		
 		prev_x := random_prev_next_pos.prev_x
 		prev_y := random_prev_next_pos.prev_y
 		next_x := random_prev_next_pos.next_x
 		next_y := random_prev_next_pos.next_y
 		key := '${prev_x},${prev_y},${next_x},${next_y}'
-		mut field := &app.field
-		next_possible_move := &(field.map_curr_pos_to_next_possible_moves[key])
-		arr_remove_piece_id := next_possible_move.arr_remove_piece_id
-
-		println('arr_remove_piece_id: ${arr_remove_piece_id}')
-
-		if arr_remove_piece_id.len > 0 {
-			for piece_id in arr_remove_piece_id {
-				println('piece_id to be removed: ${piece_id}')
-				println('piece_id in field.map_piece_id_to_piece ? ${piece_id in field.map_piece_id_to_piece}')
-				piece2 := &(field.map_piece_id_to_piece[piece_id])
-				mut player := &(field.map_player_nr_to_players[piece2.player_nr])
-
-				println('before:')
-				println('player.arr_piece_id: ${player.arr_piece_id}')
-				println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
-				
-				println('Remove piece from field: piece2: ${piece2}')
-				println('piece is from player_nr ${piece2.player_nr}')
-
-				// func := fn(idx int, x int) bool { return x == piece2.piece_id }
-				// idx_element := arrays.index_of_first(player.arr_piece_id, func)
-				idx_element := index_of_first(player.arr_piece_id, piece2.piece_id)
-				player.arr_piece_id.delete(idx_element)
-				player.arr_piece_id_removed << (piece_id)
-
-				field.field_array_player_nr[field.m_cols * piece2.int_y + piece2.int_x] = 0
-				field.field_array_piece_id[field.m_cols * piece2.int_y + piece2.int_x] = 0
-
-				println('after:')
-				println('player.arr_piece_id: ${player.arr_piece_id}')
-				println('player.arr_piece_id_removed: ${player.arr_piece_id_removed}')
-			}
-		}
-
-		app.field.move_piece(mut random_prev_next_pos.piece, random_prev_next_pos.next_x, random_prev_next_pos.next_y)
-		app.update_txtfld_player_turn()
-		println('choosen element is: ${random_prev_next_pos}')
-
-		println('field.field_array_player_nr: [')
-		for j in 0..field.n_rows {
-			for i in 0..field.m_cols {
-				print('${field.field_array_player_nr[field.m_cols * j + i]}, ')
-			}
-			println('')
-		}
-		println(']')
-
-		println('field.field_array_piece_id: [')
-		for j in 0..field.n_rows {
-			for i in 0..field.m_cols {
-				print('${field.field_array_piece_id[field.m_cols * j + i]:2}, ')
-			}
-			println('')
-		}
-		println(']')
+		
+		app.update_move(key, mut random_prev_next_pos.piece, random_prev_next_pos.next_x, random_prev_next_pos.next_y)
 	}
-	println('fn btn_random_move_on_click() called!!!!!!!!!!!!!!!!')
+	println('-- app.is_game_finished ? ${app.is_game_finished}')
 }
