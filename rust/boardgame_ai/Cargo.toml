@@ -1,0 +1,28 @@
+[package]
+name = "boardgame_ai"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release]
+opt-level = 'z'     # Optimize for size
+lto = true          # Enable link-time optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations
+panic = 'abort'     # Abort on panic
+strip = true        # Strip symbols from binary*
+
+[dependencies]
+blas = "0.23.0"
+eframe = "0.31.1"
+env_logger = "0.11.7"
+
+[profile.dev.build-override]
+opt-level = 3
+
+# [lib]
+# crate-type = ["dylib"]
+
+[build]
+rustflags = ["-Z", "threads=4"]
+
