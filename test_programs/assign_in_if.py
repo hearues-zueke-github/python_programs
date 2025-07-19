@@ -9,7 +9,7 @@ if __name__ == "__main__":
     else:
         print("This line should NOT be printed!!!!")
 
-    if (a=2) > 3:
+    if (a:=2) > 3:
         print("This line should NOT be printed!!!!")
     else:
         print("This line SHOULD be printed!")
