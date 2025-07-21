@@ -1,4 +1,10 @@
-module main
+import rand
+import rand.seed
+import rand.pcg32
+
+import neural_network { NeuralNetwork }
+
+import arraybyte_serialization { CrossLangSerialization }
 
 fn test_main() {
 	// arr_layer := [int(3), 2]

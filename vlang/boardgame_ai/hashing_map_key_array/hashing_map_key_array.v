@@ -1,3 +1,5 @@
+module hashing_map_key_array
+
 import hash
 
 struct TupleKeyArrayValueArray[K, V] {
@@ -5,12 +7,12 @@ struct TupleKeyArrayValueArray[K, V] {
 	val []V
 }
 
-struct MapKeyArrayValueArray[K, V] {
+pub struct MapKeyArrayValueArray[K, V] {
 mut:
 	map_key_val_intern map[u64][]TupleKeyArrayValueArray[K, V]
 }
 
-fn (mut map_key_val MapKeyArrayValueArray[K, V]) put_key_val(key []K, val []V) {
+pub fn (mut map_key_val MapKeyArrayValueArray[K, V]) put_key_val(key []K, val []V) {
 	ptr_u8 := unsafe { &u8(&key[0]) }
 	hash_key_u64 := hash.wyhash_c(ptr_u8, u64(key.len) * sizeof(K), 0) & u64(0xFF)
 
@@ -34,7 +36,7 @@ fn (mut map_key_val MapKeyArrayValueArray[K, V]) put_key_val(key []K, val []V) {
 	map_key_val.map_key_val_intern[hash_key_u64] << TupleKeyArrayValueArray[K, V]{key: key, val: val}
 }
 
-fn (mut map_key_val MapKeyArrayValueArray[K, V]) get_val(key []K) ![]V {
+pub fn (mut map_key_val MapKeyArrayValueArray[K, V]) get_val(key []K) ![]V {
 	ptr_u8 := unsafe { &u8(&key[0]) }
 	hash_key_u64 := hash.wyhash_c(ptr_u8, u64(key.len) * sizeof(K), 0) & u64(0xFF)
 
@@ -54,7 +56,7 @@ fn (mut map_key_val MapKeyArrayValueArray[K, V]) get_val(key []K) ![]V {
 	panic('hash_key_u64 not found!')
 }
 
-fn (mut map_key_val MapKeyArrayValueArray[K, V]) delete_key(key []K) {
+pub fn (mut map_key_val MapKeyArrayValueArray[K, V]) delete_key(key []K) {
 	ptr_u8 := unsafe { &u8(&key[0]) }
 	hash_key_u64 := hash.wyhash_c(ptr_u8, u64(key.len) * sizeof(K), 0) & u64(0xFF)
 
@@ -75,7 +77,7 @@ fn (mut map_key_val MapKeyArrayValueArray[K, V]) delete_key(key []K) {
 	panic('hash_key_u64 not found!')
 }
 
-fn (mut map_key_val MapKeyArrayValueArray[K, V]) print() {
+pub fn (mut map_key_val MapKeyArrayValueArray[K, V]) print() {
 	println('Amount hashes: ${map_key_val.map_key_val_intern.keys().len}')
 
 	for hash_key_u64 in map_key_val.map_key_val_intern.keys() {

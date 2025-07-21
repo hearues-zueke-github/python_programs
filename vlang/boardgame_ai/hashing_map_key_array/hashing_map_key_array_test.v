@@ -1,6 +1,6 @@
-module main
-
 import hash
+
+import hashing_map_key_array { MapKeyArrayValueArray }
 
 fn test_calc_simple_hash() {
 

@@ -197,201 +197,6 @@ mut:
 	mouse_y int
 }
 
-fn main() {
-	mut app := &App{}
-	app.x = 30
-	app.y = 50
-	app.game_field = GameField{
-		field_abs_x: 30
-		field_abs_y: 50
-		
-		field_frame_thickness: 7
-		field_frame_color: gx.rgb(80, 80, 80)
-
-		m_cols: 6,
-		n_rows: 6,
-
-		cell_w: 50,
-		cell_h: 50,
-		cell_frame_thickness: 4,
-		
-		cell_x_space: 2,
-		cell_y_space: 2,
-		
-		cell_colors: [gx.rgb(118, 150, 86), gx.rgb(238, 238, 210)]
-		cell_frame_colors: [gx.rgb(242, 225, 163), gx.rgb(21, 93, 77)]
-
-		piece_radius: 18
-		piece_frame_thickness: 4
-		piece_colors: [gx.rgb(20, 160, 120), gx.rgb(90, 100, 30)]
-		piece_frame_colors: [gx.rgb(0, 0, 0), gx.rgb(0, 0, 0)]
-
-		piece_prev_pos_color: gx.rgb(0xFF, 0x20, 0x20)
-		piece_next_pos_color: gx.rgb(0x20, 0xFF, 0x20)
-
-		rng: &rand.PRNG(pcg32.PCG32RNG{})
-
-		next_piece_id: 1
-	}
-	shared app.mouse_action = MouseAction{
-		is_piece_clicked: false
-	}
-
-	mut game_field := &app.game_field
-	game_field.rng.seed(seed.time_seed_array(pcg32.seed_len))
-	game_field.parent_app = app
-
-	game_field.map_player_nr_to_players[1] = Player{player_nr: 1, promotion_y_line: 0}
-	game_field.map_player_nr_to_players[2] = Player{player_nr: 2, promotion_y_line: game_field.n_rows - 1}
-
-	{
-		keys_sorted := game_field.map_player_nr_to_players.keys().sorted()
-
-		mut keys_sorted_shift := keys_sorted.clone()
-		first := keys_sorted_shift[0]
-		keys_sorted_shift.delete(0)
-		keys_sorted_shift << first
-	
-		println('keys_sorted: ${keys_sorted}')
-		println('keys_sorted_shift: ${keys_sorted_shift}')
-
-		for i in 0..keys_sorted.len {
-			player_nr_before := keys_sorted[i]
-			player_nr_after := keys_sorted_shift[i]
-
-			game_field.map_player_prev[player_nr_after] = unsafe { &(game_field.map_player_nr_to_players[player_nr_before]) }
-			game_field.map_player_next[player_nr_before] = unsafe { &(game_field.map_player_nr_to_players[player_nr_after]) }
-		}
-	}
-
-	game_field.field_array_player_nr = []u8{len: game_field.n_rows * game_field.m_cols, init: 0}
-	game_field.field_array_piece_id = []int{len: game_field.n_rows * game_field.m_cols, init: unsafe { nil }}
-
-	game_field.define_diff_move_per_player_piece(false, true, false, false)
-
-	field_w := game_field.cell_x_space * (game_field.m_cols + 1) + game_field.cell_w * game_field.m_cols
-	field_h := game_field.cell_y_space * (game_field.n_rows + 1) + game_field.cell_h * game_field.n_rows
-
-	game_field.lut_mouse_rel_pos_int_x = []int{len: field_w, init: 0}
-	game_field.lut_mouse_rel_pos_int_y = []int{len: field_h, init: 0}
-
-	cell_x_space_hlf_1 := game_field.cell_x_space / 2
-	cell_x_space_hlf_2 := game_field.cell_x_space - cell_x_space_hlf_1
-
-	cell_y_space_hlf_1 := game_field.cell_y_space / 2
-	cell_y_space_hlf_2 := game_field.cell_y_space - cell_y_space_hlf_1
-
-	start_rel_pos_int_x_cell_1 := game_field.cell_x_space + game_field.cell_w + cell_x_space_hlf_1
-	start_rel_pos_int_y_cell_1 := game_field.cell_y_space + game_field.cell_h + cell_y_space_hlf_1
-
-	// do the first cell rel_pos_int_x and rel_pos_int_y
-	for i in 0..(start_rel_pos_int_x_cell_1) {
-		game_field.lut_mouse_rel_pos_int_x[i] = 0
-	}
-	for i in 0..(game_field.cell_y_space + game_field.cell_w + cell_y_space_hlf_1) {
-		game_field.lut_mouse_rel_pos_int_y[i] = 0
-	}
-
-	// do the middle cells
-	for i in 1..(game_field.m_cols - 1) {
-		pos_start := start_rel_pos_int_x_cell_1 + (game_field.cell_w + game_field.cell_x_space) * (i - 1)
-		pos_end := pos_start + game_field.cell_w + game_field.cell_x_space
-		for pos in pos_start..pos_end {
-			game_field.lut_mouse_rel_pos_int_x[pos] = i
-		}
-	}
-	for i in 1..(game_field.n_rows - 1) {
-		pos_start := start_rel_pos_int_y_cell_1 + (game_field.cell_h + game_field.cell_y_space) * (i - 1)
-		pos_end := pos_start + game_field.cell_h + game_field.cell_y_space
-		for pos in pos_start..pos_end {
-			game_field.lut_mouse_rel_pos_int_y[pos] = i
-		}
-	}
-
-	// do the last cell rel_pos_int_x and rel_pos_int_y
-	for i in (field_w - (game_field.cell_x_space + game_field.cell_w + cell_x_space_hlf_2))..field_w {
-		game_field.lut_mouse_rel_pos_int_x[i] = game_field.m_cols - 1
-	}
-	for i in (field_h - (game_field.cell_y_space + game_field.cell_h + cell_y_space_hlf_2))..field_h {
-		game_field.lut_mouse_rel_pos_int_y[i] = game_field.n_rows - 1
-	}
-
-	println('game_field.lut_mouse_rel_pos_int_x: ${game_field.lut_mouse_rel_pos_int_x}')
-	println('game_field.lut_mouse_rel_pos_int_y: ${game_field.lut_mouse_rel_pos_int_y}')
-
-	// init the pieces for the players
-	for i in 0..game_field.m_cols {
-		app.game_field.place_new_piece(1, i, game_field.n_rows - 2, .normal)
-		app.game_field.place_new_piece(2, i, 1, .normal)
-	}
-
-	app.show_field = false
-	game_field.is_game_finished = false
-
-	app.txtfld_command = TextField{
-		x: 461
-		y: 377
-		text: 'Command:'
-		color: gx.rgb(0, 0, 0)
-		size: 20
-	}
-	app.txtfld_player_turn = TextField{
-		x: 460
-		y: 100
-		text: ''
-		color: gx.rgb(0, 30, 0)
-		size: 40
-	}
-
-	{
-		// field_center_x := app.field_abs_x + ()
-		app.txtfld_game_finished = TextField{
-			x: 150
-			y: 200
-			text: ''
-			color: gx.rgb(70, 130, 0)
-			size: 30
-		}
-	}
-
-	mut window := ui.window(
-		width:  win_width
-		height: win_height
-		title:  'V UI: Rectangles'
-		on_mouse_down: app.on_mouse_down_main,
-		on_mouse_move: app.on_mouse_move_main,
-		on_mouse_up: app.on_mouse_up_main,
-		on_key_down: app.on_key_down_main,
-		on_init: app.win_init,
-		children: [
-			ui.canvas_plus(
-				bg_color:      gx.rgb(196, 196, 196)
-				bg_radius:     .0
-				clipping:      true
-				on_draw:       app.draw_field
-				// on_click:      app.click_circles
-				// on_mouse_move: app.mouse_move_circles
-				z_index: 0,
-			),
-			ui.textbox(id: 'tb_command', z_index: 1)
-			ui.button(
-				id: 'btn_do_action',
-				on_click: app.btn_do_action_on_click,
-				z_index: 2,
-				text: 'Do Action',
-				radius: 5,
-				border_color: gx.rgb(0, 128, 0),
-				bg_color: gx.rgb(192, 192, 128),
-			),
-			ui.button(id: 'btn_start_game', radius: 5, z_index: 3, text: 'Start Game', on_click: app.btn_start_game_on_click),
-			ui.button(id: 'btn_end_game', radius: 5, z_index: 3, text: 'End Game', on_click: app.btn_end_game_on_click),
-			ui.button(id: 'btn_random_move', radius: 5, z_index: 3, text: 'Random Move', on_click: app.btn_random_move_on_click),
-		]
-	)
-
-	ui.run(window)
-}
-
 fn (mut app App) win_init(win &ui.Window) {
 	// init app fields
 	app.tb_command = win.get_or_panic[ui.TextBox]('tb_command')
@@ -1272,4 +1077,199 @@ fn (mut app App) do_random_move() {
 fn (mut app App) btn_random_move_on_click(button &ui.Button) {
 	println('fn btn_random_move_on_click() called!!!!!!!!!!!!!!!!')
 	app.do_random_move()
+}
+
+fn main() {
+	mut app := &App{}
+	app.x = 30
+	app.y = 50
+	app.game_field = GameField{
+		field_abs_x: 30
+		field_abs_y: 50
+		
+		field_frame_thickness: 7
+		field_frame_color: gx.rgb(80, 80, 80)
+
+		m_cols: 6,
+		n_rows: 6,
+
+		cell_w: 50,
+		cell_h: 50,
+		cell_frame_thickness: 4,
+		
+		cell_x_space: 2,
+		cell_y_space: 2,
+		
+		cell_colors: [gx.rgb(118, 150, 86), gx.rgb(238, 238, 210)]
+		cell_frame_colors: [gx.rgb(242, 225, 163), gx.rgb(21, 93, 77)]
+
+		piece_radius: 18
+		piece_frame_thickness: 4
+		piece_colors: [gx.rgb(20, 160, 120), gx.rgb(90, 100, 30)]
+		piece_frame_colors: [gx.rgb(0, 0, 0), gx.rgb(0, 0, 0)]
+
+		piece_prev_pos_color: gx.rgb(0xFF, 0x20, 0x20)
+		piece_next_pos_color: gx.rgb(0x20, 0xFF, 0x20)
+
+		rng: &rand.PRNG(pcg32.PCG32RNG{})
+
+		next_piece_id: 1
+	}
+	shared app.mouse_action = MouseAction{
+		is_piece_clicked: false
+	}
+
+	mut game_field := &app.game_field
+	game_field.rng.seed(seed.time_seed_array(pcg32.seed_len))
+	game_field.parent_app = app
+
+	game_field.map_player_nr_to_players[1] = Player{player_nr: 1, promotion_y_line: 0}
+	game_field.map_player_nr_to_players[2] = Player{player_nr: 2, promotion_y_line: game_field.n_rows - 1}
+
+	{
+		keys_sorted := game_field.map_player_nr_to_players.keys().sorted()
+
+		mut keys_sorted_shift := keys_sorted.clone()
+		first := keys_sorted_shift[0]
+		keys_sorted_shift.delete(0)
+		keys_sorted_shift << first
+	
+		println('keys_sorted: ${keys_sorted}')
+		println('keys_sorted_shift: ${keys_sorted_shift}')
+
+		for i in 0..keys_sorted.len {
+			player_nr_before := keys_sorted[i]
+			player_nr_after := keys_sorted_shift[i]
+
+			game_field.map_player_prev[player_nr_after] = unsafe { &(game_field.map_player_nr_to_players[player_nr_before]) }
+			game_field.map_player_next[player_nr_before] = unsafe { &(game_field.map_player_nr_to_players[player_nr_after]) }
+		}
+	}
+
+	game_field.field_array_player_nr = []u8{len: game_field.n_rows * game_field.m_cols, init: 0}
+	game_field.field_array_piece_id = []int{len: game_field.n_rows * game_field.m_cols, init: unsafe { nil }}
+
+	game_field.define_diff_move_per_player_piece(false, true, false, false)
+
+	field_w := game_field.cell_x_space * (game_field.m_cols + 1) + game_field.cell_w * game_field.m_cols
+	field_h := game_field.cell_y_space * (game_field.n_rows + 1) + game_field.cell_h * game_field.n_rows
+
+	game_field.lut_mouse_rel_pos_int_x = []int{len: field_w, init: 0}
+	game_field.lut_mouse_rel_pos_int_y = []int{len: field_h, init: 0}
+
+	cell_x_space_hlf_1 := game_field.cell_x_space / 2
+	cell_x_space_hlf_2 := game_field.cell_x_space - cell_x_space_hlf_1
+
+	cell_y_space_hlf_1 := game_field.cell_y_space / 2
+	cell_y_space_hlf_2 := game_field.cell_y_space - cell_y_space_hlf_1
+
+	start_rel_pos_int_x_cell_1 := game_field.cell_x_space + game_field.cell_w + cell_x_space_hlf_1
+	start_rel_pos_int_y_cell_1 := game_field.cell_y_space + game_field.cell_h + cell_y_space_hlf_1
+
+	// do the first cell rel_pos_int_x and rel_pos_int_y
+	for i in 0..(start_rel_pos_int_x_cell_1) {
+		game_field.lut_mouse_rel_pos_int_x[i] = 0
+	}
+	for i in 0..(game_field.cell_y_space + game_field.cell_w + cell_y_space_hlf_1) {
+		game_field.lut_mouse_rel_pos_int_y[i] = 0
+	}
+
+	// do the middle cells
+	for i in 1..(game_field.m_cols - 1) {
+		pos_start := start_rel_pos_int_x_cell_1 + (game_field.cell_w + game_field.cell_x_space) * (i - 1)
+		pos_end := pos_start + game_field.cell_w + game_field.cell_x_space
+		for pos in pos_start..pos_end {
+			game_field.lut_mouse_rel_pos_int_x[pos] = i
+		}
+	}
+	for i in 1..(game_field.n_rows - 1) {
+		pos_start := start_rel_pos_int_y_cell_1 + (game_field.cell_h + game_field.cell_y_space) * (i - 1)
+		pos_end := pos_start + game_field.cell_h + game_field.cell_y_space
+		for pos in pos_start..pos_end {
+			game_field.lut_mouse_rel_pos_int_y[pos] = i
+		}
+	}
+
+	// do the last cell rel_pos_int_x and rel_pos_int_y
+	for i in (field_w - (game_field.cell_x_space + game_field.cell_w + cell_x_space_hlf_2))..field_w {
+		game_field.lut_mouse_rel_pos_int_x[i] = game_field.m_cols - 1
+	}
+	for i in (field_h - (game_field.cell_y_space + game_field.cell_h + cell_y_space_hlf_2))..field_h {
+		game_field.lut_mouse_rel_pos_int_y[i] = game_field.n_rows - 1
+	}
+
+	println('game_field.lut_mouse_rel_pos_int_x: ${game_field.lut_mouse_rel_pos_int_x}')
+	println('game_field.lut_mouse_rel_pos_int_y: ${game_field.lut_mouse_rel_pos_int_y}')
+
+	// init the pieces for the players
+	for i in 0..game_field.m_cols {
+		app.game_field.place_new_piece(1, i, game_field.n_rows - 2, .normal)
+		app.game_field.place_new_piece(2, i, 1, .normal)
+	}
+
+	app.show_field = false
+	game_field.is_game_finished = false
+
+	app.txtfld_command = TextField{
+		x: 461
+		y: 377
+		text: 'Command:'
+		color: gx.rgb(0, 0, 0)
+		size: 20
+	}
+	app.txtfld_player_turn = TextField{
+		x: 460
+		y: 100
+		text: ''
+		color: gx.rgb(0, 30, 0)
+		size: 40
+	}
+
+	{
+		// field_center_x := app.field_abs_x + ()
+		app.txtfld_game_finished = TextField{
+			x: 150
+			y: 200
+			text: ''
+			color: gx.rgb(70, 130, 0)
+			size: 30
+		}
+	}
+
+	mut window := ui.window(
+		width:  win_width
+		height: win_height
+		title:  'V UI: Rectangles'
+		on_mouse_down: app.on_mouse_down_main,
+		on_mouse_move: app.on_mouse_move_main,
+		on_mouse_up: app.on_mouse_up_main,
+		on_key_down: app.on_key_down_main,
+		on_init: app.win_init,
+		children: [
+			ui.canvas_plus(
+				bg_color:      gx.rgb(196, 196, 196)
+				bg_radius:     .0
+				clipping:      true
+				on_draw:       app.draw_field
+				// on_click:      app.click_circles
+				// on_mouse_move: app.mouse_move_circles
+				z_index: 0,
+			),
+			ui.textbox(id: 'tb_command', z_index: 1)
+			ui.button(
+				id: 'btn_do_action',
+				on_click: app.btn_do_action_on_click,
+				z_index: 2,
+				text: 'Do Action',
+				radius: 5,
+				border_color: gx.rgb(0, 128, 0),
+				bg_color: gx.rgb(192, 192, 128),
+			),
+			ui.button(id: 'btn_start_game', radius: 5, z_index: 3, text: 'Start Game', on_click: app.btn_start_game_on_click),
+			ui.button(id: 'btn_end_game', radius: 5, z_index: 3, text: 'End Game', on_click: app.btn_end_game_on_click),
+			ui.button(id: 'btn_random_move', radius: 5, z_index: 3, text: 'Random Move', on_click: app.btn_random_move_on_click),
+		]
+	)
+
+	ui.run(window)
 }

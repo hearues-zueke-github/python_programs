@@ -1,4 +1,4 @@
-// module neural_network
+module neural_network
 
 import arrays
 import rand
@@ -7,19 +7,18 @@ import rand.pcg32
 
 import vsl.vlas.internal.blas
 
-import arraybyte_serialization { CrossLangSerialization }
-
-struct NeuralNetwork {
+pub struct NeuralNetwork {
+pub:
 	arr_layer []i32
 	max_layer_size int
 	arr_seed []u32
-mut:
+pub mut:
 	rng rand.PRNG
 	arr_weights [][]f64
 	arr_biases [][]f64
 }
 
-fn NeuralNetwork.new(arr_layer []i32, arr_seed []u32) NeuralNetwork {
+pub fn NeuralNetwork.new(arr_layer []i32, arr_seed []u32) NeuralNetwork {
 	return NeuralNetwork{
 		arr_layer: arr_layer
 		max_layer_size: arrays.max(arr_layer) or { 0 }
@@ -28,7 +27,7 @@ fn NeuralNetwork.new(arr_layer []i32, arr_seed []u32) NeuralNetwork {
 	}
 }
 
-fn (mut nn NeuralNetwork) init_random_weights_biases() {
+pub fn (mut nn NeuralNetwork) init_random_weights_biases() {
 	mut rng := &nn.rng
 	rng.seed(nn.arr_seed)
 
@@ -57,7 +56,7 @@ fn (mut nn NeuralNetwork) init_random_weights_biases() {
 	}
 }
 
-fn (nn &NeuralNetwork) propagate_forward(x []f64, mut y []f64) {
+pub fn (nn &NeuralNetwork) propagate_forward(x []f64, mut y []f64) {
 	if x.len != nn.arr_layer[0] || y.len != nn.arr_layer.last() {
 		println('x.len != nn.arr_weights[0].len')
 		return
