@@ -18,6 +18,7 @@ const win_height = 500
 // show possible moves on the game_field
 // find all possible next moves for the current player
 
+// TODO: split boardgame + board GUI + genetic algorithm + neural network + serialization
 // TODO: add a moving animation, when the bot is playing (optional)
 // TODO: do a refactoring of current state
 // TODO: add move validating for each player
@@ -495,6 +496,40 @@ fn (game_field &GameField) draw_next_possible_moves(mut d ui.DrawDevice, c &ui.C
 	}
 }
 
+fn (game_field &GameField) draw_next_possible_moves_of_piece(mut d ui.DrawDevice, c &ui.CanvasLayout, piece &Piece) {
+	start_x := game_field.field_abs_x + game_field.cell_x_space // add later the game_field space to the cells too!
+	start_y := game_field.field_abs_y + game_field.cell_y_space // add later the game_field space to the cells too!
+
+	start_piece_x := start_x + game_field.cell_w / 2
+	start_piece_y := start_y + game_field.cell_h / 2
+	piece_to_piece_w := game_field.cell_w + game_field.cell_x_space
+	piece_to_piece_h := game_field.cell_h + game_field.cell_y_space
+
+	for prev_next_pos in game_field.arr_curr_pos_to_next_possible_moves {
+		piece_center_2_x := start_piece_x + prev_next_pos.next_x * piece_to_piece_w
+		piece_center_2_y := start_piece_y + prev_next_pos.next_y * piece_to_piece_h
+
+		c.draw_device_circle_filled(d,
+			piece_center_2_x,
+			piece_center_2_y,
+			6,
+			game_field.piece_next_pos_color,
+		)
+	}
+
+	for prev_next_pos in game_field.arr_curr_pos_to_next_possible_moves {
+		piece_center_1_x := start_piece_x + prev_next_pos.prev_x * piece_to_piece_w
+		piece_center_1_y := start_piece_y + prev_next_pos.prev_y * piece_to_piece_h
+
+		c.draw_device_circle_filled(d,
+			piece_center_1_x,
+			piece_center_1_y,
+			4,
+			game_field.piece_prev_pos_color,
+		)
+	}
+}
+
 fn (mut game_field GameField) move_piece(mut piece Piece, new_x int, new_y int) {
 	curr_x, curr_y := piece.get_pos()
 
@@ -525,7 +560,16 @@ fn (app &App) draw_field(mut d ui.DrawDevice, c &ui.CanvasLayout) {
 
 	if app.show_field {
 		game_field.draw_field_pieces(mut d, c)
-		// game_field.draw_next_possible_moves(mut d, c)
+
+		shared mouse_action := &app.mouse_action
+		rlock mouse_action {
+			if mouse_action.is_piece_clicked {
+				piece_id := mouse_action.piece_id
+				mut piece := unsafe { &(game_field.map_piece_id_to_piece[piece_id]) }
+			}
+		}
+
+		game_field.draw_next_possible_moves(mut d, c)
 	}
 
 	// println('before all printing text app.txtfld_command: ${app.txtfld_command}')
@@ -602,7 +646,6 @@ fn (mut app App) on_mouse_down_main(window &ui.Window, mouse_event ui.MouseEvent
 				break
 			}
 		}
-
 		rlock mouse_action {
 			if mouse_action.is_piece_clicked {
 				println('Piece was clicked!')

@@ -31,7 +31,7 @@ from recordclass import RecordClass # need installation from pip
 from shutil import copyfile
 from pprint import pprint
 from typing import List, Set, Tuple, Dict, Union, Any
-from tqdm import tqdm
+from tqdm import tqdm # need installation from pip
 from PIL import Image
 
 CURRENT_WORKING_DIR = os.getcwd()

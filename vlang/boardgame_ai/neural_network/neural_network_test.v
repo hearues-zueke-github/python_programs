@@ -1,4 +1,3 @@
-import rand
 import rand.seed
 import rand.pcg32
 

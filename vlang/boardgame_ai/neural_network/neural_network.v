@@ -2,10 +2,25 @@ module neural_network
 
 import arrays
 import rand
-import rand.seed
 import rand.pcg32
 
 import vsl.vlas.internal.blas
+
+fn activation_function_leaky_relu(x f64) f64 {
+	if x < 0 {
+		return x * 0.01
+	}
+
+	return x
+}
+
+fn activation_function_relu(x f64) f64 {
+	if x < 0 {
+		return 0
+	}
+
+	return x
+}
 
 pub struct NeuralNetwork {
 pub:
@@ -16,6 +31,7 @@ pub mut:
 	rng rand.PRNG
 	arr_weights [][]f64
 	arr_biases [][]f64
+	activation_function fn (f64) f64 = unsafe { nil }
 }
 
 pub fn NeuralNetwork.new(arr_layer []i32, arr_seed []u32) NeuralNetwork {
@@ -24,6 +40,7 @@ pub fn NeuralNetwork.new(arr_layer []i32, arr_seed []u32) NeuralNetwork {
 		max_layer_size: arrays.max(arr_layer) or { 0 }
 		arr_seed: arr_seed
 		rng: rand.PRNG(pcg32.PCG32RNG{})
+		activation_function: activation_function_leaky_relu
 	}
 }
 
@@ -65,7 +82,7 @@ pub fn (nn &NeuralNetwork) propagate_forward(x []f64, mut y []f64) {
 	mut arr_prev := []f64{len: nn.max_layer_size}
 	mut arr_next := []f64{len: nn.max_layer_size}
 
-	arrays.copy(mut arr_next, x)
+	arrays.copy(mut arr_next, x
 	
 	for i_layer in 0..(nn.arr_layer.len - 1) {
 		arrays.copy(mut arr_prev, arr_next)
@@ -82,7 +99,7 @@ pub fn (nn &NeuralNetwork) propagate_forward(x []f64, mut y []f64) {
 		blas.dgemm(no_trans, no_trans, m, n, k, 1.0, nn.arr_weights[i_layer], lda, arr_prev, ldb, 0.0, mut &arr_next, ldc)
 
 		for i in 0..nn.arr_layer[i_layer + 1] {
-			arr_next[i] += nn.arr_biases[i_layer][i]
+			arr_next[i] = nn.activation_function(arr_next[i] + nn.arr_biases[i_layer][i])
 		}
 
 		println('-------------------------------')
