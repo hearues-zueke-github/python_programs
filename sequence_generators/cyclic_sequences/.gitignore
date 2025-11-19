@@ -4,3 +4,4 @@
 *.so
 *.html
 cyclic_multi_factor_pow_seq
+*_cython.cpp
