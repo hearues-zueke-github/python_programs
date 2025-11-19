@@ -151,7 +151,7 @@ class MultiprocessingManager(Exception):
 			# print('IS WORKING OK!!!')
 
 
-	def do_new_jobs(self, l_func_name, l_func_args):
+	def do_new_jobs(self, l_func_name, l_func_args, add_proc_nr_too=False):
 		len_l_func_name = len(l_func_name)
 
 		pbar = tqdm(total=len(l_func_args))

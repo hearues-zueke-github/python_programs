@@ -115,7 +115,7 @@ def main():
 	base_max = d_arg_name_to_arg_val['base_max']
 
 	con = sqlite3.connect("prime_numbers.sqlite3")
-	cur = con.cursor()	
+	cur = con.cursor()
 
 	if not do_table_name_exists(con=con, table_name='table_prime_number'):
 		con.execute("""

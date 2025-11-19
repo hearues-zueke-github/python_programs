@@ -98,7 +98,7 @@ if __name__ == '__main__':
 	# 8
 	# 
 	# now to convert the number back to a vector we simply convert the number into the base mod modulo
-	# so 3 in base 5 with 2 places would be (1, 3), were 1*5**1 + 3*5**0 = 8
+	# so 8 in base 5 with 2 places would be (1, 3), were 1*5**1 + 3*5**0 = 8
 	# 
 	# for the factors d = 2 and arr = (4, 3) in modulo 5 we get the following sequence:
 	# (0, 2), (1, 3), (3, 0), (2, 4), (4, 2), (4, 4), (1, 0), (1, 1), (1, 4), (3, 3), (4, 3)

@@ -59,5 +59,3 @@ if __name__ == "__main__":
     idxs_sort = np.flip(np.argsort(u))
     u = u[idxs_sort]
     c = c[idxs_sort]
-
-

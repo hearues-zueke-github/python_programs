@@ -1,0 +1,6 @@
+*.sqlite3
+*.db
+*.o
+*.so
+*.html
+cyclic_multi_factor_pow_seq
