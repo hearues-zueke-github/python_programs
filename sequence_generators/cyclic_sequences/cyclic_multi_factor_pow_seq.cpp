@@ -1560,6 +1560,10 @@ inline int32_t do_fac_3_cycle_full_poly_pow_1(
 	vector<int32_t>& values,
 	vector<int32_t>& cycle_checker
 ) {
+	const int32_t x0_pow0 = 1;
+	const int32_t x1_pow0 = 1;
+	const int32_t x2_pow0 = 1;
+	
 	int32_t x0_pow1 = 0;
 	int32_t x1_pow1 = 0;
 	int32_t x2_pow1 = 0;
@@ -1572,16 +1576,16 @@ inline int32_t do_fac_3_cycle_full_poly_pow_1(
 		const int32_t next_x = (
 			(x0_pow1 * x1_pow1 * x2_pow1 * factors[0]) % modulo +
 			
-			(1 * x1_pow1 * x2_pow1 * factors[1]) % modulo +
-			(x0_pow1 * 1 * x2_pow1 * factors[2]) % modulo +
-			(x0_pow1 * x1_pow1 * 1 * factors[3]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow1 * factors[1]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow1 * factors[2]) % modulo +
+			(x0_pow1 * x1_pow1 * x2_pow0 * factors[3]) % modulo +
 
-			(1 * 1 * x2_pow1 * factors[4]) % modulo +
-			(1 * x1_pow1 * 1 * factors[5]) % modulo +
-			(x0_pow1 * 1 * 1 * factors[6]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow1 * factors[4]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow0 * factors[5]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow0 * factors[6]) % modulo +
 
 
-			(1 * 1 * 1 * factors[7])
+			(x0_pow0 * x1_pow0 * x2_pow0 * factors[7])
 		) % modulo;
 
 		x0_pow1 = x1_pow1;
@@ -1606,6 +1610,10 @@ inline int32_t do_fac_3_cycle_full_poly_pow_2(
 	vector<int32_t>& values,
 	vector<int32_t>& cycle_checker
 ) {
+	const int32_t x0_pow0 = 1;
+	const int32_t x1_pow0 = 1;
+	const int32_t x2_pow0 = 1;
+
 	int32_t x0_pow1 = 0;
 	int32_t x1_pow1 = 0;
 	int32_t x2_pow1 = 0;
@@ -1626,38 +1634,38 @@ inline int32_t do_fac_3_cycle_full_poly_pow_2(
 			(x0_pow2 * x2_pow1 * x2_pow2 * factors[2]) % modulo +
 			(x0_pow2 * x1_pow2 * x2_pow1 * factors[3]) % modulo +
 
-			(1 * x1_pow2 * x2_pow2 * factors[4]) % modulo +
-			(x0_pow2 * 1 * x2_pow2 * factors[5]) % modulo +
-			(x0_pow2 * x1_pow2 * 1 * factors[6]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow2 * factors[4]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow2 * factors[5]) % modulo +
+			(x0_pow2 * x1_pow2 * x2_pow0 * factors[6]) % modulo +
 			
 			(x0_pow1 * x1_pow1 * x2_pow2 * factors[7]) % modulo +
 			(x0_pow1 * x1_pow2 * x2_pow1 * factors[8]) % modulo +
 			(x0_pow2 * x1_pow1 * x2_pow1 * factors[9]) % modulo +
 
-			(1 * x1_pow1 * x2_pow2 * factors[10]) % modulo +
-			(x0_pow1 * 1 * x2_pow2 * factors[11]) % modulo +
-			(1 * x1_pow2 * x2_pow1 * factors[12]) % modulo +
-			(x0_pow1 * x1_pow2 * 1 * factors[13]) % modulo +
-			(x0_pow2 * 1 * x2_pow1 * factors[14]) % modulo +
-			(x0_pow2 * x1_pow1 * 1 * factors[15]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow2 * factors[10]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow2 * factors[11]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow1 * factors[12]) % modulo +
+			(x0_pow1 * x1_pow2 * x2_pow0 * factors[13]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow1 * factors[14]) % modulo +
+			(x0_pow2 * x1_pow1 * x2_pow0 * factors[15]) % modulo +
 
-			(1 * 1 * x2_pow2 * factors[16]) % modulo +
-			(1 * x1_pow2 * 1 * factors[17]) % modulo +
-			(x0_pow2 * 1 * 1 * factors[18]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow2 * factors[16]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow0 * factors[17]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow0 * factors[18]) % modulo +
 
 
 			(x0_pow1 * x1_pow1 * x2_pow1 * factors[19]) % modulo +
 			
-			(1 * x1_pow1 * x2_pow1 * factors[20]) % modulo +
-			(x0_pow1 * 1 * x2_pow1 * factors[21]) % modulo +
-			(x0_pow1 * x1_pow1 * 1 * factors[22]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow1 * factors[20]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow1 * factors[21]) % modulo +
+			(x0_pow1 * x1_pow1 * x2_pow0 * factors[22]) % modulo +
 
-			(1 * 1 * x2_pow1 * factors[23]) % modulo +
-			(1 * x1_pow1 * 1 * factors[24]) % modulo +
-			(x0_pow1 * 1 * 1 * factors[25]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow1 * factors[23]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow0 * factors[24]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow0 * factors[25]) % modulo +
 
 
-			(1 * 1 * 1 * factors[26])
+			(x0_pow0 * x1_pow0 * x2_pow0 * factors[26])
 		) % modulo;
 
 		x0_pow1 = x1_pow1;
@@ -1682,6 +1690,10 @@ inline int32_t do_fac_3_cycle_full_poly_pow_3(
 	vector<int32_t>& values,
 	vector<int32_t>& cycle_checker
 ) {
+	const int32_t x0_pow0 = 1;
+	const int32_t x1_pow0 = 1;
+	const int32_t x2_pow0 = 1;
+
 	int32_t x0_pow1 = 0;
 	int32_t x1_pow1 = 0;
 	int32_t x2_pow1 = 0;
@@ -1710,9 +1722,9 @@ inline int32_t do_fac_3_cycle_full_poly_pow_3(
 			(x0_pow3 * x2_pow1 * x2_pow3 * factors[5]) % modulo +
 			(x0_pow3 * x1_pow3 * x2_pow1 * factors[6]) % modulo +
 
-			(1 * x1_pow3 * x2_pow3 * factors[7]) % modulo +
-			(x0_pow3 * 1 * x2_pow3 * factors[8]) % modulo +
-			(x0_pow3 * x1_pow3 * 1 * factors[9]) % modulo +
+			(x0_pow0 * x1_pow3 * x2_pow3 * factors[7]) % modulo +
+			(x0_pow3 * x1_pow0 * x2_pow3 * factors[8]) % modulo +
+			(x0_pow3 * x1_pow3 * x2_pow0 * factors[9]) % modulo +
 			
 			(x0_pow2 * x1_pow2 * x2_pow3 * factors[10]) % modulo +
 			(x0_pow2 * x1_pow3 * x2_pow2 * factors[11]) % modulo +
@@ -1725,27 +1737,27 @@ inline int32_t do_fac_3_cycle_full_poly_pow_3(
 			(x0_pow3 * x1_pow1 * x2_pow2 * factors[17]) % modulo +
 			(x0_pow3 * x1_pow2 * x2_pow1 * factors[18]) % modulo +
 
-			(1 * x1_pow2 * x2_pow3 * factors[19]) % modulo +
-			(x0_pow2 * 1 * x2_pow3 * factors[20]) % modulo +
-			(1 * x1_pow3 * x2_pow2 * factors[21]) % modulo +
-			(x0_pow2 * x1_pow3 * 1 * factors[22]) % modulo +
-			(x0_pow3 * 1 * x2_pow2 * factors[23]) % modulo +
-			(x0_pow3 * x1_pow2 * 1 * factors[24]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow3 * factors[19]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow3 * factors[20]) % modulo +
+			(x0_pow0 * x1_pow3 * x2_pow2 * factors[21]) % modulo +
+			(x0_pow2 * x1_pow3 * x2_pow0 * factors[22]) % modulo +
+			(x0_pow3 * x1_pow0 * x2_pow2 * factors[23]) % modulo +
+			(x0_pow3 * x1_pow2 * x2_pow0 * factors[24]) % modulo +
 
 			(x0_pow1 * x1_pow1 * x2_pow3 * factors[25]) % modulo +
 			(x0_pow1 * x1_pow3 * x2_pow1 * factors[26]) % modulo +
 			(x0_pow3 * x1_pow1 * x2_pow1 * factors[27]) % modulo +
 
-			(1 * x1_pow1 * x2_pow3 * factors[28]) % modulo +
-			(x0_pow1 * 1 * x2_pow3 * factors[29]) % modulo +
-			(1 * x1_pow3 * x2_pow1 * factors[30]) % modulo +
-			(x0_pow1 * x1_pow3 * 1 * factors[31]) % modulo +
-			(x0_pow3 * 1 * x2_pow1 * factors[32]) % modulo +
-			(x0_pow3 * x1_pow1 * 1 * factors[33]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow3 * factors[28]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow3 * factors[29]) % modulo +
+			(x0_pow0 * x1_pow3 * x2_pow1 * factors[30]) % modulo +
+			(x0_pow1 * x1_pow3 * x2_pow0 * factors[31]) % modulo +
+			(x0_pow3 * x1_pow0 * x2_pow1 * factors[32]) % modulo +
+			(x0_pow3 * x1_pow1 * x2_pow0 * factors[33]) % modulo +
 
-			(1 * 1 * x2_pow3 * factors[34]) % modulo +
-			(1 * x1_pow3 * 1 * factors[35]) % modulo +
-			(x0_pow3 * 1 * 1 * factors[36]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow3 * factors[34]) % modulo +
+			(x0_pow0 * x1_pow3 * x2_pow0 * factors[35]) % modulo +
+			(x0_pow3 * x1_pow0 * x2_pow0 * factors[36]) % modulo +
 
 
 			(x0_pow2 * x1_pow2 * x2_pow2 * factors[37]) % modulo +
@@ -1754,38 +1766,38 @@ inline int32_t do_fac_3_cycle_full_poly_pow_3(
 			(x0_pow2 * x2_pow1 * x2_pow2 * factors[39]) % modulo +
 			(x0_pow2 * x1_pow2 * x2_pow1 * factors[40]) % modulo +
 
-			(1 * x1_pow2 * x2_pow2 * factors[41]) % modulo +
-			(x0_pow2 * 1 * x2_pow2 * factors[42]) % modulo +
-			(x0_pow2 * x1_pow2 * 1 * factors[43]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow2 * factors[41]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow2 * factors[42]) % modulo +
+			(x0_pow2 * x1_pow2 * x2_pow0 * factors[43]) % modulo +
 			
 			(x0_pow1 * x1_pow1 * x2_pow2 * factors[44]) % modulo +
 			(x0_pow1 * x1_pow2 * x2_pow1 * factors[45]) % modulo +
 			(x0_pow2 * x1_pow1 * x2_pow1 * factors[46]) % modulo +
 
-			(1 * x1_pow1 * x2_pow2 * factors[47]) % modulo +
-			(x0_pow1 * 1 * x2_pow2 * factors[48]) % modulo +
-			(1 * x1_pow2 * x2_pow1 * factors[49]) % modulo +
-			(x0_pow1 * x1_pow2 * 1 * factors[50]) % modulo +
-			(x0_pow2 * 1 * x2_pow1 * factors[51]) % modulo +
-			(x0_pow2 * x1_pow1 * 1 * factors[52]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow2 * factors[47]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow2 * factors[48]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow1 * factors[49]) % modulo +
+			(x0_pow1 * x1_pow2 * x2_pow0 * factors[50]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow1 * factors[51]) % modulo +
+			(x0_pow2 * x1_pow1 * x2_pow0 * factors[52]) % modulo +
 
-			(1 * 1 * x2_pow2 * factors[53]) % modulo +
-			(1 * x1_pow2 * 1 * factors[54]) % modulo +
-			(x0_pow2 * 1 * 1 * factors[55]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow2 * factors[53]) % modulo +
+			(x0_pow0 * x1_pow2 * x2_pow0 * factors[54]) % modulo +
+			(x0_pow2 * x1_pow0 * x2_pow0 * factors[55]) % modulo +
 
 
 			(x0_pow1 * x1_pow1 * x2_pow1 * factors[56]) % modulo +
 			
-			(1 * x1_pow1 * x2_pow1 * factors[57]) % modulo +
-			(x0_pow1 * 1 * x2_pow1 * factors[58]) % modulo +
-			(x0_pow1 * x1_pow1 * 1 * factors[59]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow1 * factors[57]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow1 * factors[58]) % modulo +
+			(x0_pow1 * x1_pow1 * x2_pow0 * factors[59]) % modulo +
 
-			(1 * 1 * x2_pow1 * factors[60]) % modulo +
-			(1 * x1_pow1 * 1 * factors[61]) % modulo +
-			(x0_pow1 * 1 * 1 * factors[62]) % modulo +
+			(x0_pow0 * x1_pow0 * x2_pow1 * factors[60]) % modulo +
+			(x0_pow0 * x1_pow1 * x2_pow0 * factors[61]) % modulo +
+			(x0_pow1 * x1_pow0 * x2_pow0 * factors[62]) % modulo +
 
 
-			(1 * 1 * 1 * factors[63])
+			(x0_pow0 * x1_pow0 * x2_pow0 * factors[63])
 		) % modulo;
 
 		x0_pow1 = x1_pow1;
@@ -2616,6 +2628,7 @@ int main(int argc, char* argv[]) {
 	int32_t modulo;
 	int32_t factor_len;
 	string file_path;
+	string sqlite_file_path;
 	int32_t thread_count_available;
 
 	for (map<string, string>::iterator it = args.begin(); it != args.end(); ++it) {
@@ -2655,6 +2668,8 @@ int main(int argc, char* argv[]) {
 			thread_count_available = std::stoi(arg_val.c_str(), &pos, 10);
 		} else if (arg_name == "file_path") {
 			file_path = arg_val;
+		} else if (arg_name == "sqlite_file_path") {
+			sqlite_file_path = arg_val;
 		}
 	}
 
@@ -2794,7 +2809,7 @@ int main(int argc, char* argv[]) {
 	string sql;
 	int rc = 0;
 	
-	rc = sqlite3_open("example.db", &DB);
+	rc = sqlite3_open(sqlite_file_path.c_str(), &DB);
 
 	if (rc) {
 		std::cerr << "Error open DB " << sqlite3_errmsg(DB) << std::endl;
